@@ -269,7 +269,7 @@ can only propose a decision; only the author settles one.
 
 ## D20: How are test cases built so the measured numbers mean something?
 
-- **Status:** settled
+- **Status:** replaced by "How are test cases built so the measured numbers mean something (with the rehearsal on working-set cases)?" (D32)
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
 - **Options:**
   - Caller cards with real database customers, split by template, one weighted case per template, and a day-3 rehearsal
@@ -281,7 +281,7 @@ can only propose a decision; only the author settles one.
 
 ## D21: Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity?
 
-- **Status:** settled
+- **Status:** replaced by "Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule)?" (D27)
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
 - **Options:**
   - Fixed rules in code, as listed in the choice
@@ -308,7 +308,7 @@ can only propose a decision; only the author settles one.
 
 ## D23: What is simplified up front, and what is cut first if time runs short?
 
-- **Status:** settled
+- **Status:** replaced by "What is simplified up front, what is cut first if time runs short, and how do the suggested-question buttons work?" (D24)
 - **Replaces:** "Should the suggested-question buttons use cached answers, and what is cut first if time runs short?" (D16)
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
 - **Options:**
@@ -318,6 +318,130 @@ can only propose a decision; only the author settles one.
   - [docs/IDEAS_REVIEW.md](docs/IDEAS_REVIEW.md): The earlier cut order held only small items; the knowledge base is under 3,000 tokens, so a 'whole knowledge base in the prompt' comparison answers 'why retrieve at all?'.
 - **Choice:** Simplified now: the held-out run is one weighted case per template; retrieval compares keyword-only against combined search, plus one 'whole current knowledge base in the prompt' comparison on answer correctness; precision, mean reciprocal rank and a second chunking setting are dropped; the private reviewer budget is described, not built (the spend alert and the clean cap handoff stay). Suggested-question buttons stay, without cached answers. Cut order if time runs short: the buttons, the cost-per-conversation breakdown, the consistency runs, the flag export, the pre-deploy test run, the measures beyond the core set (recall and hit rate at five, stale-trap accuracy, answer correctness, faithfulness), the adversarial set down to 15 cases, then the threshold curve. Never cut: deployment, the top-driver findings, retrieval evaluation, booking with confirming, cancelling and rescheduling, the account lookups, the emergency replies, handoff tickets, flagging, the PRD's required numbers, health checks, the README and the video.
 - **Reason:** Saves about 1 to 1.5 days, which pays for the account lookups, the test fixtures and the data rules, and keeps every number the reviewer judges.
+
+## D24: What is simplified up front, what is cut first if time runs short, and how do the suggested-question buttons work?
+
+- **Status:** settled
+- **Replaces:** "What is simplified up front, and what is cut first if time runs short?" (D23)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Buttons only fill in the question text and go through exactly the same path as typing; simplifications and cut order unchanged
+  - Buttons skip the router (the replaced decision)
+- **Research:**
+  - [docs/IDEAS_REVIEW.md](docs/IDEAS_REVIEW.md): The earlier cut order held only small items; the knowledge base is under 3,000 tokens, so a 'whole knowledge base in the prompt' comparison answers 'why retrieve at all?'.
+  - [docs/SPEC.md](docs/SPEC.md): Codex second opinion on the screen plan: buttons that skip the router could look rigged to a reviewer and hide routing mistakes.
+- **Choice:** Simplified now: the held-out run is one weighted case per template; retrieval compares keyword-only against combined search, plus one 'whole current knowledge base in the prompt' comparison on answer correctness; precision, mean reciprocal rank and a second chunking setting are dropped; the private reviewer budget is described, not built (the spend alert and the clean cap handoff stay). Suggested-question buttons stay, without cached answers, and only fill in the question text: a click goes through exactly the same path as typing, including the router. Cut order if time runs short: the buttons, the cost-per-conversation breakdown, the consistency runs, the flag export, the pre-deploy test run, the measures beyond the core set (recall and hit rate at five, stale-trap accuracy, answer correctness, faithfulness), the adversarial set down to 15 cases, then the threshold curve. Never cut: deployment, the top-driver findings, retrieval evaluation, booking with confirming, cancelling and rescheduling, the account lookups, the emergency replies, handoff tickets, flagging, the PRD's required numbers, health checks, the README and the video.
+- **Reason:** Same savings as before. Buttons that use the normal path cannot look rigged, are measured like typed questions, and are simpler to build.
+
+## D25: Which model sorts each caller message into a flow (the router)?
+
+- **Status:** settled
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Claude Haiku 5.5 for routing, Claude Sonnet 5.5 for writing replies
+  - Claude Sonnet 5.5 for both (as the models decision first said)
+- **Research:**
+  - [docs/MODEL_RESEARCH.md](docs/MODEL_RESEARCH.md): Haiku 5.5 scored 75.3% against Sonnet 5.5's 78.0% on the airline customer service benchmark at about a tenth of the cost per task; sorting a message into a few flows is a much simpler job than the benchmark.
+- **Choice:** Claude Haiku 5.5 routes each message; Claude Sonnet 5.5 writes the replies. Routing accuracy is measured on the held-out set against the template labels, so a switch to Sonnet is a settings change if Haiku misroutes.
+- **Reason:** Meets the reply-speed budget (about 1.2 seconds for routing, median first word under 2 seconds) at a fraction of the cost, and routing accuracy is measured rather than assumed. Amends the models decision (D5).
+
+## D26: Exactly which call reasons does the agent handle, hand off, or answer and redirect?
+
+- **Status:** settled
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Handle bookings (including estimates), existing appointments, billing and membership questions answerable from documents or lookups, and warranty questions and claims; hand off disputes, refunds, complaints, late technicians, account actions, emergencies and commercial work; answer and redirect hiring and wrong numbers
+  - Handle only the top three plus scheduling, handing off warranty
+- **Research:**
+  - [docs/DATA_REVIEW.md](docs/DATA_REVIEW.md): Warranty is the fourth reason (45 calls, 11 percent) and needs only documents, the install-date lookup and booking, all already in scope.
+  - [docs/SPEC.md](docs/SPEC.md): Builder check: held-out expected outcomes must be frozen before tuning, so the handled list must be fixed now.
+- **Choice:** Handled: new bookings including replacement estimates; confirming, rescheduling and cancelling appointments; billing questions answered from documents or lookups (current balance, what an invoice is for, charged twice); membership questions (what it includes, price, renewal date); warranty questions and claims (coverage, registration, transfer, booking a warranty or repeat-repair visit with the warranty flag). Handed off: quote disputes and refunds, complaints and manager requests, late technicians, every account action (the action gap), safety emergencies (after the fixed safety reply), commercial work. Answered and redirected: hiring enquiries and wrong numbers, reported with and without.
+- **Reason:** Uses only abilities already in the design, adds warranty (about 11 points of scope ceiling) at no new build cost, and fixes the expected outcomes before tuning. Extends the top-three scope rule (D12) and account lookups (D17).
+
+## D27: Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule)?
+
+- **Status:** replaced by "Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule, evidence-based warranty flag and duplicate-charge rule)?" (D29)
+- **Replaces:** "Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity?" (D21)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Fixed rules in code with the narrow invoice rule: hand off only when the caller questions a charge; a fixed-fee amount mismatch silently creates a billing-review ticket
+  - Fixed rules with the broad invoice rule: any line differing from the schedule hands off (the replaced decision)
+- **Research:**
+  - [call_data/knowledge_base/faq/customer_faq.md](call_data/knowledge_base/faq/customer_faq.md): 'Cancellations or reschedules more than 24 hours before the window are free. Inside 24 hours there is a $49 late-cancellation fee.'
+  - [docs/IDEAS_REVIEW.md](docs/IDEAS_REVIEW.md): North zone has no plumbing slots and central has no estimate slots (Claude checked); Omar Patel's invoice charges $144 after-hours against the published $149 and an $89 diagnostic fee on top of a repair (Claude checked); seeded appointments include zone mismatches and overlapping afternoon bookings.
+  - [docs/SPEC.md](docs/SPEC.md): Builder check: 45 of 81 invoices charge the $89 diagnostic fee on top of a repair and 22 charge it to members; a broad rule would hand off nearly every billing call.
+- **Choice:** (1) 'Now' is one setting: 2026-10-16 09:00, Austin (US Central) time; windows that have started are never offered. (2) The $49 notice applies to both cancelling and rescheduling inside 24 hours; waiver requests hand off. (3) If no eligible slot exists in the three-week range for that zone and service, the agent says so plainly and hands off with a ticket, a clean decline. (4) A slot is refused if its technician is already booked in an overlapping window; existing appointments are left as recorded and the mismatches documented. (5) Invoice lines are read exactly as recorded and never called right or wrong. The caller is handed off as a billing dispute only if they question a charge. A fixed-fee amount that differs from the current schedule (for example Omar Patel's $144 after-hours line against $149) silently creates a low-priority billing-review ticket for staff without interrupting the caller. The widespread pattern of a diagnostic fee charged alongside a repair or to a member goes in the findings document as an executive finding, with no per-call action. (6) The warranty-visit flag is set when the install date is within 2 years of now, or the caller reports a repeat failure of a part repaired within 1 year; otherwise 0. (7) Members are tiers standard or plus. (8) Callers are identified by account number, service address or phone together with their name, never by name alone. (9) Read-backs give date, window, service and technician only, never the stored issue text; new bookings record the fixed now. (10) No waitlist is promised.
+- **Reason:** Each rule closes a data trap a reviewer can hit with the seeded customers. The narrow invoice rule keeps billing questions containable while still catching the planted mismatch and never defending a questionable charge.
+
+## D28: How is AI spending capped so no visitor can use up the reviewer's budget?
+
+- **Status:** replaced by "How is AI spending capped so no visitor, or group of visitors, can use up the reviewer's budget?" (D30)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - A per-visitor budget of about $0.40 a day plus a site-wide cap raised to $10 a day, with an alert at $5
+  - Build a private reviewer link with a reserved budget
+  - Keep a shared $5 cap and accept the risk
+- **Research:**
+  - [docs/SPEC.md](docs/SPEC.md): Builder check: with a shared $5 cap and 100 messages per visitor a day, two or three busy visitors can exhaust the budget before the reviewer arrives.
+- **Choice:** Each visitor (browser session, with the network address as a backstop) may spend about $0.40 a day, roughly 10 conversations; the site-wide cap is $10 a day; the author is alerted when daily spend passes $5. Hitting either limit gives a clean handoff with a plain message. Test runs use a separate key and budget. Amends the spending cap in the models decision (D5).
+- **Reason:** Stops any one visitor from starving the reviewer, for about an hour of work and a worst case of $10 a day during the review period.
+
+## D29: Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule, evidence-based warranty flag and duplicate-charge rule)?
+
+- **Status:** settled
+- **Replaces:** "Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule)?" (D27)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - The rules in the choice, including the warranty flag set only on database evidence and the fixed 'now' limited to customer-facing rules
+  - The earlier rules (the replaced decision)
+- **Research:**
+  - [call_data/knowledge_base/faq/customer_faq.md](call_data/knowledge_base/faq/customer_faq.md): 'Cancellations or reschedules more than 24 hours before the window are free. Inside 24 hours there is a $49 late-cancellation fee.'
+  - [docs/IDEAS_REVIEW.md](docs/IDEAS_REVIEW.md): North zone has no plumbing slots and central has no estimate slots (Claude checked); Omar Patel's invoice charges $144 after-hours against the published $149 and an $89 diagnostic fee on top of a repair (Claude checked); seeded appointments include zone mismatches and overlapping afternoon bookings.
+  - [docs/SPEC.md](docs/SPEC.md): Builder check: 45 of 81 invoices charge the $89 diagnostic fee on top of a repair and 22 charge it to members; a broad rule would hand off nearly every billing call.
+  - [docs/SPEC_REVIEW.md](docs/SPEC_REVIEW.md): Codex spec review findings, with the author's rulings.
+- **Choice:** (1) 'Now' for customer-facing scheduling and policy rules is one setting: 2026-10-16 09:00, Austin (US Central) time; windows that have started are never offered. Operations (spending and rate limits, the nightly reset, alerts, reply timing) use real time. (2) The $49 notice applies to both cancelling and rescheduling inside 24 hours; waiver requests hand off. (3) If no eligible slot exists in the three-week range for that zone and service, the agent says so plainly and hands off with a ticket, a clean decline. (4) A slot is refused if its technician is already booked in an overlapping window; existing appointments are left as recorded and the mismatches documented. (5) Invoice lines are read exactly as recorded and never called right or wrong. The caller is handed off as a billing dispute only if they question a charge. A fixed-fee amount that differs from the current schedule (for example Omar Patel's $144 after-hours line against $149) silently creates a low-priority billing-review ticket for staff without interrupting the caller. The widespread pattern of a diagnostic fee charged alongside a repair or to a member goes in the findings document as an executive finding, with no per-call action. (6) The warranty-visit flag is set only when the database install date proves the 2-year installation labour warranty applies; repeat-repair and 5-year member-installation claims, which the database cannot verify, are booked as normal visits with a warranty-review note for staff, and the caller is told there is no diagnostic fee if the technician confirms coverage. (11) For 'charged twice', the agent first gives the FAQ's pending-authorisation explanation and hands off only if the caller says both charges posted. (12) Cancelling or rescheduling restores the freed slot's original status (open or members-only) from the seeded database copy. (7) Members are tiers standard or plus. (8) Callers are identified by account number, service address or phone together with their name, never by name alone. (9) Read-backs give date, window, service and technician only, never the stored issue text; new bookings record the fixed now. (10) No waitlist is promised.
+- **Reason:** Each rule closes a data trap a reviewer can hit with the seeded customers. The narrow invoice rule keeps billing questions containable while still catching the planted mismatch and never defending a questionable charge. The warranty and duplicate-charge rules come from the spec review: the database has no repair history or membership-at-installation record, so fee waivers must rest on evidence.
+
+## D30: How is AI spending capped so no visitor, or group of visitors, can use up the reviewer's budget?
+
+- **Status:** settled
+- **Replaces:** "How is AI spending capped so no visitor can use up the reviewer's budget?" (D28)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Per-visitor $0.40 a day, site-wide $10 a day, alert at $5, plus a secret reviewer link with its own $3-a-day reserve
+  - Per-visitor and site-wide caps only (the replaced decision)
+- **Research:**
+  - [docs/SPEC.md](docs/SPEC.md): Builder check: with a shared $5 cap and 100 messages per visitor a day, two or three busy visitors can exhaust the budget before the reviewer arrives.
+  - [docs/SPEC_REVIEW.md](docs/SPEC_REVIEW.md): Codex spec review findings, with the author's rulings.
+- **Choice:** Each visitor (browser session, with the network address as a backstop) may spend about $0.40 a day, roughly 10 conversations; the site-wide cap is $10 a day; the author is alerted when daily spend passes $5. Hitting either limit gives a clean handoff with a plain message. Test runs use a separate key and budget. A secret reviewer link (its token stored as a Fly.io secret) draws on a separate $3-a-day reserve that other visitors cannot touch. Amends the spending cap in the models decision (D5).
+- **Reason:** Per-visitor limits alone cannot stop many sessions together from exhausting the shared cap; the reserve guarantees the reviewer a working demo for about 2 to 3 hours of work.
+
+## D31: What retention, masking and rollback protections does the live system have?
+
+- **Status:** settled
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Purge conversation logs after 30 days, mask phone numbers, emails and street addresses, and keep a one-page rollback runbook practised once
+  - None beyond masking phone numbers and emails
+- **Research:**
+  - [docs/SPEC_REVIEW.md](docs/SPEC_REVIEW.md): Codex spec review findings, with the author's rulings.
+  - [docs/PRD_REVIEW.md](docs/PRD_REVIEW.md): Personal data in logs (F26) and rollback and versioning (F30) were raised as missing requirements.
+- **Choice:** Conversation logs are purged after 30 days; phone numbers, emails and street addresses are masked in logs and the staff view (names and account numbers, which are synthetic and needed on tickets, stay). A one-page rollback runbook in the README covers rolling back a Fly.io release (prompts and the search index ship inside the release) and restoring the disk from Fly's daily snapshot, and it is practised once before submission.
+- **Reason:** Closes the personal-data and rollback gaps the PRD review raised, for about 3 to 4 hours in total; both are cuttable after the never-cut items.
+
+## D32: How are test cases built so the measured numbers mean something (with the rehearsal on working-set cases)?
+
+- **Status:** settled
+- **Replaces:** "How are test cases built so the measured numbers mean something?" (D20)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - As before, but the day-3 rehearsal uses working-set cases, the first run of each case is the scored one, and synthetic customers may be added where none matches
+  - Rehearse on held-out cases (the replaced decision)
+- **Research:**
+  - [docs/IDEAS_REVIEW.md](docs/IDEAS_REVIEW.md): 0 of 131 transcript account numbers, 0 of 130 phone numbers and 0 of 42 invoice numbers exist in the database (Claude checked the account numbers). Splitting by call reason puts copies of the same template in both sets.
+  - [docs/SPEC_REVIEW.md](docs/SPEC_REVIEW.md): Codex spec review findings, with the author's rulings.
+- **Choice:** Each test case is tied to a real database customer matching the transcript's facts (zone, membership, brand, install age); the simulated caller gets a caller card with that customer's details, not the transcript's. Billing cases add their invoice to the fresh test database copy. Transcripts are grouped by template and split by template, so no template appears in both sets. The held-out run uses one case per template, weighted by its real call count; both calls and distinct scenarios are reported, with the margin of error on scenarios. A 10-case rehearsal on working-set cases runs at the end of day 3, after which the agent is frozen. The first run of each held-out case is the scored result; a case that fails then passes on its one retry is reported as flaky. Where no real customer matches a transcript, the test copy may add a synthetic customer, marked as synthetic.
+- **Reason:** Rehearsing on held-out cases would break their independence; scoring only the first run stops retries from inflating results.
 
 ## Glossary
 
@@ -342,6 +466,7 @@ can only propose a decision; only the author settles one.
 - **Database transaction:** a group of database changes that all happen together or not at all
 - **Embedding:** a list of numbers representing a text's meaning, used to find similar text
 - **Escalate:** hand the call to a human
+- **Expected outcome:** the result a test case should have (contained, handed off or clean decline), fixed before tuning
 - **Fixture:** prepared test data loaded into a test copy of the database
 - **Grader:** a model that scores whether the agent's answer was correct
 - **Ground-truth label:** the label treated as correct when measuring accuracy
@@ -349,10 +474,14 @@ can only propose a decision; only the author settles one.
 - **Hidden rules:** instructions the agent follows but never reads out to the caller
 - **Monitoring dashboard:** a screen showing how the agent is performing: calls, containment, handoffs, failures and speed
 - **Observed top three:** the three most common call reasons in the transcripts, whatever the agent handles
+- **Per-visitor budget:** a daily spending limit for one visitor, so others still have budget left
 - **Priority handoff:** a handoff ticket marked to be picked up first
 - **Read-only lookup:** reading a caller's record without changing it
 - **Reference answer:** the correct answer to a test question, written in advance to compare the agent against
+- **Reply-speed budget:** the planned time each step may take so the whole reply arrives quickly
+- **Retention:** how long stored data is kept before it is deleted
 - **Retrieval confidence:** a score for how well the best document passage matches the question
+- **Rollback:** returning a live system to its previous working version
 - **Router:** the step that decides which flow a caller's message belongs to
 - **Search index:** the prepared, searchable copy of the documents that the agent looks things up in
 - **Seeded data:** the starting rows the database ships with, including the four test customers

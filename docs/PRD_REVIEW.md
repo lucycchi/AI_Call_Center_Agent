@@ -290,7 +290,7 @@ Two parts. In the chat, the caller is told plainly that a team member will take 
 The author answered every clarifying question above. These remain for the PM (here, the reviewer at the hiring fund), because only they can confirm them; the project goes ahead on the author's answers meanwhile.
 
 1. Is a nightly reset of the booking database back to its seeded state acceptable, given the data README's rule that bookings write to the same database? (question 7, finding F4)
-2. The schema lists rescheduling, cancelling and confirming appointments as expected behavior, beyond the PRD's "a yes/no availability check and a confirmed booking is the bar." Which is the bar? (finding F7)
+2. *(Settled by the author: rescheduling, cancelling and confirming are included (D13); kept here for the record.)* The schema lists rescheduling, cancelling and confirming appointments as expected behavior, beyond the PRD's "a yes/no availability check and a confirmed booking is the bar." Which is the bar? (finding F7)
 3. If the honest containment rate is below 60 percent with a documented ceiling, is that judged as a miss or as the right call? (question 3, finding F2)
 4. If part of a top-three call reason is handed off rather than answered (for example a billing dispute inside a billing call), does that still count as answering the top three call drivers? (finding F3)
 
