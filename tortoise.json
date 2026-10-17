@@ -1,0 +1,12 @@
+{
+  "name": "AI Call Center Agent",
+  "stage": "ideas",
+  "test_command": "python -m pytest",
+  "approvals": [
+    {
+      "stage": "ideas",
+      "date": "2026-10-17",
+      "tag": "tortoise/ideas"
+    }
+  ]
+}

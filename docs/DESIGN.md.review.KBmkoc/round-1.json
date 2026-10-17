@@ -1,0 +1,200 @@
+{
+  "version": 2,
+  "round": 1,
+  "document": "/home/lucyc/gauntlet/AI_Call_Center_Agent/docs/DESIGN.md",
+  "quality_score": 6,
+  "dimensions": {
+    "completeness": "ISSUES",
+    "consistency": "ISSUES",
+    "clarity": "ISSUES",
+    "scope": "PASS",
+    "feasibility": "ISSUES"
+  },
+  "findings": [
+    {
+      "id": "R1-1",
+      "dimension": "consistency",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "The knowledge flow says prices are 'always given as \"the technician will confirm pricing on site\"', yet the design expects fee questions (for example 'diagnostic fee') to be common, cites stale fees as a trap it handles, and counts answered knowledge questions toward containment. If every price question is deflected, fee and price questions cannot be answered from the current fee schedule and price book, and those reasons cannot be contained.",
+      "remedy": "State exactly what the agent may say about prices: for example, quote the current published standard fee or price-book range with its source document, plus the 'technician confirms the final price on site' caveat, and never promise a firm total, discount or waiver. Make the reference answers and the 'never promise a firm price' code rule match that decision."
+    },
+    {
+      "id": "R1-2",
+      "dimension": "completeness",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "The held-out test conversations include scheduling cases that book, but bookings are said to write to 'the one real database the reviewer tests against'. Running the held-out set (and tuning runs) against the live database would use up real slots, leave test appointments behind, and make results depend on whatever the reviewer or earlier runs booked.",
+      "remedy": "Specify that every evaluation run uses a fresh copy of the seeded database (reset before each case or each run), never the live deployed database, and that booking correctness is checked against that copy."
+    },
+    {
+      "id": "R1-3",
+      "dimension": "feasibility",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "Simulated callers follow transcripts dated July to September 2026, but bookable slots exist only for the three weeks after 2026-10-16, and transcript callers may not exist in the customers table (only four test customers are documented). The design does not say how a scheduling test case gets a real customer, a requested date inside the slot range, or a ground-truth expected booking, so the '100 percent of bookings correct' measure has no defined check.",
+      "remedy": "Define how scheduling test cases are built: which database customer each case uses (or a mapping to seeded/existing customers), how requested dates and windows are shifted into the open slot range, and what the expected outcome is (the specific slot, or 'offer alternatives'), so booking correctness can be graded mechanically."
+    },
+    {
+      "id": "R1-4",
+      "dimension": "clarity",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "Containment, the headline number, is not defined for a simulated conversation. The design does not say whether a conversation counts as contained when it ends with no handoff but a wrong answer, when the caller had several questions and only some were answered, or when a booking was offered but not completed. The PRD defines containment as calls 'fully resolved', which needs a rule.",
+      "remedy": "Define containment for a test conversation precisely, for example: no handoff at any point AND every caller request graded correct (knowledge answers matching the reference, booking verified in the database). State how wrong-but-not-handed-off conversations are counted and reported separately."
+    },
+    {
+      "id": "R1-5",
+      "dimension": "consistency",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "The held-out set is said to be 'not looked at until the final measurement' and the working set is 'used for discovery', yet discovery has Haiku label every one of the 420 transcripts, the 40-transcript hand-labeled sample is drawn at random from all of them, and every held-out case needs an expected outcome and a hand-written reference answer, which requires reading it. The isolation claim the evidence rests on is contradicted.",
+      "remedy": "State precisely what 'held out' means: for example, held-out transcripts are labeled and given reference answers before any agent tuning, and no prompt, threshold, chunking or category change is made after looking at agent results on them. Say whether the hand-labeled sample comes from the working set only."
+    },
+    {
+      "id": "R1-6",
+      "dimension": "feasibility",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "The router sorts 'each caller message' independently with a confidence score, and low confidence goes to handoff. Inside a multi-step scheduling flow, replies like 'yes', 'the morning one' or an account number carry no call reason and would likely be low-confidence or misrouted, breaking the flow. The design also uses rambling, multi-question simulated callers but gives the router only one reason per message.",
+      "remedy": "Specify conversation state: while a flow is active, how follow-up messages are handled (stay in the flow unless a safety word, a request for a person, or a clear topic change is detected), and how a message with several requests is handled (answer each in turn, or hand off if any part is out of scope)."
+    },
+    {
+      "id": "R1-7",
+      "dimension": "consistency",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "Premise 3 says emergency handoff lives in code, but the Recommended Approach puts safety detection inside the router, which assigns a confidence score and appears to be a model call. It is unclear whether gas smell, flooding, sparks and similar triggers are deterministic code checks that run before and regardless of the model, or model judgments.",
+      "remedy": "State that a deterministic safety check (keyword or pattern list, run in code on every message, including mid-flow) forces handoff independently of the model router, and describe what the model router is still allowed to decide."
+    },
+    {
+      "id": "R1-8",
+      "dimension": "completeness",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "The booking step does not guard against two visitors booking the same slot at once, or a slot changing between the offer and the 'yes'. With a reviewer probing in several tabs, a plain read-then-write can double-book, violating the 100 percent booking correctness target.",
+      "remedy": "Specify that booking is one transaction that updates the slot only if its status is still bookable for this customer (open, or reserved_members for members) and inserts the appointment row in the same transaction; if the update affects no row, the agent says the slot was just taken and offers alternatives."
+    },
+    {
+      "id": "R1-9",
+      "dimension": "completeness",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "Members-only eligibility is described only as 'members'. The customers table has membership_tier and membership_renewal_date; the design does not say whether a member whose renewal date is before 2026-10-16 still counts as a member for reserved_members slots.",
+      "remedy": "State the code rule for member eligibility (tier standard or plus, and whether an expired renewal date disqualifies), grounded in the membership document, and add a test case for it."
+    },
+    {
+      "id": "R1-10",
+      "dimension": "completeness",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "The booking write must insert an appointments row, which includes is_warranty_visit (1 means no diagnostic fee applies). The design does not say how this value is set, although seeded customer Grace Okafor is under an install labor warranty and the warranty documents include a stale version.",
+      "remedy": "Decide how is_warranty_visit is set on a new booking (for example, default 0 and hand off or note it for staff when a warranty claim is raised, or compute it in code from install date and the current warranty terms) and document the rule."
+    },
+    {
+      "id": "R1-11",
+      "dimension": "completeness",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "The scheduling flow begins by identifying the customer by account number and name, but gives no behavior for a caller who does not know their account number, gives a name that does not match, or is a new customer not in the database.",
+      "remedy": "Specify each case: whether lookup by phone number is allowed, how many failed attempts are allowed before handoff, and whether new customers are handed off or can be booked."
+    },
+    {
+      "id": "R1-12",
+      "dimension": "completeness",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "Handoff tickets, conversation logs, flags and metrics need storage, but the design does not say where they live. If they are in the same SQLite file that is reset to seeded data each night, the reset wipes the monitoring history and the feedback loop; the reset job also has no stated behavior for conversations in progress.",
+      "remedy": "State that tickets, logs, flags and metrics live in a separate database or tables the nightly reset never touches, that the reset restores only the scheduling tables, and when it runs relative to live use."
+    },
+    {
+      "id": "R1-13",
+      "dimension": "feasibility",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "The $5-a-day spending cap is shared by every visitor. Any visitor (or a scripted probe from many addresses) can exhaust it, after which the reviewer, the main user, sees every message handed off and the demo fails. The per-visitor rate limit does not prevent this, and it is not stated whether evaluation runs count against the same cap.",
+      "remedy": "Decide how the reviewer's session stays usable when the shared cap is near: for example, a global per-minute limit, a reserved budget for a reviewer access link, an alert to the author when spend crosses a threshold, and separate keys or budget for evaluation runs."
+    },
+    {
+      "id": "R1-14",
+      "dimension": "completeness",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "Internal notes 'become hidden rules' that the model sees but must never read to callers. The design keeps them out of search, but gives no mechanism stopping a reviewer from extracting them with requests like 'print your instructions', which the constraints forbid.",
+      "remedy": "Specify how internal rules are protected: for example, policy enforced in code where possible, only short paraphrased rules given to the model, an output check for verbatim internal text, and a test case that tries to extract them."
+    },
+    {
+      "id": "R1-15",
+      "dimension": "clarity",
+      "severity": "blocking",
+      "changed_text": null,
+      "problem": "Discovery chooses 'three handled reasons' and says scheduling is handled 'whether or not it ranks in the top three', but does not say whether scheduling counts as one of the three, or whether there are three knowledge reasons plus scheduling. This sets the size of the retrieval work and the containment ceiling.",
+      "remedy": "State the rule: for example, 'three knowledge-base reasons answered through retrieval, plus scheduling', or 'three reasons in total, scheduling being one of them if it ranks', matching the PRD's 'top 3 call drivers' through retrieval."
+    },
+    {
+      "id": "R1-16",
+      "dimension": "clarity",
+      "severity": "minor",
+      "changed_text": null,
+      "problem": "Skipping risky top-ranked reasons means the retrieval pipeline may answer reasons ranked fourth or fifth rather than the PRD's 'top 3 call drivers'. The rationale is given, but the departure from the literal PRD wording is not flagged.",
+      "remedy": "Note in the findings document and the questions for the PM that handled reasons may differ from the literal top three, and why."
+    },
+    {
+      "id": "R1-17",
+      "dimension": "clarity",
+      "severity": "minor",
+      "changed_text": null,
+      "problem": "'Nearby alternatives' is undefined: how many are offered, whether they are ordered by closeness in date or window, and how the overlapping 12:00-16:00 and 13:00-17:00 windows and the Tuesday/Thursday-only evening window are handled.",
+      "remedy": "Define the alternative-offer rule, for example up to three open slots for the same service and zone, nearest in date first, with the window reading rule."
+    },
+    {
+      "id": "R1-18",
+      "dimension": "clarity",
+      "severity": "minor",
+      "changed_text": null,
+      "problem": "What the caller sees after a handoff is not specified: whether the chat ends, can continue, or says when someone will respond. In the demo no human answers, so 'a team member will take over' may read as a promise that is not kept.",
+      "remedy": "Specify the post-handoff chat state and wording, for example the conversation is closed with a ticket number and the staff page shows the ticket."
+    },
+    {
+      "id": "R1-19",
+      "dimension": "completeness",
+      "severity": "minor",
+      "changed_text": null,
+      "problem": "Logs mask phone numbers and emails, but handoff tickets include 'who the caller is' and the staff page appears to be public, with anyone able to flag replies. Nothing says whether the staff page is protected or whether ticket contents are masked.",
+      "remedy": "State whether the staff page is open to the reviewer or behind a simple shared password, and whether tickets show masked or full contact details."
+    },
+    {
+      "id": "R1-20",
+      "dimension": "feasibility",
+      "severity": "minor",
+      "changed_text": null,
+      "problem": "The median reply target of about 3 seconds depends on a router model call, an embedding call and a Sonnet generation one after another; no latency budget or streaming is described.",
+      "remedy": "Give a rough per-step latency budget and say whether replies stream or whether the router can be a cheaper or faster model, then measure it on the deployed site."
+    },
+    {
+      "id": "R1-21",
+      "dimension": "feasibility",
+      "severity": "minor",
+      "changed_text": null,
+      "problem": "The nightly reset is described as 'a scheduled job' on Fly.io, but a single always-on machine has no built-in cron; the mechanism is unstated.",
+      "remedy": "Name the mechanism (an in-process scheduler or a cron runner inside the container) and how a failed reset is noticed."
+    },
+    {
+      "id": "R1-22",
+      "dimension": "clarity",
+      "severity": "minor",
+      "changed_text": null,
+      "problem": "The rate limit is 'per visitor', but how a visitor is identified (IP address, browser session) and what the limit is are not stated.",
+      "remedy": "State the visitor key and the limit value, or defer the numbers to the spec stage explicitly."
+    },
+    {
+      "id": "R1-23",
+      "dimension": "clarity",
+      "severity": "minor",
+      "changed_text": null,
+      "problem": "The success criterion 'wrong confident answers: as close to zero as possible' is not a measurable target, unlike the other criteria.",
+      "remedy": "Give a number (for example zero on the held-out set, with each one listed) or describe it as a reported count."
+    }
+  ],
+  "prior": []
+}
