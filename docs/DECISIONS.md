@@ -481,6 +481,18 @@ can only propose a decision; only the author settles one.
 - **Choice:** Python 3.12; FastAPI with one worker process; each caller message is an ordinary request and its checked sentences stream back as server-sent events tied to that message; server-rendered HTML with a little plain JavaScript; the provided scheduling SQLite file plus a separate operations SQLite file, both in write-ahead logging mode on the attached disk; the search index built offline and shipped inside each release; an in-app scheduler with an app-wide gate that messages hold shared and the nightly reset holds exclusively; alerts through a webhook; Anthropic and Voyage SDKs pinned.
 - **Reason:** The smallest stack that meets the spec on one Fly.io machine in four days; one worker keeps the reset gate and scheduler simple, and shipping the index in the release makes rollback complete.
 
+## D36: Which architecture refinements does the plan review require?
+
+- **Status:** settled
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Confirmation records in a small new table inside the scheduling database, typed engine events, saved messages with stream replay, call timeouts, hard limits on paid test runs, the reviewer token in the link's fragment, and a frozen-file list instead of a whole-repository freeze
+  - Keep the architecture as approved
+- **Research:**
+  - [docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md): Codex plan review: idempotency split across two databases, an engine interface that cannot carry metadata, an unbounded stream lifecycle, no timeouts, no evaluation spending stop, and a freeze check that would reject the finished app.
+- **Choice:** (1) Confirmation ids are stored in a new agent_confirmations table inside the scheduling database, written in the same transaction as the booking change; the provided tables are untouched and the nightly reset recreates the new table empty. (2) The engine yields typed events: one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions. (3) Each message and its released sentences are saved; the stream replays saved sentences on reconnect, and a message left unfinished by a restart becomes a handoff. (4) Timeouts: Anthropic 20 seconds, Voyage 5 seconds, alert webhook 5 seconds, and a 15-second deadline per message after which it hands off. (5) Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation, one retry, a separate test key, and an $8 stop per run. (6) The reviewer token sits after a # in the link, which browsers never send to servers; the page sends it once and clears it. (7) The final-run freeze covers only the agent-behaviour files and the search index, recorded as a hash. (8) The keyword index is rebuilt at startup from the shipped chunks.
+- **Reason:** Each closes a way the approved behaviour could fail in practice: double bookings after a crash, lost receipts, hung requests, runaway test spend, a leaked reviewer token, or a final run that cannot start.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
@@ -529,6 +541,8 @@ can only propose a decision; only the author settles one.
 - **Speech-to-text / text-to-speech:** turning spoken audio into written words, and written words into spoken audio
 - **Suggested-question button:** a clickable common question shown in the chat so the caller need not type it
 - **Transcript template:** a call pattern that repeats across many transcripts with only names, numbers and filler words changed
+- **Typed event:** a message with a fixed kind and fields, such as a sentence or a final summary
 - **Uptime monitor:** an outside service that regularly checks a site and alerts when it stops answering
+- **URL fragment:** the part of a web address after #, which the browser keeps to itself and never sends to the server
 - **Whole-knowledge-base comparison:** giving the AI every current document at once instead of searching, to show whether search earns its place
 - **Write-ahead logging:** a SQLite mode that lets reads continue during writes

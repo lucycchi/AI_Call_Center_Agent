@@ -48,7 +48,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <main>
 <header>
 <h1>AI Call Center Agent</h1>
-<p class="stage">Current stage: Architecture (needs your approval before moving on)</p>
+<p class="stage">Current stage: Plan (needs your approval before moving on)</p>
 </header>
 <section id="summary">
 <h2>Summary</h2>
@@ -58,15 +58,60 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </section>
 <h3>Key decisions</h3>
 <ul>
-<li>Exactly which call reasons does the agent handle, hand off, or answer and redirect? Handled: new bookings including replacement estimates; confirming, rescheduling and cancelling appointments; billing questions answered from documents or lookups (current balance, what an invoice is for, charged twice); membership questions (what it includes, price, renewal date); warranty questions and claims (coverage, registration, transfer, booking a warranty or repeat-repair visit with the warranty flag). Handed off: quote disputes and refunds, complaints and manager requests, late technicians, every account action (the action gap), safety emergencies (after the fixed safety reply), commercial work. Answered and redirected: hiring enquiries and wrong numbers, reported with and without.</li>
-<li>Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule, evidence-based warranty flag and duplicate-charge rule)? (1) &#x27;Now&#x27; for customer-facing scheduling and policy rules is one setting: 2026-10-16 09:00, Austin (US Central) time; windows that have started are never offered. Operations (spending and rate limits, the nightly reset, alerts, reply timing) use real time. (2) The $49 notice applies to both cancelling and rescheduling inside 24 hours; waiver requests hand off. (3) If no eligible slot exists in the three-week range for that zone and service, the agent says so plainly and hands off with a ticket, a clean decline. (4) A slot is refused if its technician is already booked in an overlapping window; existing appointments are left as recorded and the mismatches documented. (5) Invoice lines are read exactly as recorded and never called right or wrong. The caller is handed off as a billing dispute only if they question a charge. A fixed-fee amount that differs from the current schedule (for example Omar Patel&#x27;s $144 after-hours line against $149) silently creates a low-priority billing-review ticket for staff without interrupting the caller. The widespread pattern of a diagnostic fee charged alongside a repair or to a member goes in the findings document as an executive finding, with no per-call action. (6) The warranty-visit flag is set only when the database install date proves the 2-year installation labour warranty applies; repeat-repair and 5-year member-installation claims, which the database cannot verify, are booked as normal visits with a warranty-review note for staff, and the caller is told there is no diagnostic fee if the technician confirms coverage. (11) For &#x27;charged twice&#x27;, the agent first gives the FAQ&#x27;s pending-authorisation explanation and hands off only if the caller says both charges posted. (12) Cancelling or rescheduling restores the freed slot&#x27;s original status (open or members-only) from the seeded database copy. (7) Members are tiers standard or plus. (8) Callers are identified by account number, service address or phone together with their name, never by name alone. (9) Read-backs give date, window, service and technician only, never the stored issue text; new bookings record the fixed now. (10) No waitlist is promised.</li>
-<li>How is AI spending capped so no visitor, or group of visitors, can use up the reviewer&#x27;s budget? Each visitor (browser session, with the network address as a backstop) may spend about $0.40 a day, roughly 10 conversations; the site-wide cap is $10 a day; the author is alerted when daily spend passes $5. Hitting either limit gives a clean handoff with a plain message. Test runs use a separate key and budget. A secret reviewer link (its token stored as a Fly.io secret) draws on a separate $3-a-day reserve that other visitors cannot touch. Amends the spending cap in the models decision (D5).</li>
 <li>What retention, masking and rollback protections does the live system have? Conversation logs are purged after 30 days; phone numbers, emails and street addresses are masked in logs and the staff view (names and account numbers, which are synthetic and needed on tickets, stay). A one-page rollback runbook in the README covers rolling back a Fly.io release (prompts and the search index ship inside the release) and restoring the disk from Fly&#x27;s daily snapshot, and it is practised once before submission.</li>
 <li>How are test cases built so the measured numbers mean something (with the rehearsal on working-set cases)? Each test case is tied to a real database customer matching the transcript&#x27;s facts (zone, membership, brand, install age); the simulated caller gets a caller card with that customer&#x27;s details, not the transcript&#x27;s. Billing cases add their invoice to the fresh test database copy. Transcripts are grouped by template and split by template, so no template appears in both sets. The held-out run uses one case per template, weighted by its real call count; both calls and distinct scenarios are reported, with the margin of error on scenarios. A 10-case rehearsal on working-set cases runs at the end of day 3, after which the agent is frozen. The first run of each held-out case is the scored result; a case that fails then passes on its one retry is reported as flaky. Where no real customer matches a transcript, the test copy may add a synthetic customer, marked as synthetic.</li>
+<li>What status does a freed slot get when the seed copy itself shows it as booked? When an appointment is cancelled or moved, its slot returns to the seed copy&#x27;s status if that was open or members-only. If the seed copy shows the slot as booked (a seeded appointment), the slot is freed to open, which is what the schema&#x27;s &#x27;free the old slot (open)&#x27; rule says. Refines the freed-slot rule in the data rules (D29).</li>
+<li>Which protections are added to booking confirmations, the reviewer link and downtime alerts? (1) Each read-back carries a confirmation ID; a repeated or retried confirmation returns the first result instead of changing the database again. (2) The secret reviewer link is used once to start a signed reviewer session, then redirects to a clean address, and the token is never logged. (3) A free outside uptime monitor checks the health endpoint and alerts the author when the site is down.</li>
+<li>Which technology stack does the system use? Python 3.12; FastAPI with one worker process; each caller message is an ordinary request and its checked sentences stream back as server-sent events tied to that message; server-rendered HTML with a little plain JavaScript; the provided scheduling SQLite file plus a separate operations SQLite file, both in write-ahead logging mode on the attached disk; the search index built offline and shipped inside each release; an in-app scheduler with an app-wide gate that messages hold shared and the nightly reset holds exclusively; alerts through a webhook; Anthropic and Voyage SDKs pinned.</li>
 </ul>
 <section id="progress">
 <h2>Progress</h2>
-<p>The plan is not written yet.</p>
+<h3>Milestone 1: Data foundations and discovery (0 of 5 done)</h3>
+<ul>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 1: project setup, pinned configuration and the agent-core interface. Requirements: R33</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 2: load transcripts and group them into templates. Requirements: R1</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 3: label call reasons with Haiku, Codex and the author's sheet. Requirements: R2, R3, R4</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 4: generate the findings document. Requirements: R5, R6, R7, R8, R56</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 5: document list, conflict register and format conversion. Requirements: R24, R25, R26</span></li>
+</ul>
+<h3>Milestone 2: Search and test set (0 of 3 done)</h3>
+<ul>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 6: chunk documents, build the index and search. Requirements: R27, R28</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 7: split by template and build frozen test cases. Requirements: R9, R10, R11, R29, R81</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 8: measure retrieval on its own. Requirements: R30</span></li>
+</ul>
+<h3>Milestone 3: Agent core (0 of 9 done)</h3>
+<ul>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 9: identify callers and read their accounts. Requirements: R45, R46, R47, R48</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 10: find eligible slots, alternatives and clean declines. Requirements: R49, R50, R51</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 11: book, cancel and reschedule in transactions with confirmation ids. Requirements: R52, R53, R54, R55, R84</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 12: safety check and fixed safety replies. Requirements: R34, R35, R36, R37</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 13: operations database, logging, masking and tickets. Requirements: R57, R73</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 14: knowledge flow, reply writer and sentence checks. Requirements: R41, R42, R43, R44, R60</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 15: handoff flow, post-handoff messages and failure paths. Requirements: R58, R59</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 16: router, conversation state and the engine pipeline. Requirements: R38, R39, R40, R81, R82</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 17: conversation-level flow tests through the engine. Requirements: R45, R47, R48, R51, R52, R53, R54, R84, R35, R37, R73</span></li>
+</ul>
+<h3>Milestone 4: Evaluation harness (0 of 3 done)</h3>
+<ul>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 18: simulated caller, fresh database copies and scoring. Requirements: R12, R13, R14, R15, R16, R17</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 19: Codex grader, grader check, answer measures and adversarial runs. Requirements: R18, R19, R20, R31, R57</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 20: working-set rehearsal, threshold curve and quick test run. Requirements: R21, R22, R32</span></li>
+</ul>
+<h3>Milestone 5: Website and deployment (0 of 6 done)</h3>
+<ul>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 21: chat page, message requests, sentence stream and visitor cookie. Requirements: R62, R64, R65, R66</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 22: spending budgets, reviewer link and instruction resistance. Requirements: R61, R63, R85</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 23: Staff view, staff password, receipts and flagging. Requirements: R70, R71, R72, R75</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 24: Results tab. Requirements: R67, R68, R69</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 25: nightly reset gate, log purge, alerts, health and uptime monitor. Requirements: R74, R76, R86</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 26: deploy to Fly.io with the rollback runbook. Requirements: R77, R83</span></li>
+</ul>
+<h3>Milestone 6: Final measurement and deliverables (0 of 2 done)</h3>
+<ul>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 27: final held-out run, summary and optional consistency runs. Requirements: R23</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 28: README, video outline and repository contents. Requirements: R78, R79, R80</span></li>
+</ul>
 </section>
 <section id="requirements">
 <h2>Specification: AI Call Center Agent for Meridian Home Comfort</h2>
@@ -335,13 +380,13 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tbody>
 <tr><td>Language</td><td>Python 3.12</td><td>Strong AI and data libraries; the author's choice.</td></tr>
 <tr><td>Web framework</td><td>FastAPI with one worker process</td><td>Simple, async, built-in support for streaming responses. One worker keeps the in-app scheduler and its lock simple.</td></tr>
-<tr><td>Message and streaming</td><td>Each caller message is an ordinary request carrying the conversation id and a message id; the reply's checked sentences come back as a server-sent-event stream (one-way, server to browser) tied to that message id</td><td>The browser sends with a normal request and only needs to receive sentences as they are released; simpler than a two-way socket.</td></tr>
+<tr><td>Message and streaming</td><td>Each caller message is an ordinary request carrying the conversation id and a message id; the engine yields typed events (one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions); each released sentence is saved, and the server-sent-event stream for that message id replays saved sentences on reconnect; a message left unfinished by a restart becomes a handoff</td><td>The browser sends with a normal request and only needs to receive sentences as they are released; simpler than a two-way socket.</td></tr>
 <tr><td>Pages</td><td>Server-rendered HTML with a little plain JavaScript</td><td>Three small pages; no front-end build step to maintain.</td></tr>
 <tr><td>Databases</td><td>SQLite, two files, write-ahead logging mode</td><td>The provided database is SQLite; write-ahead logging lets reads continue during writes.</td></tr>
-<tr><td>Search index</td><td>Built offline, shipped in each release as a file (embeddings plus a keyword index)</td><td>The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too.</td></tr>
+<tr><td>Search index</td><td>Built offline, shipped in each release as files (chunks and embeddings); the keyword index is rebuilt from the chunks at startup</td><td>The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too.</td></tr>
 <tr><td>Scheduler and reset gate</td><td>A background task in the app plus an app-wide gate: every message holds it shared, the nightly reset holds it exclusively</td><td>One machine and one worker, so an in-process gate is enough to make messages wait during a reset; the job-runs table catches a missed reset at startup.</td></tr>
 <tr><td>Alerts</td><td>A webhook URL setting (for example a push-notification service), plus a free outside uptime monitor on the health endpoint</td><td>One HTTP call per alert; the app cannot alert while it is down, so downtime is detected from outside (booking, reviewer-link and downtime protections (D34)).</td></tr>
-<tr><td>AI SDKs</td><td>Official Anthropic and Voyage Python SDKs, versions pinned</td><td>Model IDs <code>claude-sonnet-5-5</code> and <code>claude-haiku-5-5</code> and settings pinned and logged with every run.</td></tr>
+<tr><td>AI SDKs and timeouts</td><td>Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off</td><td>Model IDs <code>claude-sonnet-5-5</code> and <code>claude-haiku-5-5</code> and settings pinned and logged with every run.</td></tr>
 <tr><td>Offline grading</td><td><code>codex exec</code> with a JSON output format</td><td>Uses the author's subscription, no API cost (grading through Codex (D15)).</td></tr>
 </tbody>
 </table>
@@ -403,7 +448,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT line_items "list of description and cents pairs"
     }</pre>
 <p><em>The five provided tables: customers book appointments in technicians' slots and receive invoices.</em></p>
-<p>How the tables link, in words: each appointment belongs to exactly one customer and takes exactly one slot; each slot belongs to exactly one technician and may have several appointments over time (cancelled ones stay as history) but at most one with status scheduled, which the booking code enforces inside its transaction because the provided database has no such rule; each invoice belongs to exactly one customer and may refer to one appointment. The agent writes only to <code>appointment_slots.status</code> and <code>appointments</code>; it never writes customers or invoices.</p>
+<p>How the tables link, in words: each appointment belongs to exactly one customer and takes exactly one slot; each slot belongs to exactly one technician and may have several appointments over time (cancelled ones stay as history) but at most one with status scheduled, which the booking code enforces inside its transaction because the provided database has no such rule; each invoice belongs to exactly one customer and may refer to one appointment. The agent writes only to <code>appointment_slots.status</code>, <code>appointments</code>, and one small table it adds, <code>agent_confirmations</code> (confirmation id, result, time), which is written in the same transaction as each booking change so a repeated "yes" can never book twice; the provided tables are untouched and the nightly reset recreates <code>agent_confirmations</code> empty (architecture refinements (D36)). It never writes customers or invoices.</p>
 <p>One made-up example row per table:</p>
 <table>
 <thead><tr><th>Table</th><th>Example row</th></tr></thead>
@@ -536,15 +581,9 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT kind "error, blocked sentence, write failure, limit hit"
         TEXT detail "what happened"
         TEXT created_at "real time it happened"
-    }
-    CONFIRMATIONS {
-        TEXT confirmation_id PK "id carried by one read-back"
-        TEXT conversation_id "conversation"
-        TEXT result "outcome returned to every repeat"
-        TEXT created_at "real time first confirmed"
     }</pre>
-<p><em>Spending is recorded per AI call and summed per pool and day; model calls, events and confirmations give the audit trail, the error alerts and safe retries.</em></p>
-<p>How they link, in words: each spending row belongs to one visitor (site-level rows use a fixed visitor id); each model call may point at the reply it served; events and confirmations name their conversation; alerts and job runs stand alone. Silent billing reviews and warranty-review notes are ordinary low-priority tickets, not a separate table. Rate-limit counts are kept in memory and rebuilt from the messages table after a restart.</p>
+<p><em>Spending is recorded per AI call and summed per pool and day; model calls and events give the audit trail and the error alerts; confirmations live in the scheduling database beside the bookings they protect.</em></p>
+<p>How they link, in words: each spending row belongs to one visitor (site-level rows use a fixed visitor id); each model call may point at the reply it served; events name their conversation; alerts and job runs stand alone. Silent billing reviews and warranty-review notes are ordinary low-priority tickets, not a separate table. Rate-limit counts are kept in memory and rebuilt from the messages table after a restart.</p>
 <table>
 <thead><tr><th>Table</th><th>Example row</th></tr></thead>
 <tbody>
@@ -553,7 +592,6 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td>job_runs</td><td>31 · nightly reset · 2026-10-21T03:00:00 · 2026-10-21T03:00:02 · ok</td></tr>
 <tr><td>model_calls</td><td>99120 · 5012 · write · claude-sonnet-5-5 · anthropic 1.4.2 · {"effort":"low"} · 2100 · 85 · 1650 · 3100</td></tr>
 <tr><td>events</td><td>451 · c_91d2 · blocked sentence · "promised a waiver" · 2026-10-20T14:12</td></tr>
-<tr><td>confirmations</td><td>k_3e19 · c_77b0 · booked slot 142, appointment 160 · 2026-10-20T15:01</td></tr>
 </tbody>
 </table>
 <h3>5. Request flows</h3>
@@ -763,7 +801,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     F --&gt;|"may see"| G["All visitors' queue and flagging"]
     D --&gt;|"5 wrong passwords in 15 minutes"| H["Sign-in locked for 15 minutes"]</pre>
 <p><em>Three levels of access: any visitor sees only their own session, the reviewer link adds a protected budget, and the shared password unlocks the full queue.</em></p>
-<p>The visitor cookie is signed, HttpOnly, Secure, SameSite=Lax and lasts 7 days. The reviewer link's token is checked once, turned into a signed reviewer session with the reserve budget, and the browser is redirected to the plain address so the token never stays in the address bar, history or logs. The reviewer token and the hashed staff password are Fly.io secrets, never in the repository. The flag form carries a token against forged requests. Phone numbers, emails and street addresses are masked at every level.</p>
+<p>The visitor cookie is signed, HttpOnly, Secure, SameSite=Lax and lasts 7 days. The reviewer link carries its token after a # (the fragment, which browsers never send to servers, so it never reaches Fly's or the app's request logs); the page sends it once in a request body, it is checked once, turned into a signed reviewer session with the reserve budget, and the browser is redirected to the plain address so the token never stays in the address bar, history or logs. The reviewer token and the hashed staff password are Fly.io secrets, never in the repository. The flag form carries a token against forged requests. Phone numbers, emails and street addresses are masked at every level.</p>
 <h3>8. States</h3>
 <h4>8.1 Appointment slot status</h4>
 <pre class="mermaid">stateDiagram-v2
@@ -885,7 +923,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>data/grader_check.csv</code></td><td>The pre-chosen sample, the author's blind grades and the grader's verdicts</td></tr>
 </tbody>
 </table>
-<p>The held-out hash is recorded in git before any tuning; the final run checks the files still match it.</p>
+<p>The held-out hash is recorded in git before any tuning; the final run checks the files still match it, and checks a second hash covering only the agent-behaviour files (core, routing, knowledge, accounts, scheduling, safety, replies, handoff, thresholds, prompts and the search index) recorded at the day-3 freeze, so web, operations and deployment code may still change. Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation, one retry, a separate test key, and an $8 stop per run.</p>
 <h3>14. Diagrams added or skipped</h3>
 <ul>
 <li>System overview, main parts, both database diagrams, seven request flows and the user flow: always drawn.</li>
@@ -1516,7 +1554,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D33: What status does a freed slot get when the seed copy itself shows it as booked?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
 <li><strong>Options:</strong>
 <ul>
@@ -1533,7 +1571,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D34: Which protections are added to booking confirmations, the reviewer link and downtime alerts?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
 <li><strong>Options:</strong>
 <ul>
@@ -1549,7 +1587,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D35: Which technology stack does the system use?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
 <li><strong>Options:</strong>
 <ul>
@@ -1563,6 +1601,22 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul></li>
 <li><strong>Choice:</strong> Python 3.12; FastAPI with one worker process; each caller message is an ordinary request and its checked sentences stream back as server-sent events tied to that message; server-rendered HTML with a little plain JavaScript; the provided scheduling SQLite file plus a separate operations SQLite file, both in write-ahead logging mode on the attached disk; the search index built offline and shipped inside each release; an in-app scheduler with an app-wide gate that messages hold shared and the nightly reset holds exclusively; alerts through a webhook; Anthropic and Voyage SDKs pinned.</li>
 <li><strong>Reason:</strong> The smallest stack that meets the spec on one Fly.io machine in four days; one worker keeps the reset gate and scheduler simple, and shipping the index in the release makes rollback complete.</li>
+</ul>
+<h3>D36: Which architecture refinements does the plan review require?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Confirmation records in a small new table inside the scheduling database, typed engine events, saved messages with stream replay, call timeouts, hard limits on paid test runs, the reviewer token in the link's fragment, and a frozen-file list instead of a whole-repository freeze</li>
+<li>Keep the architecture as approved</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/PLAN_REVIEW.md">docs/PLAN_REVIEW.md</a>: Codex plan review: idempotency split across two databases, an engine interface that cannot carry metadata, an unbounded stream lifecycle, no timeouts, no evaluation spending stop, and a freeze check that would reject the finished app.</li>
+</ul></li>
+<li><strong>Choice:</strong> (1) Confirmation ids are stored in a new agent_confirmations table inside the scheduling database, written in the same transaction as the booking change; the provided tables are untouched and the nightly reset recreates the new table empty. (2) The engine yields typed events: one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions. (3) Each message and its released sentences are saved; the stream replays saved sentences on reconnect, and a message left unfinished by a restart becomes a handoff. (4) Timeouts: Anthropic 20 seconds, Voyage 5 seconds, alert webhook 5 seconds, and a 15-second deadline per message after which it hands off. (5) Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation, one retry, a separate test key, and an $8 stop per run. (6) The reviewer token sits after a # in the link, which browsers never send to servers; the page sends it once and clears it. (7) The final-run freeze covers only the agent-behaviour files and the search index, recorded as a hash. (8) The keyword index is rebuilt at startup from the shipped chunks.</li>
+<li><strong>Reason:</strong> Each closes a way the approved behaviour could fail in practice: double bookings after a crash, lost receipts, hung requests, runaway test spend, a leaked reviewer token, or a final run that cannot start.</li>
 </ul>
 <h3>Glossary</h3>
 <ul>
@@ -1612,7 +1666,9 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Speech-to-text / text-to-speech:</strong> turning spoken audio into written words, and written words into spoken audio</li>
 <li><strong>Suggested-question button:</strong> a clickable common question shown in the chat so the caller need not type it</li>
 <li><strong>Transcript template:</strong> a call pattern that repeats across many transcripts with only names, numbers and filler words changed</li>
+<li><strong>Typed event:</strong> a message with a fixed kind and fields, such as a sentence or a final summary</li>
 <li><strong>Uptime monitor:</strong> an outside service that regularly checks a site and alerts when it stops answering</li>
+<li><strong>URL fragment:</strong> the part of a web address after #, which the browser keeps to itself and never sends to the server</li>
 <li><strong>Whole-knowledge-base comparison:</strong> giving the AI every current document at once instead of searching, to show whether search earns its place</li>
 <li><strong>Write-ahead logging:</strong> a SQLite mode that lets reads continue during writes</li>
 </ul>

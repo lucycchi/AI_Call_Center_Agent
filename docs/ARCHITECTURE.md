@@ -75,13 +75,13 @@ flowchart TB
 |---|---|---|
 | Language | Python 3.12 | Strong AI and data libraries; the author's choice. |
 | Web framework | FastAPI with one worker process | Simple, async, built-in support for streaming responses. One worker keeps the in-app scheduler and its lock simple. |
-| Message and streaming | Each caller message is an ordinary request carrying the conversation id and a message id; the reply's checked sentences come back as a server-sent-event stream (one-way, server to browser) tied to that message id | The browser sends with a normal request and only needs to receive sentences as they are released; simpler than a two-way socket. |
+| Message and streaming | Each caller message is an ordinary request carrying the conversation id and a message id; the engine yields typed events (one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions); each released sentence is saved, and the server-sent-event stream for that message id replays saved sentences on reconnect; a message left unfinished by a restart becomes a handoff | The browser sends with a normal request and only needs to receive sentences as they are released; simpler than a two-way socket. |
 | Pages | Server-rendered HTML with a little plain JavaScript | Three small pages; no front-end build step to maintain. |
 | Databases | SQLite, two files, write-ahead logging mode | The provided database is SQLite; write-ahead logging lets reads continue during writes. |
-| Search index | Built offline, shipped in each release as a file (embeddings plus a keyword index) | The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too. |
+| Search index | Built offline, shipped in each release as files (chunks and embeddings); the keyword index is rebuilt from the chunks at startup | The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too. |
 | Scheduler and reset gate | A background task in the app plus an app-wide gate: every message holds it shared, the nightly reset holds it exclusively | One machine and one worker, so an in-process gate is enough to make messages wait during a reset; the job-runs table catches a missed reset at startup. |
 | Alerts | A webhook URL setting (for example a push-notification service), plus a free outside uptime monitor on the health endpoint | One HTTP call per alert; the app cannot alert while it is down, so downtime is detected from outside (booking, reviewer-link and downtime protections (D34)). |
-| AI SDKs | Official Anthropic and Voyage Python SDKs, versions pinned | Model IDs `claude-sonnet-5-5` and `claude-haiku-5-5` and settings pinned and logged with every run. |
+| AI SDKs and timeouts | Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off | Model IDs `claude-sonnet-5-5` and `claude-haiku-5-5` and settings pinned and logged with every run. |
 | Offline grading | `codex exec` with a JSON output format | Uses the author's subscription, no API cost (grading through Codex (D15)). |
 
 Skipped sections: caching, message queues and scaling do not apply to one small machine with demo traffic; the per-visitor and site-wide limits are the only capacity controls needed.
@@ -150,7 +150,7 @@ erDiagram
 
 *The five provided tables: customers book appointments in technicians' slots and receive invoices.*
 
-How the tables link, in words: each appointment belongs to exactly one customer and takes exactly one slot; each slot belongs to exactly one technician and may have several appointments over time (cancelled ones stay as history) but at most one with status scheduled, which the booking code enforces inside its transaction because the provided database has no such rule; each invoice belongs to exactly one customer and may refer to one appointment. The agent writes only to `appointment_slots.status` and `appointments`; it never writes customers or invoices.
+How the tables link, in words: each appointment belongs to exactly one customer and takes exactly one slot; each slot belongs to exactly one technician and may have several appointments over time (cancelled ones stay as history) but at most one with status scheduled, which the booking code enforces inside its transaction because the provided database has no such rule; each invoice belongs to exactly one customer and may refer to one appointment. The agent writes only to `appointment_slots.status`, `appointments`, and one small table it adds, `agent_confirmations` (confirmation id, result, time), which is written in the same transaction as each booking change so a repeated "yes" can never book twice; the provided tables are untouched and the nightly reset recreates `agent_confirmations` empty (architecture refinements (D36)). It never writes customers or invoices.
 
 One made-up example row per table:
 
@@ -292,17 +292,11 @@ erDiagram
         TEXT detail "what happened"
         TEXT created_at "real time it happened"
     }
-    CONFIRMATIONS {
-        TEXT confirmation_id PK "id carried by one read-back"
-        TEXT conversation_id "conversation"
-        TEXT result "outcome returned to every repeat"
-        TEXT created_at "real time first confirmed"
-    }
 ```
 
-*Spending is recorded per AI call and summed per pool and day; model calls, events and confirmations give the audit trail, the error alerts and safe retries.*
+*Spending is recorded per AI call and summed per pool and day; model calls and events give the audit trail and the error alerts; confirmations live in the scheduling database beside the bookings they protect.*
 
-How they link, in words: each spending row belongs to one visitor (site-level rows use a fixed visitor id); each model call may point at the reply it served; events and confirmations name their conversation; alerts and job runs stand alone. Silent billing reviews and warranty-review notes are ordinary low-priority tickets, not a separate table. Rate-limit counts are kept in memory and rebuilt from the messages table after a restart.
+How they link, in words: each spending row belongs to one visitor (site-level rows use a fixed visitor id); each model call may point at the reply it served; events name their conversation; alerts and job runs stand alone. Silent billing reviews and warranty-review notes are ordinary low-priority tickets, not a separate table. Rate-limit counts are kept in memory and rebuilt from the messages table after a restart.
 
 | Table | Example row |
 |---|---|
@@ -311,7 +305,6 @@ How they link, in words: each spending row belongs to one visitor (site-level ro
 | job_runs | 31 · nightly reset · 2026-10-21T03:00:00 · 2026-10-21T03:00:02 · ok |
 | model_calls | 99120 · 5012 · write · claude-sonnet-5-5 · anthropic 1.4.2 · {"effort":"low"} · 2100 · 85 · 1650 · 3100 |
 | events | 451 · c_91d2 · blocked sentence · "promised a waiver" · 2026-10-20T14:12 |
-| confirmations | k_3e19 · c_77b0 · booked slot 142, appointment 160 · 2026-10-20T15:01 |
 
 ## 5. Request flows
 
@@ -559,7 +552,7 @@ flowchart TD
 
 *Three levels of access: any visitor sees only their own session, the reviewer link adds a protected budget, and the shared password unlocks the full queue.*
 
-The visitor cookie is signed, HttpOnly, Secure, SameSite=Lax and lasts 7 days. The reviewer link's token is checked once, turned into a signed reviewer session with the reserve budget, and the browser is redirected to the plain address so the token never stays in the address bar, history or logs. The reviewer token and the hashed staff password are Fly.io secrets, never in the repository. The flag form carries a token against forged requests. Phone numbers, emails and street addresses are masked at every level.
+The visitor cookie is signed, HttpOnly, Secure, SameSite=Lax and lasts 7 days. The reviewer link carries its token after a # (the fragment, which browsers never send to servers, so it never reaches Fly's or the app's request logs); the page sends it once in a request body, it is checked once, turned into a signed reviewer session with the reserve budget, and the browser is redirected to the plain address so the token never stays in the address bar, history or logs. The reviewer token and the hashed staff password are Fly.io secrets, never in the repository. The flag form carries a token against forged requests. Phone numbers, emails and street addresses are masked at every level.
 
 ## 8. States
 
@@ -717,7 +710,7 @@ The test evidence is kept as versioned files in `data/`, so held-out isolation a
 | `data/results/<run>/summary.json` | The computed numbers and their intervals for that run |
 | `data/grader_check.csv` | The pre-chosen sample, the author's blind grades and the grader's verdicts |
 
-The held-out hash is recorded in git before any tuning; the final run checks the files still match it.
+The held-out hash is recorded in git before any tuning; the final run checks the files still match it, and checks a second hash covering only the agent-behaviour files (core, routing, knowledge, accounts, scheduling, safety, replies, handoff, thresholds, prompts and the search index) recorded at the day-3 freeze, so web, operations and deployment code may still change. Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation, one retry, a separate test key, and an $8 stop per run.
 
 ## 14. Diagrams added or skipped
 

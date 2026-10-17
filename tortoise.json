@@ -1,6 +1,6 @@
 {
   "name": "AI Call Center Agent",
-  "stage": "architecture",
+  "stage": "plan",
   "test_command": "python -m pytest",
   "approvals": [
     {
@@ -17,6 +17,11 @@
       "stage": "architecture",
       "date": "2026-10-17",
       "tag": "tortoise/architecture"
+    },
+    {
+      "stage": "plan",
+      "date": "2026-10-17",
+      "tag": "tortoise/plan"
     }
   ]
 }
