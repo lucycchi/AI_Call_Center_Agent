@@ -1,0 +1,14 @@
+# Secrets
+.env
+
+# Windows copy leftovers
+*:Zone.Identifier
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Brainstorm mockups
+.superpowers/

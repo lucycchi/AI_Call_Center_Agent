@@ -1,0 +1,9 @@
+[project]
+name = "meridian-call-center-agent"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["live: calls a paid API; skipped unless --live is given"]
+addopts = "-m 'not live'"

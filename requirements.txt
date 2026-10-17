@@ -1,0 +1,12 @@
+anthropic==1.15.0
+fastapi==0.143.3
+httpx==0.28.1
+itsdangerous==2.2.0
+numpy==2.5.4
+pypdf==6.21.1
+pytest==9.1.1
+python-dotenv==1.2.4
+rank-bm25==0.2.2
+tzdata==2026.5
+uvicorn==0.54.0
+voyageai==0.5.0
