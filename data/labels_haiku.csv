@@ -1,0 +1,421 @@
+call_id,reason,sub_reason
+CALL-20260706-0101,new booking,burning smell
+CALL-20260706-0182,new booking,burning smell
+CALL-20260707-0002,existing appointment,cancel
+CALL-20260707-0053,warranty,registration
+CALL-20260707-0096,membership,renewal date
+CALL-20260707-0148,membership,what it includes or price
+CALL-20260707-0170,new booking,hvac repair
+CALL-20260707-0392,membership,renewal date
+CALL-20260708-0115,billing,pay an invoice
+CALL-20260708-0255,billing,current balance
+CALL-20260709-0010,warranty,registration
+CALL-20260709-0082,new booking,burning smell
+CALL-20260709-0103,new booking,hvac repair
+CALL-20260709-0129,billing,charged twice
+CALL-20260709-0134,replacement estimate,replacement estimate
+CALL-20260709-0315,warranty,claim
+CALL-20260709-0347,membership,autopay
+CALL-20260709-0356,billing,pay an invoice
+CALL-20260709-0365,new booking,plumbing
+CALL-20260710-0028,new booking,burning smell
+CALL-20260710-0081,new booking,hvac repair
+CALL-20260710-0121,billing,current balance
+CALL-20260710-0124,existing appointment,confirm
+CALL-20260710-0135,membership,renewal date
+CALL-20260710-0136,billing,refund
+CALL-20260710-0254,membership,autopay
+CALL-20260710-0335,complaint or manager,complaint or manager
+CALL-20260710-0364,membership,cancel
+CALL-20260710-0373,billing,what an invoice is for
+CALL-20260711-0030,replacement estimate,replacement estimate
+CALL-20260711-0063,existing appointment,reschedule
+CALL-20260711-0109,new booking,tune-up
+CALL-20260711-0248,warranty,claim
+CALL-20260711-0380,new booking,hvac repair
+CALL-20260712-0007,warranty,repeat repair
+CALL-20260712-0046,safety emergency,"gas, carbon monoxide or sparks"
+CALL-20260712-0067,hiring,hiring
+CALL-20260712-0104,membership,what it includes or price
+CALL-20260712-0195,warranty,registration
+CALL-20260712-0227,warranty,claim
+CALL-20260712-0328,new booking,hvac repair
+CALL-20260713-0036,membership,autopay
+CALL-20260713-0075,new booking,burning smell
+CALL-20260713-0253,membership,renewal date
+CALL-20260713-0263,membership,autopay
+CALL-20260713-0285,membership,member discount on a new system
+CALL-20260713-0287,membership,cancel
+CALL-20260713-0314,membership,upgrade
+CALL-20260713-0320,new booking,hvac repair
+CALL-20260714-0019,membership,upgrade
+CALL-20260714-0178,new booking,hvac repair
+CALL-20260714-0200,membership,renewal date
+CALL-20260714-0234,new booking,burning smell
+CALL-20260714-0246,billing,quote dispute
+CALL-20260714-0326,warranty,claim
+CALL-20260714-0366,hiring,hiring
+CALL-20260715-0021,billing,current balance
+CALL-20260715-0061,new booking,hvac repair
+CALL-20260715-0100,billing,refund
+CALL-20260715-0213,membership,autopay
+CALL-20260715-0289,new booking,burning smell
+CALL-20260715-0351,hiring,hiring
+CALL-20260716-0006,membership,what it includes or price
+CALL-20260716-0020,new booking,hvac repair
+CALL-20260716-0107,new booking,hvac repair
+CALL-20260716-0240,new booking,hvac repair
+CALL-20260716-0317,warranty,repeat repair
+CALL-20260716-0367,new booking,hvac repair
+CALL-20260716-0379,hiring,hiring
+CALL-20260717-0180,safety emergency,"gas, carbon monoxide or sparks"
+CALL-20260717-0359,billing,pay an invoice
+CALL-20260718-0045,membership,what it includes or price
+CALL-20260718-0060,membership,what it includes or price
+CALL-20260718-0062,complaint or manager,complaint or manager
+CALL-20260718-0111,billing,quote dispute
+CALL-20260718-0262,billing,pay an invoice
+CALL-20260718-0319,new booking,hvac repair
+CALL-20260718-0349,membership,cancel
+CALL-20260718-0360,new booking,plumbing
+CALL-20260718-0419,billing,current balance
+CALL-20260719-0059,membership,autopay
+CALL-20260719-0153,warranty,claim
+CALL-20260719-0217,membership,cancel
+CALL-20260719-0226,membership,autopay
+CALL-20260719-0272,billing,pay an invoice
+CALL-20260719-0413,membership,what it includes or price
+CALL-20260720-0157,new booking,hvac repair
+CALL-20260720-0216,new booking,plumbing
+CALL-20260720-0279,new booking,hvac repair
+CALL-20260720-0292,warranty,claim
+CALL-20260720-0371,new booking,tune-up
+CALL-20260721-0093,safety emergency,"gas, carbon monoxide or sparks"
+CALL-20260721-0108,membership,what it includes or price
+CALL-20260721-0110,new booking,tune-up
+CALL-20260721-0125,billing,pay an invoice
+CALL-20260721-0242,new booking,hvac repair
+CALL-20260721-0258,existing appointment,reschedule
+CALL-20260721-0261,existing appointment,technician late
+CALL-20260721-0321,replacement estimate,replacement estimate
+CALL-20260721-0333,new booking,hvac repair
+CALL-20260722-0064,warranty,repeat repair
+CALL-20260722-0161,warranty,transfer
+CALL-20260722-0198,complaint or manager,complaint or manager
+CALL-20260722-0249,warranty,registration
+CALL-20260723-0035,billing,pay an invoice
+CALL-20260723-0042,warranty,claim
+CALL-20260723-0172,new booking,hvac repair
+CALL-20260723-0251,membership,cancel
+CALL-20260723-0276,warranty,claim
+CALL-20260724-0040,billing,pay an invoice
+CALL-20260724-0113,replacement estimate,replacement estimate
+CALL-20260724-0308,new booking,hvac repair
+CALL-20260724-0325,existing appointment,cancel
+CALL-20260724-0337,replacement estimate,replacement estimate
+CALL-20260724-0391,complaint or manager,complaint or manager
+CALL-20260725-0112,existing appointment,reschedule
+CALL-20260725-0288,billing,charged twice
+CALL-20260725-0293,new booking,hvac repair
+CALL-20260725-0329,new booking,burning smell
+CALL-20260725-0355,existing appointment,technician late
+CALL-20260725-0378,new booking,hvac repair
+CALL-20260726-0141,new booking,hvac repair
+CALL-20260726-0189,complaint or manager,complaint or manager
+CALL-20260726-0220,existing appointment,cancel
+CALL-20260726-0307,membership,renewal date
+CALL-20260726-0331,billing,charged twice
+CALL-20260727-0076,replacement estimate,replacement estimate
+CALL-20260727-0080,billing,current balance
+CALL-20260727-0138,billing,pay an invoice
+CALL-20260727-0215,warranty,claim
+CALL-20260727-0300,membership,member discount on a new system
+CALL-20260728-0050,new booking,hvac repair
+CALL-20260728-0089,commercial,commercial
+CALL-20260728-0094,new booking,hvac repair
+CALL-20260728-0193,billing,what an invoice is for
+CALL-20260728-0194,warranty,registration
+CALL-20260728-0264,safety emergency,"gas, carbon monoxide or sparks"
+CALL-20260728-0281,new booking,hvac repair
+CALL-20260729-0041,complaint or manager,complaint or manager
+CALL-20260729-0260,complaint or manager,complaint or manager
+CALL-20260729-0278,billing,quote dispute
+CALL-20260729-0324,warranty,repeat repair
+CALL-20260730-0048,membership,member discount on a new system
+CALL-20260730-0054,new booking,plumbing
+CALL-20260730-0183,existing appointment,confirm
+CALL-20260730-0222,complaint or manager,complaint or manager
+CALL-20260730-0223,complaint or manager,complaint or manager
+CALL-20260730-0233,billing,pay an invoice
+CALL-20260730-0274,warranty,claim
+CALL-20260730-0306,complaint or manager,complaint or manager
+CALL-20260730-0323,warranty,registration
+CALL-20260730-0346,warranty,transfer
+CALL-20260730-0372,new booking,hvac repair
+CALL-20260730-0396,commercial,commercial
+CALL-20260731-0047,new booking,hvac repair
+CALL-20260731-0301,billing,current balance
+CALL-20260801-0024,new booking,plumbing
+CALL-20260801-0176,new booking,tune-up
+CALL-20260801-0208,existing appointment,reschedule
+CALL-20260801-0334,new booking,hvac repair
+CALL-20260802-0015,new booking,hvac repair
+CALL-20260802-0016,new booking,plumbing
+CALL-20260802-0079,complaint or manager,complaint or manager
+CALL-20260802-0282,new booking,plumbing
+CALL-20260803-0004,warranty,claim
+CALL-20260803-0056,membership,upgrade
+CALL-20260803-0086,warranty,transfer
+CALL-20260803-0155,replacement estimate,replacement estimate
+CALL-20260803-0190,billing,current balance
+CALL-20260804-0188,membership,cancel
+CALL-20260805-0154,existing appointment,confirm
+CALL-20260805-0173,warranty,registration
+CALL-20260805-0214,billing,quote dispute
+CALL-20260805-0244,billing,what an invoice is for
+CALL-20260805-0290,safety emergency,"gas, carbon monoxide or sparks"
+CALL-20260806-0077,membership,autopay
+CALL-20260806-0102,existing appointment,confirm
+CALL-20260806-0174,membership,upgrade
+CALL-20260806-0207,billing,charged twice
+CALL-20260806-0230,membership,cancel
+CALL-20260806-0284,existing appointment,technician late
+CALL-20260806-0377,new booking,burning smell
+CALL-20260807-0011,new booking,hvac repair
+CALL-20260807-0202,membership,autopay
+CALL-20260807-0312,new booking,tune-up
+CALL-20260807-0401,new booking,hvac repair
+CALL-20260808-0146,membership,what it includes or price
+CALL-20260808-0159,new booking,hvac repair
+CALL-20260808-0271,existing appointment,technician late
+CALL-20260808-0322,new booking,hvac repair
+CALL-20260809-0039,warranty,transfer
+CALL-20260809-0117,new booking,hvac repair
+CALL-20260809-0128,membership,renewal date
+CALL-20260809-0197,billing,pay an invoice
+CALL-20260809-0376,membership,cancel
+CALL-20260810-0008,billing,pay an invoice
+CALL-20260810-0025,new booking,plumbing
+CALL-20260810-0058,new booking,plumbing
+CALL-20260810-0078,billing,quote dispute
+CALL-20260810-0088,new booking,plumbing
+CALL-20260810-0162,billing,quote dispute
+CALL-20260810-0210,new booking,hvac repair
+CALL-20260810-0219,billing,charged twice
+CALL-20260810-0237,replacement estimate,replacement estimate
+CALL-20260810-0239,new booking,burning smell
+CALL-20260810-0296,new booking,hvac repair
+CALL-20260810-0414,new booking,hvac repair
+CALL-20260811-0085,warranty,claim
+CALL-20260811-0275,membership,autopay
+CALL-20260811-0299,billing,quote dispute
+CALL-20260811-0305,new booking,hvac repair
+CALL-20260811-0369,new booking,plumbing
+CALL-20260812-0116,new booking,plumbing
+CALL-20260812-0169,billing,refund
+CALL-20260812-0302,new booking,hvac repair
+CALL-20260812-0405,membership,upgrade
+CALL-20260813-0018,new booking,hvac repair
+CALL-20260813-0031,wrong number,wrong number
+CALL-20260813-0156,membership,what it includes or price
+CALL-20260813-0247,existing appointment,technician late
+CALL-20260813-0350,warranty,claim
+CALL-20260813-0398,new booking,hvac repair
+CALL-20260814-0003,new booking,hvac repair
+CALL-20260814-0122,new booking,hvac repair
+CALL-20260814-0123,new booking,plumbing
+CALL-20260814-0420,new booking,hvac repair
+CALL-20260815-0114,warranty,claim
+CALL-20260815-0270,membership,cancel
+CALL-20260815-0345,billing,quote dispute
+CALL-20260815-0406,warranty,registration
+CALL-20260816-0038,safety emergency,"gas, carbon monoxide or sparks"
+CALL-20260816-0097,existing appointment,technician late
+CALL-20260816-0106,membership,renewal date
+CALL-20260816-0191,billing,refund
+CALL-20260816-0224,billing,quote dispute
+CALL-20260816-0268,membership,what it includes or price
+CALL-20260816-0313,billing,current balance
+CALL-20260816-0368,new booking,tune-up
+CALL-20260816-0389,warranty,transfer
+CALL-20260817-0241,billing,quote dispute
+CALL-20260817-0330,new booking,hvac repair
+CALL-20260817-0354,new booking,hvac repair
+CALL-20260818-0072,new booking,hvac repair
+CALL-20260818-0092,billing,refund
+CALL-20260818-0151,existing appointment,technician late
+CALL-20260818-0184,new booking,tune-up
+CALL-20260818-0206,new booking,plumbing
+CALL-20260818-0243,replacement estimate,replacement estimate
+CALL-20260818-0298,hiring,hiring
+CALL-20260819-0014,billing,pay an invoice
+CALL-20260819-0131,billing,current balance
+CALL-20260819-0147,new booking,hvac repair
+CALL-20260819-0163,membership,what it includes or price
+CALL-20260819-0177,complaint or manager,complaint or manager
+CALL-20260819-0228,commercial,commercial
+CALL-20260819-0245,new booking,hvac repair
+CALL-20260820-0013,new booking,burning smell
+CALL-20260820-0043,billing,pay an invoice
+CALL-20260820-0252,membership,what it includes or price
+CALL-20260820-0374,wrong number,wrong number
+CALL-20260821-0181,membership,renewal date
+CALL-20260821-0199,billing,what an invoice is for
+CALL-20260821-0310,billing,current balance
+CALL-20260821-0353,billing,refund
+CALL-20260822-0175,new booking,plumbing
+CALL-20260822-0185,safety emergency,"gas, carbon monoxide or sparks"
+CALL-20260822-0212,new booking,hvac repair
+CALL-20260822-0341,safety emergency,"gas, carbon monoxide or sparks"
+CALL-20260822-0343,warranty,registration
+CALL-20260822-0383,new booking,plumbing
+CALL-20260823-0022,new booking,hvac repair
+CALL-20260823-0068,billing,refund
+CALL-20260823-0142,warranty,transfer
+CALL-20260823-0295,warranty,claim
+CALL-20260823-0412,existing appointment,confirm
+CALL-20260824-0033,warranty,claim
+CALL-20260824-0408,new booking,hvac repair
+CALL-20260825-0005,new booking,hvac repair
+CALL-20260825-0066,billing,what an invoice is for
+CALL-20260825-0118,membership,autopay
+CALL-20260825-0145,billing,what an invoice is for
+CALL-20260825-0192,existing appointment,reschedule
+CALL-20260825-0266,billing,what an invoice is for
+CALL-20260825-0370,new booking,hvac repair
+CALL-20260825-0415,billing,charged twice
+CALL-20260826-0073,membership,what it includes or price
+CALL-20260826-0095,new booking,hvac repair
+CALL-20260826-0225,warranty,claim
+CALL-20260826-0277,new booking,tune-up
+CALL-20260826-0304,membership,autopay
+CALL-20260826-0309,existing appointment,reschedule
+CALL-20260826-0390,new booking,plumbing
+CALL-20260827-0065,billing,refund
+CALL-20260827-0084,warranty,claim
+CALL-20260827-0091,existing appointment,reschedule
+CALL-20260827-0149,existing appointment,reschedule
+CALL-20260827-0344,new booking,plumbing
+CALL-20260828-0120,membership,cancel
+CALL-20260828-0211,new booking,tune-up
+CALL-20260828-0267,billing,quote dispute
+CALL-20260828-0316,membership,what it includes or price
+CALL-20260828-0409,hiring,hiring
+CALL-20260829-0049,existing appointment,reschedule
+CALL-20260829-0057,warranty,transfer
+CALL-20260829-0404,membership,member discount on a new system
+CALL-20260830-0090,new booking,plumbing
+CALL-20260830-0105,warranty,transfer
+CALL-20260830-0130,new booking,hvac repair
+CALL-20260830-0165,billing,what an invoice is for
+CALL-20260830-0209,existing appointment,confirm
+CALL-20260830-0259,membership,renewal date
+CALL-20260830-0269,new booking,hvac repair
+CALL-20260830-0286,complaint or manager,complaint or manager
+CALL-20260830-0388,existing appointment,technician late
+CALL-20260831-0051,complaint or manager,complaint or manager
+CALL-20260831-0167,membership,renewal date
+CALL-20260831-0231,membership,what it includes or price
+CALL-20260831-0297,replacement estimate,replacement estimate
+CALL-20260831-0339,complaint or manager,complaint or manager
+CALL-20260831-0362,billing,charged twice
+CALL-20260901-0127,billing,quote dispute
+CALL-20260901-0238,billing,charged twice
+CALL-20260901-0410,billing,current balance
+CALL-20260902-0001,existing appointment,reschedule
+CALL-20260902-0027,new booking,hvac repair
+CALL-20260902-0152,existing appointment,cancel
+CALL-20260902-0168,billing,quote dispute
+CALL-20260902-0229,existing appointment,reschedule
+CALL-20260902-0375,warranty,claim
+CALL-20260902-0386,membership,cancel
+CALL-20260903-0026,existing appointment,reschedule
+CALL-20260904-0069,warranty,registration
+CALL-20260904-0144,membership,upgrade
+CALL-20260904-0186,wrong number,wrong number
+CALL-20260904-0265,new booking,hvac repair
+CALL-20260904-0340,existing appointment,cancel
+CALL-20260904-0418,new booking,burning smell
+CALL-20260905-0201,billing,what an invoice is for
+CALL-20260905-0318,safety emergency,"gas, carbon monoxide or sparks"
+CALL-20260905-0357,new booking,hvac repair
+CALL-20260905-0363,billing,what an invoice is for
+CALL-20260906-0032,new booking,burning smell
+CALL-20260906-0055,membership,autopay
+CALL-20260906-0087,membership,cancel
+CALL-20260906-0132,warranty,repeat repair
+CALL-20260906-0280,wrong number,wrong number
+CALL-20260906-0283,billing,quote dispute
+CALL-20260906-0348,new booking,hvac repair
+CALL-20260906-0399,new booking,hvac repair
+CALL-20260906-0411,complaint or manager,complaint or manager
+CALL-20260907-0140,new booking,tune-up
+CALL-20260907-0143,new booking,hvac repair
+CALL-20260907-0204,billing,what an invoice is for
+CALL-20260907-0221,new booking,hvac repair
+CALL-20260907-0232,new booking,hvac repair
+CALL-20260907-0393,new booking,hvac repair
+CALL-20260908-0017,membership,cancel
+CALL-20260908-0029,new booking,burning smell
+CALL-20260908-0052,new booking,hvac repair
+CALL-20260908-0158,existing appointment,confirm
+CALL-20260908-0160,replacement estimate,replacement estimate
+CALL-20260908-0164,billing,current balance
+CALL-20260908-0205,new booking,hvac repair
+CALL-20260908-0257,billing,what an invoice is for
+CALL-20260908-0352,new booking,plumbing
+CALL-20260908-0407,membership,renewal date
+CALL-20260909-0119,billing,quote dispute
+CALL-20260909-0137,membership,autopay
+CALL-20260909-0327,warranty,repeat repair
+CALL-20260909-0416,existing appointment,cancel
+CALL-20260910-0150,new booking,hvac repair
+CALL-20260910-0166,new booking,tune-up
+CALL-20260910-0203,billing,current balance
+CALL-20260910-0236,new booking,tune-up
+CALL-20260910-0291,warranty,claim
+CALL-20260910-0358,billing,charged twice
+CALL-20260910-0387,billing,quote dispute
+CALL-20260910-0400,new booking,hvac repair
+CALL-20260911-0034,existing appointment,confirm
+CALL-20260911-0171,existing appointment,reschedule
+CALL-20260911-0179,new booking,tune-up
+CALL-20260911-0235,membership,what it includes or price
+CALL-20260911-0256,replacement estimate,replacement estimate
+CALL-20260912-0083,billing,current balance
+CALL-20260912-0099,billing,charged twice
+CALL-20260912-0139,membership,what it includes or price
+CALL-20260912-0218,new booking,hvac repair
+CALL-20260912-0361,new booking,tune-up
+CALL-20260912-0394,membership,what it includes or price
+CALL-20260913-0012,new booking,plumbing
+CALL-20260913-0044,new booking,hvac repair
+CALL-20260913-0196,new booking,hvac repair
+CALL-20260913-0250,new booking,hvac repair
+CALL-20260913-0273,new booking,hvac repair
+CALL-20260913-0342,membership,renewal date
+CALL-20260913-0382,membership,renewal date
+CALL-20260914-0009,warranty,claim
+CALL-20260914-0070,new booking,tune-up
+CALL-20260914-0074,billing,current balance
+CALL-20260914-0381,billing,charged twice
+CALL-20260915-0133,new booking,burning smell
+CALL-20260915-0303,billing,what an invoice is for
+CALL-20260915-0385,membership,what it includes or price
+CALL-20260916-0098,existing appointment,technician late
+CALL-20260916-0311,new booking,burning smell
+CALL-20260916-0336,new booking,hvac repair
+CALL-20260916-0338,new booking,hvac repair
+CALL-20260916-0397,membership,what it includes or price
+CALL-20260916-0403,commercial,commercial
+CALL-20260917-0023,existing appointment,reschedule
+CALL-20260917-0126,new booking,plumbing
+CALL-20260917-0187,commercial,commercial
+CALL-20260917-0332,new booking,hvac repair
+CALL-20260917-0395,existing appointment,reschedule
+CALL-20260918-0071,new booking,hvac repair
+CALL-20260918-0294,new booking,hvac repair
+CALL-20260918-0384,new booking,tune-up
+CALL-20260918-0417,wrong number,wrong number
+CALL-20260919-0037,new booking,plumbing
+CALL-20260919-0402,new booking,hvac repair
