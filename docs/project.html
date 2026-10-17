@@ -1,0 +1,1661 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Call Center Agent</title>
+<style>
+:root {
+  --background: #fbfaf7; --text: #1f2328; --muted: #59636e; --border: #d8dee4;
+  --panel: #f1efe9; --accent: #2f6f5e; --error-background: #fdecea; --error-text: #8a1c12;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #15181c; --text: #e6e8eb; --muted: #9aa4af; --border: #30363d;
+    --panel: #1e2328; --accent: #7cc4ad; --error-background: #3a1d1b; --error-text: #ffb4a9;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
+header { border-bottom: 2px solid var(--accent); margin-bottom: 24px; }
+h1 { margin: 0 0 4px; font-size: 1.9rem; }
+.stage { margin: 0 0 12px; color: var(--muted); }
+section { margin-top: 40px; }
+h2 { font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+h3 { font-size: 1.15rem; margin-top: 28px; }
+a { color: var(--accent); overflow-wrap: anywhere; }
+code { background: var(--panel); padding: 1px 4px; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--panel); padding: 12px; border-radius: 6px; overflow-x: auto; }
+pre code { padding: 0; background: none; }
+pre.mermaid { background: #ffffff; text-align: center; }
+table { display: block; overflow-x: auto; border-collapse: collapse; margin: 16px 0; }
+th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+th { background: var(--panel); }
+li.task { list-style: none; margin-left: -1.3em; display: flex; gap: 8px; align-items: baseline; }
+li.task .box { flex: none; width: 1.1em; height: 1.1em; border: 2px solid var(--accent); border-radius: 4px;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;
+  transform: translateY(0.15em); }
+li.task.done .box { background: var(--accent); color: var(--background); }
+.diagram-error { background: var(--error-background); color: var(--error-text);
+  border-left: 4px solid var(--error-text); padding: 12px; border-radius: 6px; }
+.diagram-error pre { background: transparent; color: inherit; padding: 8px 0 0; margin: 0; }
+@media print { pre, table, .diagram-error { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>AI Call Center Agent</h1>
+<p class="stage">Current stage: Architecture (needs your approval before moving on)</p>
+</header>
+<section id="summary">
+<h2>Summary</h2>
+<p><strong>The problem.</strong> Meridian Home Comfort, a fictional heating, cooling and plumbing company in the Austin area, cannot keep up with its calls. The challenge (<code>docs/PRD.md</code>) is to build, in four working days, a chat agent at a public web address that answers routine calls from the company's documents, reads callers' accounts, books and changes appointments in a provided SQLite database, hands everything else to a human with full context, and proves its performance with numbers measured on held-out data.</p>
+<p><strong>The approach.</strong> One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.</p>
+<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>) and the specification (<code>docs/SPEC.md</code>, 83 numbered requirements) are approved, and the decisions are recorded in <code>docs/DECISIONS.md</code>; the technology stack is recorded as its own decision (technology stack (D35)). No code exists yet. This document describes how the system is built; the plan comes next.</p>
+</section>
+<h3>Key decisions</h3>
+<ul>
+<li>Exactly which call reasons does the agent handle, hand off, or answer and redirect? Handled: new bookings including replacement estimates; confirming, rescheduling and cancelling appointments; billing questions answered from documents or lookups (current balance, what an invoice is for, charged twice); membership questions (what it includes, price, renewal date); warranty questions and claims (coverage, registration, transfer, booking a warranty or repeat-repair visit with the warranty flag). Handed off: quote disputes and refunds, complaints and manager requests, late technicians, every account action (the action gap), safety emergencies (after the fixed safety reply), commercial work. Answered and redirected: hiring enquiries and wrong numbers, reported with and without.</li>
+<li>Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule, evidence-based warranty flag and duplicate-charge rule)? (1) &#x27;Now&#x27; for customer-facing scheduling and policy rules is one setting: 2026-10-16 09:00, Austin (US Central) time; windows that have started are never offered. Operations (spending and rate limits, the nightly reset, alerts, reply timing) use real time. (2) The $49 notice applies to both cancelling and rescheduling inside 24 hours; waiver requests hand off. (3) If no eligible slot exists in the three-week range for that zone and service, the agent says so plainly and hands off with a ticket, a clean decline. (4) A slot is refused if its technician is already booked in an overlapping window; existing appointments are left as recorded and the mismatches documented. (5) Invoice lines are read exactly as recorded and never called right or wrong. The caller is handed off as a billing dispute only if they question a charge. A fixed-fee amount that differs from the current schedule (for example Omar Patel&#x27;s $144 after-hours line against $149) silently creates a low-priority billing-review ticket for staff without interrupting the caller. The widespread pattern of a diagnostic fee charged alongside a repair or to a member goes in the findings document as an executive finding, with no per-call action. (6) The warranty-visit flag is set only when the database install date proves the 2-year installation labour warranty applies; repeat-repair and 5-year member-installation claims, which the database cannot verify, are booked as normal visits with a warranty-review note for staff, and the caller is told there is no diagnostic fee if the technician confirms coverage. (11) For &#x27;charged twice&#x27;, the agent first gives the FAQ&#x27;s pending-authorisation explanation and hands off only if the caller says both charges posted. (12) Cancelling or rescheduling restores the freed slot&#x27;s original status (open or members-only) from the seeded database copy. (7) Members are tiers standard or plus. (8) Callers are identified by account number, service address or phone together with their name, never by name alone. (9) Read-backs give date, window, service and technician only, never the stored issue text; new bookings record the fixed now. (10) No waitlist is promised.</li>
+<li>How is AI spending capped so no visitor, or group of visitors, can use up the reviewer&#x27;s budget? Each visitor (browser session, with the network address as a backstop) may spend about $0.40 a day, roughly 10 conversations; the site-wide cap is $10 a day; the author is alerted when daily spend passes $5. Hitting either limit gives a clean handoff with a plain message. Test runs use a separate key and budget. A secret reviewer link (its token stored as a Fly.io secret) draws on a separate $3-a-day reserve that other visitors cannot touch. Amends the spending cap in the models decision (D5).</li>
+<li>What retention, masking and rollback protections does the live system have? Conversation logs are purged after 30 days; phone numbers, emails and street addresses are masked in logs and the staff view (names and account numbers, which are synthetic and needed on tickets, stay). A one-page rollback runbook in the README covers rolling back a Fly.io release (prompts and the search index ship inside the release) and restoring the disk from Fly&#x27;s daily snapshot, and it is practised once before submission.</li>
+<li>How are test cases built so the measured numbers mean something (with the rehearsal on working-set cases)? Each test case is tied to a real database customer matching the transcript&#x27;s facts (zone, membership, brand, install age); the simulated caller gets a caller card with that customer&#x27;s details, not the transcript&#x27;s. Billing cases add their invoice to the fresh test database copy. Transcripts are grouped by template and split by template, so no template appears in both sets. The held-out run uses one case per template, weighted by its real call count; both calls and distinct scenarios are reported, with the margin of error on scenarios. A 10-case rehearsal on working-set cases runs at the end of day 3, after which the agent is frozen. The first run of each held-out case is the scored result; a case that fails then passes on its one retry is reported as flaky. Where no real customer matches a transcript, the test copy may add a synthetic customer, marked as synthetic.</li>
+</ul>
+<section id="progress">
+<h2>Progress</h2>
+<p>The plan is not written yet.</p>
+</section>
+<section id="requirements">
+<h2>Specification: AI Call Center Agent for Meridian Home Comfort</h2>
+<p><strong>Status:</strong> approved · <strong>Date:</strong> 2026-10-17 · <strong>Builds on:</strong> the approved design (<code>docs/DESIGN.md</code>) and the decision log (<code>docs/DECISIONS.md</code>).</p>
+<h3>1. Purpose and context</h3>
+<p>Meridian Home Comfort is a fictional heating, cooling and plumbing company in the Austin, Texas area whose call center cannot keep up with calls. This project builds, in four working days, a chat agent at a public web address that answers routine calls, books and changes appointments in the company's scheduling database, reads callers' own account details, hands everything else to a human with full context, and proves its performance with measured numbers. It is a take-home challenge (<code>docs/PRD.md</code>) judged by a reviewer at a private equity fund hiring a Forward Deployed Engineer. The reviewer will spend 10 to 20 minutes trying to break the live site, watch a 3 to 4 minute walkthrough video, and read the repository.</p>
+<p>The data is in <code>call_data/</code>: 420 unlabeled call transcripts from July to September 2026, a 17-file knowledge base (some files stale, some internal, some contradictory), and a SQLite scheduling database with customers, technicians, appointment slots, appointments and invoices, documented in <code>call_data/scheduling_db/SCHEMA.md</code>. A first data review (<code>docs/DATA_REVIEW.md</code>) found the top three call reasons are new bookings (31 percent of calls), billing (18 percent) and Comfort Club membership (18 percent), by both call count and staff minutes; that staff resolve 85 percent of calls on the first call (about 73 percent excluding account actions the agent will not take); that staff make a policy error in 26 percent of calls; and that appointment capacity is badly misallocated between zones.</p>
+<p><strong>Goals.</strong> Contain as many calls as is safe, never give a confident wrong answer, hand off cleanly with context, and back every claim with a number measured on held-out data.</p>
+<p><strong>Non-goals.</strong> Voice and phone calls (deferred unless every required item is finished with a day to spare); taking payments or changing money or membership; real identity verification; commercial work; languages other than English; integration with a real staff system.</p>
+<p><strong>Anti-goals</strong> (it would count as a failure even if it "works"): a containment number inflated by loose grading, leaked test data or trivial calls; booking an emergency; quoting a stale price; reading internal notes to a caller; a reviewer seeing another visitor's conversation; the demo breaking because the calendar or the budget was used up.</p>
+<h3>2. Fixed facts the whole system uses</h3>
+<ul>
+<li><strong>"Now"</strong> for customer-facing scheduling and policy rules is one setting: <strong>2026-10-16 09:00, Austin (US Central) time</strong>, a Friday. Every booking, fee-window, warranty and "has this window started" calculation uses it, never the server clock. Operations (spending and rate limits, the nightly reset, alerts and reply timing) use real time. Slots run from 2026-10-16 to 2026-11-05.</li>
+<li><strong>Zones:</strong> north is Round Rock, Cedar Park, Pflugerville, Georgetown, Leander and Hutto; central is Austin; south is Kyle and Buda. Dripping Springs and Manor are served (added April 2026) but have no zone in the database.</li>
+<li><strong>Appointment windows:</strong> 08:00–12:00, 12:00–16:00, 13:00–17:00, and 16:00–19:00 on Tuesdays and Thursdays only.</li>
+<li><strong>Service types:</strong> HVAC repair, HVAC tune-up, plumbing, and estimate (a free in-home replacement estimate).</li>
+<li><strong>Slot statuses:</strong> open (bookable), booked, reserved for members (bookable only by Comfort Club standard or Plus members), blocked.</li>
+<li><strong>Current fees</strong> (2026 fee schedule): diagnostic visit $89, credited toward a repair approved on the same visit and waived for members; after-hours dispatch $149, waived for members; holiday dispatch $199; late cancellation or reschedule inside 24 hours $49; tune-up $129 for non-members; members get 15 percent off repairs, Plus members also 15 percent off plumbing; membership $189 a year or $16.99 a month, $99 per extra system; Plus $269 a year.</li>
+<li><strong>Models:</strong> Claude Haiku 5.5 (model ID <code>claude-haiku-5-5</code>) sorts transcripts and routes messages (routing model (D25)); Claude Sonnet 5.5 (<code>claude-sonnet-5-5</code>) writes replies and plays the simulated caller; the model IDs, SDK version and request settings are pinned in configuration and logged with every run; an OpenAI frontier model run through the author's Codex subscription labels templates and grades answers (template labeling (D18), grading through Codex (D15)); Voyage AI provides embeddings (AI models and services (D5)).</li>
+</ul>
+<h3>3. Requirements</h3>
+<p>Each requirement is numbered for tracking. Numbers are labels only, not priorities.</p>
+<h4>3.0 Scope: what the agent handles</h4>
+<ul>
+<li>R81: The agent handles, hands off, or answers and redirects calls as follows (handled-reason list (D26)). <strong>Handled:</strong> new bookings, including replacement estimates; confirming, rescheduling and cancelling appointments; billing questions answered from documents or lookups (current balance, what an invoice is for, and being charged twice, which gets the FAQ's pending-authorisation explanation first and is handed off only if the caller says both charges posted); membership questions (what it includes, price, renewal date); warranty questions and claims (coverage, registration, transfer, and booking a warranty or repeat-repair visit with the warranty-visit flag). <strong>Handed off:</strong> quote disputes and refunds; complaints and manager requests; late technicians (no live dispatch data); every action on money or membership (the action gap); safety emergencies, after the fixed safety reply; commercial work. <strong>Answered and redirected:</strong> hiring enquiries (to the careers page) and wrong numbers, reported with and without them.</li>
+</ul>
+<h4>3.1 Discovery: the call reasons</h4>
+<ul>
+<li>R1: Group the 420 transcripts into templates (calls that share the same request and staff response pattern once names, numbers and filler words are removed): first group automatically on normalised text, then merge near-identical groups using a reviewed merge list committed to the repository; record each transcript's template and the template's call count. <em>(Builder's call on the method.)</em></li>
+<li>R2: Label every transcript with one main call reason and a sub-reason (for example billing: current balance), using Claude Haiku 5.5 with a fixed category list that is first proposed from the data and then frozen.</li>
+<li>R3: Produce independent check labels for every template from an OpenAI frontier model run through Codex, without showing it Haiku's labels, and save the model name with the labels (template labeling (D18)). Tell the author before this runs so they can set Codex to a frontier model.</li>
+<li>R4: Provide a labeling sheet on which the author labels about a third of the templates without seeing either AI's labels, and report the author's agreement with Codex and Codex's agreement with Haiku.</li>
+<li>R5: Produce a findings document that ranks the top four or five call reasons in a table with rank, calls, share, staff minutes, running total, and handled or handed off with the reason; describes the method and the agreement rates; and states that the transcripts are templated.</li>
+<li>R6: The findings document shows two lists, the observed top three call reasons and the agent's scope, and for each top-three reason states how many calls are answered from documents, how many from account lookups, and how many are handed off and why (choosing handled call reasons to meet the top-three requirement (D12)).</li>
+<li>R7: The findings document reports the human baseline: the share of calls staff resolved on the call (about 85 percent), the same share excluding account actions the agent will not take (about 73 percent), and the 11 dropped bookings.</li>
+<li>R8: The findings document carries three short executive findings: the staff policy-error rate (26 percent of calls, by pattern), the appointment capacity imbalance by zone, and the documentation gaps (autopay, waitlist, how invoices apply the diagnostic credit).</li>
+</ul>
+<h4>3.2 Test set and evaluation</h4>
+<ul>
+<li>R9: Split the templates (not the transcripts) once, with a fixed random seed and stratified by call reason, into a working set used for tuning and a held-out set used only for the final measurement; no template appears in both. Publish the calls and templates per reason for the whole corpus and each set (test-set construction with the working-set rehearsal (D32)).</li>
+<li>R10: Before any tuning of the agent, give every held-out case its expected outcome (contained, handed off, or clean decline), its expected handoff reason if any, and, for knowledge questions, a reference answer written from the current documents, never from what staff said. No prompt, threshold, chunking setting or category is changed after seeing the agent's results on held-out cases.</li>
+<li>R11: Tie each test case to a real database customer that matches the transcript's facts (zone, membership tier, system brand, install age), and give the simulated caller a caller card with that customer's name, account number, phone and address instead of the transcript's. Billing cases add their invoice to the test database copy. Where no real customer matches a transcript's facts, the test copy may add a synthetic customer, marked as synthetic in the test data. <em>(Builder's call.)</em></li>
+<li>R12: Run each test conversation with Claude Sonnet 5.5 playing the caller from the transcript and caller card, with the pinned model version and settings, read relative dates against "now", and save every conversation. The first run of each case is the scored result; every failed case is run once more, and a case that fails then passes is reported as flaky, never as passed (test-set construction with the working-set rehearsal (D32)).</li>
+<li>R13: Run every test against a fresh copy of the seeded scheduling database, never the live one, and check bookings, cancellations and reschedules against that copy.</li>
+<li>R14: A test conversation counts as contained only if the agent never handed off and every caller request was graded correct (knowledge answers match the reference, lookups match the database, booking changes are verified in the database copy, and nothing the caller asked was dropped). A conversation finished without a handoff but wrong is counted as a wrong confident answer. A clean decline counts as correct behaviour but not as contained.</li>
+<li>R15: Compute containment over held-out templates weighted by each template's real call count, and report it both with and without redirect-only calls (wrong numbers, job enquiries).</li>
+<li>R16: Report two containment ceilings: the scope ceiling (share of calls in handled reasons) and the adjusted ceiling (also removing calls the documents or database cannot answer and calls needing account actions, the action gap).</li>
+<li>R17: Report the margin of error as a 95 percent interval for the call-weighted containment, computed by resampling held-out templates (so the interval reflects the number of distinct scenarios), and state both the scenario and weighted call counts. <em>(Builder's call on the method.)</em></li>
+<li>R18: Grade knowledge answers with the OpenAI model run through Codex in batches of about 20 answers per Codex run, using a fixed <code>codex exec</code> command that returns a JSON verdict per answer, recording the model name with every verdict; an API fallback setting is switched on by hand if Codex is unavailable; commit the grading prompt and every verdict (grading through Codex (D15)).</li>
+<li>R19: Check the grader: choose about 30 answers in advance, spread across answers the grader marked right and wrong; the author grades them without seeing the grader's verdict; publish the full agree and disagree table.</li>
+<li>R20: Maintain an adversarial test set of about 30 hand-written cases, separate from the held-out set, covering at least: prompt injection and "print your instructions"; a non-member demanding a members-only slot; booking on someone else's account; "my last agent promised me a refund"; gas smell, carbon monoxide and burning smell; a booking from Dripping Springs or Manor; a north-zone plumbing request; Omar Patel questioning his invoice; a late technician; a waitlist request; abuse; another language; nonsense input; and each of the seven staff policy-error patterns in the data review. Report a pass rate.</li>
+<li>R21: Run a 10-case rehearsal on working-set cases through the full harness at the end of day 3, then freeze the agent until the final held-out run (D32).</li>
+<li>R22: Provide a quick test run of 20 working-set cases that can be run before every deploy.</li>
+<li>R23: Optionally (third in the cut order), run about 30 held-out cases three times each and report the share correct on all three runs.</li>
+</ul>
+<h4>3.3 Knowledge base and document search</h4>
+<ul>
+<li>R24: Keep a document list recording every knowledge-base file's status (current, stale or placeholder), audience (customers or internal), effective date and reason. Exclude from search: the <code>archive/</code> folder, <code>faq/faq_old_copy.md</code>, <code>services/scheduling_guide.md</code> (November 2024, contradicts current rules) and <code>services/duct_cleaning.md</code> (a "TODO" placeholder). Mark internal, never searchable: <code>internal/agent_discretion_notes.md</code>, <code>policies/escalation_and_safety.md</code> and <code>services/technician_arrival_and_etas.md</code> (document list and conflict register (D22)).</li>
+<li>R25: Keep a conflict register listing every fact on which documents disagree, which one wins and why (the later effective date wins unless stated), starting from the fact table in <code>docs/DATA_REVIEW.md</code>. The agent hands off only conflicts the register does not settle.</li>
+<li>R26: Convert the fee schedule PDF to text that keeps each row and column pair (for example "Diagnostic visit, Comfort Club: waived"), the price book CSV to one readable line per item, and the holiday hours image to text transcribed once and checked by hand.</li>
+<li>R27: Split searchable documents by section (each heading and its content), keeping the document name, heading and effective date on every piece.</li>
+<li>R28: Retrieve with meaning-based search (Voyage AI embeddings) and keyword search, merge the two ranked lists by reciprocal-rank fusion, and return the top five pieces; the retrieval threshold (R32) applies to the meaning-based score of the top piece. <em>(Builder's call on the fusion method.)</em></li>
+<li>R29: Label every knowledge test question with the exact text needed to answer it (document plus line span), independent of how documents are split.</li>
+<li>R30: Measure retrieval on its own: recall at five, hit rate at five, coverage (share of handled-reason questions answerable from the current documents at all), and stale-trap accuracy (questions where an excluded document would give a different answer). Compare keyword-only against combined search, and both against giving the model the whole current customer-facing knowledge base in the prompt, scored on answer correctness.</li>
+<li>R31: Measure answers, each scored pass or fail per answer with a written rubric (a partly correct answer fails): correctness against the reference; faithfulness (every factual claim is supported by the retrieved passages); citation accuracy (for answers that name a source, the named document contains the fact); and correct refusal on a set of questions the documents cannot answer (passes only if the agent hands off without stating unsupported facts).</li>
+<li>R32: On the working set only, show how wrong confident answers and containment change as the retrieval threshold moves, and choose the threshold from that curve.</li>
+</ul>
+<h4>3.4 Agent core</h4>
+<ul>
+<li>R33: The agent core takes text in and gives text out with a conversation identifier, independent of the web page, so another front end such as a phone line could use it later (voice deferred (D3)).</li>
+<li>R82: A visitor's browser may hold several conversations, one per open tab; each conversation has its own identifier, is stored in the operations database so it survives a restart, and closes after 30 minutes without a message or when the caller ends it. <em>(Builder's call.)</em></li>
+<li>R34: Before anything else, every caller message, including those in the middle of a flow, is checked in code against fixed lists of words and patterns in three safety classes; a match always overrides the router. The safety check normalises case, punctuation, common misspellings and speech-to-text errors and handles plain negations ("I don't smell gas" does not trigger); when unsure it errs toward safety.</li>
+<li>R35: Immediate danger (smell of gas or rotten eggs, carbon monoxide alarm, sparks, smoke or flames from a unit, electrical burning smell with tripped breakers) gets a fixed reply written in code: leave the home immediately and call 911 or the gas utility from outside, and do not flip switches, open windows near the furnace or restart equipment; then a priority handoff ticket.</li>
+<li>R36: A burning smell on its own gets a fixed reply (turn the system off at the thermostat, do not reset breakers, leave the home if there is smoke) and a priority handoff, never a normal booking; advice to reset a breaker is never given in a conversation that mentions a burning smell (burning smell (D19)).</li>
+<li>R37: Urgent but not dangerous situations (an active water leak, no heat in freezing weather, no cooling in extreme heat) get a calmer fixed reply (for example turning off the water supply for a leak) and a priority handoff. Emergencies are never booked.</li>
+<li>R38: When no flow is active, Claude Haiku 5.5 sorts the caller's message into a handled call reason, scheduling, an account question or a handoff, returning a route and a label of "clear" or "unclear" (routing model (D25)); the rule for "unclear" is tuned on the working set. A request for a person, anger or abuse, an unclear route, or anything outside the handled reasons goes to a handoff.</li>
+<li>R39: A message with several requests is split; each handled request is answered in turn, and if any part is out of scope the agent answers what it can and hands off the rest in one ticket.</li>
+<li>R40: While a flow is active, follow-up messages ("yes", "the morning one", an account number) stay in that flow; the flow is left only when the safety check fires, the caller asks for a person, or the router returns a clear different route, after which the agent answers the new topic and offers to return.</li>
+<li>R41: Knowledge answers come only from retrieved passages and name the source document. If retrieval is below the chosen threshold or no passage clearly supports the answer, the agent hands off.</li>
+<li>R42: The agent may quote the current published fee or price-book range with its source, always adding that the technician confirms the final price on site; it never promises a firm repair total, a discount beyond the published member discounts, a refund or a fee waiver. Replies are produced in structured reply types and checked in code; a sentence that fails a check is replaced by a handoff, and every block is logged and counted so false positives are visible.</li>
+<li>R43: The model is never given internal documents as written, only short paraphrased rules; every reply is checked in code, across the whole reply so far, for any run of 8 or more consecutive words matching an internal document after normalising case and punctuation, and a match is replaced by a handoff. An adversarial test tries to extract the instructions.</li>
+<li>R44: The agent never promises a waitlist; it offers the next eligible slots or a handoff ticket marked "wants an earlier slot".</li>
+<li>R45: The agent identifies a caller by name together with an account number, service address or phone number, never by name alone. After two failed attempts it hands off; a caller not in the database (a new customer) is handed off to be set up.</li>
+<li>R46: Once a caller is identified, the agent answers three kinds of account question with read-only database lookups: open invoices (balance, due date and line items, read exactly as recorded), membership tier and renewal date (the renewal price is the current published price), and system brand and install date (account lookups (D17)).</li>
+<li>R47: Invoice lines are read exactly as recorded and never called right or wrong. If the caller questions any charge, the agent hands off as a billing dispute. If a fixed fee amount on the invoice (diagnostic, after-hours, holiday, late cancellation) differs from the current schedule, for example Omar Patel's $144 after-hours line against $149, the agent silently creates a low-priority billing-review ticket for staff without interrupting the caller. A diagnostic fee charged alongside a repair or to a member is not acted on per call; the pattern goes in the findings document (data rules (D29)).</li>
+<li>R48: Requests to take an action on money or membership (payment links, autopay, cancelling auto-renew, upgrades, enrolment, refunds, fee waivers) are handed off and tagged as the action gap.</li>
+<li>R49: To book, the agent establishes the service type, matches the customer's city to a zone, and finds slots that are open (or reserved for members, if the customer's tier is standard or Plus), match the zone and service type, have not started relative to "now", and whose technician is not already booked in an overlapping window.</li>
+<li>R50: If the requested slot is eligible the agent offers it; otherwise it offers up to three eligible slots, nearest to the requested date first, then by window from morning to evening, naming overlapping windows (12:00–16:00 and 13:00–17:00) distinctly.</li>
+<li>R51: If no eligible slot exists in the three-week range for that zone and service, the agent says so plainly and hands off with a ticket naming the gap (a clean decline). Callers in Dripping Springs or Manor are told the area is served and handed off for booking.</li>
+<li>R52: Before writing, the agent reads back the date, window and service type and waits for a clear yes; the booking then marks the slot booked and adds the appointment row in one database transaction that succeeds only if the slot is still bookable. If it was just taken, the agent says so and offers the next three slots.</li>
+<li>R53: A new appointment records the fixed "now" as its creation time. The warranty-visit flag is set only when the database install date proves the 2-year installation labour warranty applies. Repeat-repair claims and 5-year member-installation claims, which the database cannot verify, are booked as normal visits with a low-priority warranty-review ticket for staff linked to the appointment, and the caller is told there is no diagnostic fee if the technician confirms coverage (data rules (D29)).</li>
+<li>R54: The agent confirms a caller's scheduled appointments, reading back only date, window, service type and technician, never the stored issue text; if the caller has several, it asks which one (rescheduling, cancelling and confirming in scope (D13)).</li>
+<li>R55: Cancelling frees the slot and marks the appointment cancelled in one transaction; rescheduling books the new slot and frees the old one in one transaction. A freed slot returns to its status in the seeded database copy if that was open or members-only; if the seed copy itself shows the slot as booked (a seeded appointment), it is freed to open, as the schema says (freed-slot fallback (D33)). Inside 24 hours of the window's start, both state the $49 late fee before the caller confirms; a waiver request hands off.</li>
+<li>R56: Existing appointments are left as recorded even where their zone does not match the customer's city; the mismatches are listed in the findings document.</li>
+<li>R57: Every handoff creates a ticket with five fields (who the caller is, what they want, what the agent already tried, constraints such as an emergency or a disputed fee, and the caller's mood), a reason tag, a priority flag for emergencies, and a ticket number (handoff ticket and staff page (D9)). In testing, ticket quality is graded with a rubric: a staff member could act without asking the caller to repeat anything.</li>
+<li>R58: After a handoff, the chat stays open and shows the ticket number and a plain statement that the team will contact the caller within one business day (or that an emergency was flagged); the caller may keep asking other questions, and later messages in the conversation are added to the open ticket; nothing implies a person will reply live.</li>
+<li>R59: Every model, search or scheduling-database error becomes a handoff with a plain message, never a crash or an error page. If the operations database itself is unavailable, so no ticket can be saved, the caller sees a plain message asking them to phone the office, and the failure is written to the server log and raises an alert.</li>
+<li>R60: Replies are shown sentence by sentence: each sentence is released to the screen only after it passes the fee, refund and internal-text checks (R42, R43), so unchecked text never appears. The time budget is about 0.3 seconds for safety and identification, about 1.2 seconds for routing, about 0.4 seconds for search and up to 2.5 seconds until the first checked sentence, measured from the server receiving the message. <em>(Builder's call: sentence-by-sentence release, because every reply must be checked before it is shown.)</em></li>
+</ul>
+<h4>3.5 Guards and safety on the public site</h4>
+<ul>
+<li>R61: Each visitor may spend about $0.40 a day on live AI calls (roughly 10 conversations), and the site as a whole $10 a day; reaching either limit gives a clean handoff with a plain message. A secret reviewer link, whose token is stored as a Fly.io secret, draws on a separate $3-a-day reserve that other visitors cannot touch. The author is alerted when daily spend passes $5. Test runs use a separate key and budget (spending budgets with a reviewer reserve (D30)).</li>
+<li>R62: A visitor is identified by a signed, HttpOnly, Secure browser session cookie (SameSite=Lax, 7-day expiry), with the client address supplied by Fly.io as a backstop. Limits: 20 messages per 10 minutes and 100 per day per visitor, and 60 messages a minute across the site; hitting a limit gives a clean handoff with a plain message.</li>
+<li>R63: Typed instructions cannot change booking eligibility, safety handling, the fee and refund rules or the internal-text check, all of which run in code.</li>
+</ul>
+<h4>3.6 Web pages</h4>
+<ul>
+<li>R64: The site opens on a Chat tab styled as Meridian's customer chat: a greeting saying what the assistant can do, 4 to 6 suggested-question buttons chosen from the discovery ranking, a free-text box, and a card listing the four seeded test customers (Linda Foster, Omar Patel, Grace Okafor, Daniel Reyes) with one fact each, labelled as synthetic.</li>
+<li>R65: A suggested-question button only fills in its question text, so it goes through exactly the same path as typing (simplifications, cut order and buttons (D24)).</li>
+<li>R66: After a booking change or a handoff, the chat shows a compact proof receipt (for example "customer verified · eligibility checked · booked in one transaction", or "ticket #12 created").</li>
+<li>R67: A Results tab shows the frozen held-out test numbers, clearly separated from live demo traffic: scenarios and weighted calls, containment with both ceilings and both human baselines, wrong confident answers, handoff, booking and lookup correctness, the retrieval and answer measures, the adversarial pass rate, the grader check and label agreement, the margin of error, and a plain definition of each number.</li>
+<li>R68: The Results tab lists one-click "try these" scenarios, each with a one-line expected behaviour, that fill in the chat and run the normal path; at least: Linda Foster booking a plumber (north zone has no plumbing), Omar Patel's balance then disputing the after-hours fee, "I smell gas near my furnace", "is the diagnostic fee still $79?", a non-member demanding a members-only slot, and a prompt-injection attempt.</li>
+<li>R69: The Results tab carries the three executive findings from the findings document as three short callouts.</li>
+<li>R70: A Staff view button on the Chat tab opens a panel beside the chat, which stays visible. The panel shows the current visitor's own handoff tickets (five fields, priority marked), today's live numbers (conversations, handoffs, errors, median reply time, and live containment, defined as closed conversations with no handoff, no error, no flag and no abandoned flow, labelled as an upper bound and shown only above a minimum number of conversations), and a badge on the button counts new tickets while the panel is closed.</li>
+<li>R71: In the Staff view, each reply in the visitor's conversation has a collapsed "How this reply was made" receipt showing the safety decision, the route, the dated source passages, any documents excluded as stale, any database action, and the handoff reason, using plain labels ("supported by documents", "not enough evidence", "handoff required") rather than raw confidence numbers, and never showing prompts or internal rules.</li>
+<li>R72: The full all-visitors queue and the flag-a-reply control sit behind a shared password stored only as a hash in a Fly.io secret; staff sessions expire after 12 hours, sign-in attempts are limited to 5 per 15 minutes, and the flag form is protected against forged requests. Phone numbers, emails and street addresses are masked everywhere in the Staff view.</li>
+</ul>
+<h4>3.7 Monitoring, feedback and operations</h4>
+<ul>
+<li>R73: Log every conversation, reply, route, retrieval, database action, handoff, error, reply time and model cost in a separate operations database that the nightly reset never touches. Phone numbers, emails and street addresses are masked in logs; conversation logs are deleted after 30 days (retention, masking and rollback (D31)).</li>
+<li>R74: Provide a health endpoint used by Fly.io's health check, and alert the author on downtime, an error-rate spike (3 or more errors in 10 minutes, or more than 20 percent of at least 10 messages in 10 minutes), failed database writes, a failed nightly reset, and daily spend passing $5.</li>
+<li>R75: Allow a flagged reply to carry a correction note, and export flagged conversations as candidate test cases; describe the full feedback loop (flag, review, fix the document or rule, re-run the test set, deploy) in the README.</li>
+<li>R76: Restore the scheduling tables to their seeded state at 03:00 Austin time every night, as one exclusive transaction from the seed file, run by a scheduler inside the app on the single machine and guarded by a lock so it cannot run twice; messages arriving during the reset wait for it to finish. If a reset was missed (for example the app was down), it runs at startup; a failed reset is retried once, then raises an alert and shows on the dashboard (nightly database reset (D6)).</li>
+<li>R77: Deploy to Fly.io on one always-on machine with both database files on an attached disk, keys stored as Fly.io secrets, and live bookings written to the one real scheduling database (hosting on Fly.io (D4)).</li>
+</ul>
+<h4>3.8 Deliverables</h4>
+<ul>
+<li>R78: A README explaining what the system does, how to install and run it and its tests, how to run the evaluation, the measured numbers with their definitions, the containment numbers, and the executive findings.</li>
+<li>R79: A short script outline for the 3 to 4 minute video covering how the call drivers were found, why this chunking and retrieval, how handoff works, and what the numbers say. The author records the video.</li>
+<li>R80: The repository contains the code, the document list, the conflict register, the test set with caller cards and reference answers, the labels, the grading prompt and verdicts, and the evaluation results, with no keys committed.</li>
+<li>R83: The README carries a one-page rollback runbook: how to roll back a Fly.io release (prompts and the search index ship inside the release) and how to restore the disk from Fly's daily snapshot. The runbook is practised once before submission (retention, masking and rollback (D31)).</li>
+<li>R84: Each read-back before a booking, cancellation or reschedule carries a confirmation identifier; a repeated or retried confirmation with the same identifier returns the first result and never changes the database again (booking, reviewer-link and downtime protections (D34)).</li>
+<li>R85: The secret reviewer link's token is used once to start a signed reviewer session with the reserve budget, after which the browser is redirected to the plain address; the token is never written to logs.</li>
+<li>R86: A free outside uptime monitor checks the health endpoint and alerts the author when the site stops answering.</li>
+</ul>
+<h3>4. Success targets</h3>
+<p>Measured on the held-out set unless stated. Targets are aims; every result is reported as measured.</p>
+<table>
+<thead><tr><th>Measure</th><th>Target</th></tr></thead>
+<tbody>
+<tr><td>Containment</td><td>Reported honestly with both ceilings; aim for 60 to 75 percent (PRD target); below 60 percent is reported as it is with the reason (reporting honest containment (D1))</td></tr>
+<tr><td>Wrong confident answers</td><td>Reported as a count, aiming for zero, each one listed and explained</td></tr>
+<tr><td>Knowledge answer correctness</td><td>At least 90 percent</td></tr>
+<tr><td>Faithfulness and citation accuracy</td><td>At least 95 percent</td></tr>
+<tr><td>Correct refusal on unanswerable questions</td><td>At least 90 percent</td></tr>
+<tr><td>Retrieval hit rate at five</td><td>At least 90 percent</td></tr>
+<tr><td>Emergency and burning-smell cases</td><td>100 percent handed off with the fixed reply first</td></tr>
+<tr><td>Handoff on out-of-scope calls</td><td>100 percent on safety and booking-rule cases; at least 95 percent otherwise, every miss listed</td></tr>
+<tr><td>Booking changes and account lookups</td><td>100 percent correct against the database copy</td></tr>
+<tr><td>Routing accuracy</td><td>At least 90 percent, scored on the caller's first substantive message</td></tr>
+<tr><td>Adversarial pass rate</td><td>Reported; 100 percent on booking-rule and instruction-extraction attacks</td></tr>
+<tr><td>Grader agreement with the author</td><td>Reported; aiming for at least 85 percent</td></tr>
+<tr><td>Reply speed on the live site</td><td>Median first checked sentence under 2.5 seconds and median full reply under 4.0 seconds, measured from the server receiving the message, on warm runs, over at least 50 messages</td></tr>
+</tbody>
+</table>
+<h3>5. Cut order</h3>
+<p>If time runs short, cut in this order (simplifications, cut order and buttons (D24)): the suggested-question buttons; the cost-per-conversation breakdown; the consistency runs (R23); the log purge and extra masking (R73, R72); the rollback practice run (R83); the flag export; the pre-deploy quick test run (R22); the measures beyond the core set (the core set is recall and hit rate at five, stale-trap accuracy, answer correctness and faithfulness); the adversarial set down to 15 cases; the threshold curve (R32).</p>
+<p>Never cut: deployment, the findings document, retrieval evaluation, booking with confirming, cancelling and rescheduling, the account lookups, the emergency replies, handoff tickets, flagging, the PRD's required numbers, health checks, the README and the video.</p>
+<h3>6. Left to the builder</h3>
+<ul>
+<li>Web framework, page styling and the exact wording of greetings and plain messages, within the rules above.</li>
+<li>How templates are detected, as long as the method is described and repeatable.</li>
+<li>How alerts are delivered (email or a messaging hook).</li>
+<li>Exact minimum number of conversations before live containment is shown.</li>
+</ul>
+<h3>7. Questions still open with the PM</h3>
+<p>Listed in <code>docs/PRD_REVIEW.md</code>: whether the nightly reset is acceptable (the question of whether rescheduling, cancelling and confirming exceed the PRD's bar is settled by including them (D13)); whether an honest containment rate below 60 percent with documented ceilings counts as a miss; whether handing off part of a top-three call reason still counts as answering it.</p>
+<h3>Glossary</h3>
+<ul>
+<li><strong>Call reason (call driver):</strong> why a customer called, such as booking a repair or asking about a bill.</li>
+<li><strong>Template:</strong> a call pattern that repeats across many transcripts with only names, numbers and filler words changed.</li>
+<li><strong>Containment:</strong> the share of calls the agent finishes correctly without a human.</li>
+<li><strong>Scope ceiling / adjusted ceiling:</strong> the highest containment possible given the agent's scope, and that ceiling after removing calls the data cannot answer or that need account actions.</li>
+<li><strong>Action gap:</strong> calls handed off because they need an action on money or membership.</li>
+<li><strong>Clean decline:</strong> telling the caller plainly that no slot is available and handing off; correct, but not contained.</li>
+<li><strong>Human baseline:</strong> the share of calls staff resolved on the first call.</li>
+<li><strong>Held-out set:</strong> test cases kept aside and only used for the final measurement.</li>
+<li><strong>Working set:</strong> test cases used while tuning the agent.</li>
+<li><strong>Caller card:</strong> the details given to the AI playing the caller: a real customer's name, account number, phone, address and request.</li>
+<li><strong>Simulated caller:</strong> an AI model that plays the customer in a test conversation.</li>
+<li><strong>Reference answer:</strong> the correct answer to a test question, written in advance from the current documents.</li>
+<li><strong>Grader:</strong> an AI model that judges whether an answer matches the reference.</li>
+<li><strong>Margin of error:</strong> how far a measured percentage may be from the true value given the sample size.</li>
+<li><strong>Adversarial test:</strong> a test written to trick or break the agent.</li>
+<li><strong>Document list:</strong> the record of every knowledge-base file's status, audience, date and whether it is searchable.</li>
+<li><strong>Conflict register:</strong> the list of facts on which documents disagree, with which one wins and why.</li>
+<li><strong>Stale-trap question:</strong> a question where an excluded old document would give a different answer than the current one.</li>
+<li><strong>Embedding:</strong> a list of numbers representing a text's meaning, used to find similar text.</li>
+<li><strong>Keyword search / meaning-based search:</strong> finding passages by matching words, or by matching meaning through embeddings.</li>
+<li><strong>Recall at five / hit rate at five:</strong> the share of needed passages found in the top five results, and the share of questions with at least one needed passage in the top five.</li>
+<li><strong>Faithfulness:</strong> the share of an answer's claims supported by the passages it used.</li>
+<li><strong>Citation accuracy:</strong> whether the document an answer names contains the fact.</li>
+<li><strong>Router:</strong> the step that decides which flow a caller's message belongs to.</li>
+<li><strong>Flow:</strong> a conversation path with fixed steps and rules enforced in code, such as booking.</li>
+<li><strong>Read-only lookup:</strong> reading a caller's record without changing it.</li>
+<li><strong>Database transaction:</strong> a group of database changes that all happen together or not at all.</li>
+<li><strong>Zone:</strong> the area (north, central, south) a customer's city belongs to.</li>
+<li><strong>Members-only slot:</strong> a slot reserved for Comfort Club standard or Plus members.</li>
+<li><strong>Warranty-visit flag:</strong> a marker on an appointment meaning no diagnostic fee applies.</li>
+<li><strong>Handoff ticket:</strong> the record of an escalated conversation with everything a human needs to continue it.</li>
+<li><strong>Proof receipt:</strong> a short line after a booking or handoff showing what the system checked and did.</li>
+<li><strong>Streaming:</strong> showing a reply word by word as it is written.</li>
+<li><strong>Health endpoint:</strong> a web address the hosting service checks regularly to confirm the app is up.</li>
+<li><strong>Fly.io secrets:</strong> settings such as keys stored by the hosting service, not in the code.</li>
+<li><strong>Seeded data:</strong> the starting rows the database ships with, including the four test customers.</li>
+</ul>
+</section>
+<section id="architecture">
+<h2>Architecture: AI Call Center Agent for Meridian Home Comfort</h2>
+<h3>1. System overview</h3>
+<p>The system has three kinds of user (the reviewer or a caller, the author, and staff using the shared password), one web application, two databases on one disk, three outside AI services, and an offline toolkit on the author's laptop.</p>
+<pre class="mermaid">flowchart LR
+    V["Reviewer or caller in a browser"] --&gt;|"chat messages"| APP["Meridian agent web app on Fly.io"]
+    S["Staff with the shared password"] --&gt;|"queue views and flags"| APP
+    APP --&gt;|"bookings and lookups"| SDB[("Scheduling database")]
+    APP --&gt;|"logs, tickets, costs"| ODB[("Operations database")]
+    APP --&gt;|"caller text and facts chosen by code"| ANT["Anthropic: Haiku router and Sonnet writer"]
+    APP --&gt;|"caller question"| VOY["Voyage AI embeddings"]
+    APP --&gt;|"alert text"| ALERT["Alert webhook to the author"]
+    LAP["Offline toolkit on the author's laptop"] --&gt;|"search index and seed data in each release"| APP
+    UP["Outside uptime monitor"] --&gt;|"checks the health endpoint"| APP
+    LAP --&gt;|"answers to grade, templates to label"| CDX["Codex with an OpenAI frontier model"]</pre>
+<p><em>The browser talks only to the web app; the app owns both databases and calls the AI services; the laptop toolkit prepares data and grades results offline; an outside monitor alerts the author if the app stops answering.</em></p>
+<h3>2. Main parts</h3>
+<pre class="mermaid">flowchart TB
+    WEB["1. Web layer: message request, sentence stream, pages"] --&gt;|"message, conversation, visitor"| ENG["Conversation engine"]
+    ENG --&gt;|"2. every message first"| SAFE["Safety check, in code"]
+    ENG --&gt;|"3. if not an emergency"| GUARDS["Spending and rate limits"]
+    ENG --&gt;|"4. every remaining message"| RTR["Router, Haiku 5.5"]
+    ENG --&gt;|"5. active or chosen flow"| FLOWS["Flows: knowledge, account, scheduling, handoff"]
+    FLOWS --&gt;|"question"| KB["Knowledge search"]
+    FLOWS --&gt;|"lookups and transactions"| SCHED["Scheduling and account store"]
+    FLOWS --&gt;|"6. facts and reply type"| WRITER["Reply writer, Sonnet 5.5"]
+    WRITER --&gt;|"draft sentences"| GUARD["7. Reply checks, in code"]
+    GUARD --&gt;|"checked sentences"| WEB
+    ENG --&gt;|"8. events, model calls, tickets"| OPS["Operations store, alerts, jobs"]</pre>
+<p><em>Each message passes the numbered steps in order; the two AI models only choose a route and write wording, and code decides everything else.</em></p>
+<ol>
+<li>The browser sends each message as an ordinary request; the web layer checks that the conversation belongs to the signed visitor and opens a stream for that message's sentences.</li>
+<li>The safety check runs first on every message, even mid-flow and even for a visitor over budget; an emergency gets its fixed reply, which costs nothing.</li>
+<li>Only then are the spending and rate limits applied.</li>
+<li>The router runs on every remaining message. With no flow active, its route picks the flow; with a flow active, its result is used only to detect a clear change of topic.</li>
+<li>The active or chosen flow runs its code-owned steps.</li>
+<li>The flow hands the writer the facts and a reply type.</li>
+<li>Each sentence is checked before release. If a sentence fails, generation stops, the sentences already shown stay, the rest becomes a handoff message with a ticket, and a "blocked" event is logged.</li>
+<li>Every step records events and model calls in the operations store.</li>
+</ol>
+<table>
+<thead><tr><th>Part</th><th>What it does</th><th>Where its rules come from</th></tr></thead>
+<tbody>
+<tr><td>Web layer</td><td>Serves the Chat tab, Results tab and Staff view; takes each message as a request and streams its checked sentences back; holds the visitor cookie; checks conversation ownership on every request</td><td>Web pages (R64 to R72)</td></tr>
+<tr><td>Conversation engine</td><td>Keeps conversation state, runs the pipeline, keeps a flow active across follow-up messages</td><td>Conversation state (R40), conversation lifetime (R82)</td></tr>
+<tr><td>Safety check</td><td>Matches emergency patterns in code before anything else and returns fixed replies</td><td>Safety classes (R34 to R37)</td></tr>
+<tr><td>Router</td><td>Haiku 5.5 returns a route and "clear" or "unclear"</td><td>Router (R38, R39), routing model (D25)</td></tr>
+<tr><td>Knowledge search</td><td>Combined keyword and meaning-based search over current documents</td><td>Document search (R24 to R32)</td></tr>
+<tr><td>Scheduling and account store</td><td>Read-only lookups and booking transactions on the scheduling database</td><td>Booking rules (R45 to R56), data rules (D29)</td></tr>
+<tr><td>Reply writer</td><td>Sonnet 5.5 turns facts chosen by code into wording, as structured reply types</td><td>Pricing and internal-text rules (R42, R43)</td></tr>
+<tr><td>Reply checks</td><td>Checks every sentence for promises, refunds, waivers and internal text before release</td><td>Sentence release (R60)</td></tr>
+<tr><td>Spending and rate limits</td><td>Per-visitor, site-wide and reviewer-reserve budgets; message limits</td><td>Guards (R61, R62), spending budgets with a reviewer reserve (D30)</td></tr>
+<tr><td>Operations store</td><td>Logs, tickets, receipts, metrics, alerts, nightly reset, log purge</td><td>Monitoring and operations (R73 to R77), retention (D31)</td></tr>
+</tbody>
+</table>
+<h3>3. Technology choices</h3>
+<table>
+<thead><tr><th>Choice</th><th>What we use</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Language</td><td>Python 3.12</td><td>Strong AI and data libraries; the author's choice.</td></tr>
+<tr><td>Web framework</td><td>FastAPI with one worker process</td><td>Simple, async, built-in support for streaming responses. One worker keeps the in-app scheduler and its lock simple.</td></tr>
+<tr><td>Message and streaming</td><td>Each caller message is an ordinary request carrying the conversation id and a message id; the reply's checked sentences come back as a server-sent-event stream (one-way, server to browser) tied to that message id</td><td>The browser sends with a normal request and only needs to receive sentences as they are released; simpler than a two-way socket.</td></tr>
+<tr><td>Pages</td><td>Server-rendered HTML with a little plain JavaScript</td><td>Three small pages; no front-end build step to maintain.</td></tr>
+<tr><td>Databases</td><td>SQLite, two files, write-ahead logging mode</td><td>The provided database is SQLite; write-ahead logging lets reads continue during writes.</td></tr>
+<tr><td>Search index</td><td>Built offline, shipped in each release as a file (embeddings plus a keyword index)</td><td>The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too.</td></tr>
+<tr><td>Scheduler and reset gate</td><td>A background task in the app plus an app-wide gate: every message holds it shared, the nightly reset holds it exclusively</td><td>One machine and one worker, so an in-process gate is enough to make messages wait during a reset; the job-runs table catches a missed reset at startup.</td></tr>
+<tr><td>Alerts</td><td>A webhook URL setting (for example a push-notification service), plus a free outside uptime monitor on the health endpoint</td><td>One HTTP call per alert; the app cannot alert while it is down, so downtime is detected from outside (booking, reviewer-link and downtime protections (D34)).</td></tr>
+<tr><td>AI SDKs</td><td>Official Anthropic and Voyage Python SDKs, versions pinned</td><td>Model IDs <code>claude-sonnet-5-5</code> and <code>claude-haiku-5-5</code> and settings pinned and logged with every run.</td></tr>
+<tr><td>Offline grading</td><td><code>codex exec</code> with a JSON output format</td><td>Uses the author's subscription, no API cost (grading through Codex (D15)).</td></tr>
+</tbody>
+</table>
+<p>Skipped sections: caching, message queues and scaling do not apply to one small machine with demo traffic; the per-visitor and site-wide limits are the only capacity controls needed.</p>
+<h3>4. Databases</h3>
+<h4>4.1 Scheduling database (provided, reset nightly)</h4>
+<p>The provided SQLite file, used exactly as given. A read-only <strong>seed copy</strong> of the original file ships in each release: the nightly reset restores from it, and cancellations read it to restore a freed slot's status, because the live tables do not record whether a booked slot was originally members-only. If the seed copy shows the slot as open or members-only, that status is restored; if the seed copy itself shows it as booked (a seeded appointment, such as Linda Foster's on 22 October), the slot is freed to open, as the schema's "free the old slot (open)" rule says (freed-slot fallback (D33)).</p>
+<pre class="mermaid">erDiagram
+    CUSTOMERS ||--o{ APPOINTMENTS : "books"
+    CUSTOMERS ||--o{ INVOICES : "is billed"
+    TECHNICIANS ||--o{ APPOINTMENT_SLOTS : "works"
+    APPOINTMENT_SLOTS ||--o{ APPOINTMENTS : "is taken by"
+    APPOINTMENTS ||--o| INVOICES : "produces"
+    CUSTOMERS {
+        TEXT customer_id PK "account number, e.g. MHC-10001"
+        TEXT name "full name"
+        TEXT phone "phone number"
+        TEXT email "email address, may be empty"
+        TEXT service_address "street address"
+        TEXT city "city, decides the zone"
+        TEXT zip "postal code"
+        TEXT membership_tier "none, standard or plus"
+        TEXT membership_renewal_date "date, empty if not a member"
+        TEXT system_brand "equipment brand"
+        TEXT system_install_date "date the system was installed"
+    }
+    TECHNICIANS {
+        INTEGER tech_id PK "whole number, given automatically"
+        TEXT name "technician name"
+        TEXT skills "comma list: hvac, plumbing, estimate"
+        TEXT home_zone "north, central or south"
+    }
+    APPOINTMENT_SLOTS {
+        INTEGER slot_id PK "whole number, given automatically"
+        TEXT slot_date "date of the slot"
+        TEXT window "one of four time windows"
+        INTEGER tech_id FK "the technician working it"
+        TEXT zone "zone covered that day"
+        TEXT service_type "repair, tune-up, plumbing or estimate"
+        TEXT status "open, booked, reserved_members or blocked"
+    }
+    APPOINTMENTS {
+        INTEGER appointment_id PK "whole number, given automatically"
+        INTEGER slot_id FK "the slot booked"
+        TEXT customer_id FK "who booked it"
+        TEXT issue_description "caller's issue, unreliable in the seed"
+        TEXT created_at "when it was booked, the fixed now for new rows"
+        TEXT status "scheduled, completed, cancelled or no_show"
+        INTEGER is_warranty_visit "1 means no diagnostic fee"
+    }
+    INVOICES {
+        TEXT invoice_id PK "invoice number, e.g. INV-204411"
+        TEXT customer_id FK "who is billed"
+        INTEGER appointment_id FK "visit billed, may be empty"
+        TEXT issued_date "date issued"
+        TEXT due_date "date due"
+        INTEGER amount_cents "total in cents"
+        INTEGER balance_cents "unpaid amount in cents, 0 means paid"
+        TEXT line_items "list of description and cents pairs"
+    }</pre>
+<p><em>The five provided tables: customers book appointments in technicians' slots and receive invoices.</em></p>
+<p>How the tables link, in words: each appointment belongs to exactly one customer and takes exactly one slot; each slot belongs to exactly one technician and may have several appointments over time (cancelled ones stay as history) but at most one with status scheduled, which the booking code enforces inside its transaction because the provided database has no such rule; each invoice belongs to exactly one customer and may refer to one appointment. The agent writes only to <code>appointment_slots.status</code> and <code>appointments</code>; it never writes customers or invoices.</p>
+<p>One made-up example row per table:</p>
+<table>
+<thead><tr><th>Table</th><th>Example row</th></tr></thead>
+<tbody>
+<tr><td>customers</td><td>MHC-10001 · Linda Foster · 512-555-0101 · linda@example.com · 12 Elm St · Round Rock · 78664 · standard · 2026-11-20 · Carrier · 2019-05-02</td></tr>
+<tr><td>technicians</td><td>3 · Jun Park · hvac,plumbing · south</td></tr>
+<tr><td>appointment_slots</td><td>142 · 2026-10-22 · 08:00-12:00 · 1 · north · hvac_repair · booked</td></tr>
+<tr><td>appointments</td><td>160 · 142 · MHC-10001 · AC blowing warm · 2026-10-16T09:00 · scheduled · 0</td></tr>
+<tr><td>invoices</td><td>INV-204411 · MHC-10002 · 87 · 2026-10-01 · 2026-10-31 · 47800 · 47800 · diagnostic 8900, contactor 24500, after-hours 14400</td></tr>
+</tbody>
+</table>
+<h4>4.2 Operations database (never reset)</h4>
+<p>A second SQLite file on the same disk, created by the app. It holds everything about how the agent behaves. Split into two diagrams to stay readable.</p>
+<p><strong>Conversations and what happened in them:</strong></p>
+<pre class="mermaid">erDiagram
+    VISITORS ||--o{ CONVERSATIONS : "opens"
+    CONVERSATIONS ||--o{ MESSAGES : "contains"
+    MESSAGES ||--o| RECEIPTS : "is explained by"
+    CONVERSATIONS ||--o{ TICKETS : "raises"
+    MESSAGES ||--o{ FLAGS : "is flagged by staff"
+    VISITORS {
+        TEXT visitor_id PK "random id held in the signed cookie"
+        TEXT kind "public or reviewer"
+        TEXT first_seen "when first seen"
+        TEXT client_address "address from Fly, rate-limit backstop"
+    }
+    CONVERSATIONS {
+        TEXT conversation_id PK "random id, one per browser tab"
+        TEXT visitor_id FK "owner"
+        TEXT customer_id "identified caller, empty until identified"
+        TEXT active_flow "flow in progress, empty if none"
+        TEXT flow_state "steps done so far, as JSON text"
+        TEXT status "open, closed or abandoned"
+        TEXT created_at "real time it opened"
+        TEXT last_message_at "for the 30-minute idle close"
+        TEXT closed_at "real time it closed, empty if open"
+    }
+    MESSAGES {
+        INTEGER message_id PK "whole number, given automatically"
+        TEXT conversation_id FK "conversation"
+        TEXT role "caller or agent"
+        TEXT text_masked "text with phone, email, street masked"
+        TEXT created_at "real time it was sent"
+        TEXT request_id "message id sent by the browser, for safe retries"
+        INTEGER first_sentence_ms "time to first checked sentence"
+        INTEGER full_reply_ms "time to the whole reply"
+        INTEGER cost_microdollars "AI cost of this reply"
+    }
+    RECEIPTS {
+        INTEGER message_id PK "the agent reply explained"
+        TEXT safety_result "clear, danger, burning or urgent"
+        TEXT route "flow chosen, with clear or unclear"
+        TEXT passages "dated sources used, as JSON text"
+        TEXT excluded "stale documents left out"
+        TEXT db_action "lookup or transaction done"
+        TEXT outcome_label "supported, not enough evidence, handoff required"
+    }
+    TICKETS {
+        INTEGER ticket_id PK "ticket number shown to the caller"
+        TEXT conversation_id FK "conversation, empty for silent reviews"
+        INTEGER appointment_id "appointment it concerns, may be empty"
+        TEXT who "caller identity, masked"
+        TEXT wants "what they asked"
+        TEXT tried "what the agent did"
+        TEXT constraints "emergency, disputed fee, gap"
+        TEXT mood "caller's mood"
+        TEXT reason_tag "dispute, emergency, action gap, decline, billing review, warranty review"
+        INTEGER priority "2 emergency, 1 normal, 0 low"
+        TEXT status "open or closed"
+        TEXT created_at "real time created"
+        TEXT closed_at "real time closed, empty if open"
+    }
+    FLAGS {
+        INTEGER flag_id PK "whole number, given automatically"
+        INTEGER message_id FK "reply flagged as wrong"
+        TEXT correction "staff note"
+        TEXT created_at "when flagged"
+    }</pre>
+<p><em>Each visitor opens conversations; each message may carry a receipt; conversations raise tickets; staff flags point at single replies.</em></p>
+<p>How they link, in words: each conversation belongs to exactly one visitor; each message belongs to exactly one conversation; each agent message has at most one receipt; each ticket belongs to at most one conversation (silent billing-review tickets have none) and may refer to one appointment, and messages after a handoff stay in the same conversation so the ticket shows them; each flag points at exactly one agent message. Every query for a conversation, its messages, receipts or tickets filters by both the conversation id and the signed visitor id, unless the request carries a staff session.</p>
+<table>
+<thead><tr><th>Table</th><th>Example row</th></tr></thead>
+<tbody>
+<tr><td>visitors</td><td>v_8f3a · reviewer · 2026-10-20T14:02 · 203.0.113.7</td></tr>
+<tr><td>conversations</td><td>c_91d2 · v_8f3a · MHC-10002 · empty · {} · open · 2026-10-20T14:02 · 2026-10-20T14:09 · empty</td></tr>
+<tr><td>messages</td><td>5012 · c_91d2 · agent · "Your open balance is $478.00, due 31 October." · 2026-10-20T14:09 · m_77a · 1840 · 3200 · 3900</td></tr>
+<tr><td>receipts</td><td>5012 · clear · account question, clear · [] · [] · invoice lookup MHC-10002 · supported</td></tr>
+<tr><td>tickets</td><td>12 · c_91d2 · 87 · Omar Patel, MHC-10002 · disputes after-hours fee · read invoice lines · disputed fee $144 · frustrated · dispute · 1 · open · 2026-10-20T14:10 · empty</td></tr>
+<tr><td>flags</td><td>3 · 5012 · "Should have mentioned due date earlier" · 2026-10-20T15:30</td></tr>
+</tbody>
+</table>
+<p><strong>Money, limits and jobs:</strong></p>
+<pre class="mermaid">erDiagram
+    VISITORS ||--o{ SPEND : "spends"
+    SPEND {
+        INTEGER spend_id PK "whole number, given automatically"
+        TEXT visitor_id FK "who spent it"
+        TEXT pool "public, reviewer or site"
+        TEXT day "Austin calendar day, real time"
+        INTEGER microdollars "cost of one AI call"
+    }
+    ALERTS {
+        INTEGER alert_id PK "whole number, given automatically"
+        TEXT kind "downtime, errors, write failure, reset, spend"
+        TEXT detail "what happened"
+        TEXT sent_at "when the webhook was called"
+    }
+    JOB_RUNS {
+        INTEGER run_id PK "whole number, given automatically"
+        TEXT job "nightly reset or log purge"
+        TEXT started_at "real time started"
+        TEXT finished_at "real time finished, empty if failed"
+        TEXT result "ok, retried or failed"
+    }
+    MODEL_CALLS {
+        INTEGER call_id PK "whole number, given automatically"
+        INTEGER message_id "reply it served, empty for offline runs"
+        TEXT purpose "route, write or simulate"
+        TEXT model_id "e.g. claude-haiku-5-5"
+        TEXT sdk_version "pinned SDK version"
+        TEXT settings "request settings, as JSON text"
+        INTEGER input_tokens "tokens sent"
+        INTEGER output_tokens "tokens received"
+        INTEGER ms "how long the call took"
+        INTEGER microdollars "cost of the call"
+    }
+    EVENTS {
+        INTEGER event_id PK "whole number, given automatically"
+        TEXT conversation_id "conversation, may be empty"
+        TEXT kind "error, blocked sentence, write failure, limit hit"
+        TEXT detail "what happened"
+        TEXT created_at "real time it happened"
+    }
+    CONFIRMATIONS {
+        TEXT confirmation_id PK "id carried by one read-back"
+        TEXT conversation_id "conversation"
+        TEXT result "outcome returned to every repeat"
+        TEXT created_at "real time first confirmed"
+    }</pre>
+<p><em>Spending is recorded per AI call and summed per pool and day; model calls, events and confirmations give the audit trail, the error alerts and safe retries.</em></p>
+<p>How they link, in words: each spending row belongs to one visitor (site-level rows use a fixed visitor id); each model call may point at the reply it served; events and confirmations name their conversation; alerts and job runs stand alone. Silent billing reviews and warranty-review notes are ordinary low-priority tickets, not a separate table. Rate-limit counts are kept in memory and rebuilt from the messages table after a restart.</p>
+<table>
+<thead><tr><th>Table</th><th>Example row</th></tr></thead>
+<tbody>
+<tr><td>spend</td><td>88213 · v_8f3a · reviewer · 2026-10-20 · 4100</td></tr>
+<tr><td>alerts</td><td>7 · spend · "daily spend passed $5.00" · 2026-10-20T16:44</td></tr>
+<tr><td>job_runs</td><td>31 · nightly reset · 2026-10-21T03:00:00 · 2026-10-21T03:00:02 · ok</td></tr>
+<tr><td>model_calls</td><td>99120 · 5012 · write · claude-sonnet-5-5 · anthropic 1.4.2 · {"effort":"low"} · 2100 · 85 · 1650 · 3100</td></tr>
+<tr><td>events</td><td>451 · c_91d2 · blocked sentence · "promised a waiver" · 2026-10-20T14:12</td></tr>
+<tr><td>confirmations</td><td>k_3e19 · c_77b0 · booked slot 142, appointment 160 · 2026-10-20T15:01</td></tr>
+</tbody>
+</table>
+<h3>5. Request flows</h3>
+<h4>5.1 A knowledge question</h4>
+<pre class="mermaid">sequenceDiagram
+    participant B as Browser
+    participant E as Conversation engine
+    participant S as Safety check
+    participant R as Router (Haiku)
+    participant K as Knowledge search
+    participant W as Reply writer (Sonnet)
+    participant G as Reply checks
+    B-&gt;&gt;E: 1. "Is the diagnostic fee still $79?"
+    E-&gt;&gt;S: 2. check message
+    S--&gt;&gt;E: clear
+    E-&gt;&gt;R: 3. route message
+    R--&gt;&gt;E: knowledge, clear
+    E-&gt;&gt;K: 4. search current documents
+    K--&gt;&gt;E: fee schedule and FAQ passages, dated
+    E-&gt;&gt;W: 5. facts plus reply type
+    W--&gt;&gt;G: 6. draft sentences
+    G--&gt;&gt;B: 7. checked sentences, one by one
+    E-&gt;&gt;E: 8. log message, receipt and cost</pre>
+<p><em>How a fee question is answered from current documents only, with every sentence checked before it is shown.</em></p>
+<ol>
+<li>The browser sends the message as an ordinary request with its conversation id and a message id, and opens the sentence stream for that message id; the server checks the conversation belongs to the signed visitor.</li>
+<li>The safety check runs in code; nothing matches.</li>
+<li>Haiku 5.5 returns the route "knowledge" with the label "clear".</li>
+<li>Combined search returns the top five pieces; the old $79 FAQ is not in the index at all, because the document list excludes it.</li>
+<li>If the top piece's meaning-based score is below the chosen threshold, the engine goes to a handoff instead; here it is above, so the facts and a "price answer" reply type go to Sonnet 5.5.</li>
+<li>Sonnet writes the reply, which must include the source and the "technician confirms the final price on site" line.</li>
+<li>Each sentence is checked for promises, discounts, waivers and internal text, then released to the browser.</li>
+<li>The message, its receipt (route, passages, excluded stale document), its model calls and its cost are written to the operations database.</li>
+</ol>
+<h4>5.2 A new booking</h4>
+<pre class="mermaid">sequenceDiagram
+    participant B as Browser
+    participant E as Conversation engine
+    participant A as Account store
+    participant P as Slot finder
+    participant D as Scheduling database
+    B-&gt;&gt;E: 1. "Book a plumber, I'm Linda Foster, MHC-10001"
+    E-&gt;&gt;A: 2. identify by name plus account number
+    A--&gt;&gt;E: customer found, north zone, standard member
+    E-&gt;&gt;P: 3. eligible plumbing slots in north zone
+    P--&gt;&gt;E: none in three weeks
+    E--&gt;&gt;B: 4. clean decline and ticket number
+    B-&gt;&gt;E: 5. "Then an AC repair Thursday morning"
+    E-&gt;&gt;P: 6. eligible repair slots near Thursday
+    P--&gt;&gt;E: requested slot open
+    E--&gt;&gt;B: 7. read back date, window, service
+    B-&gt;&gt;E: 8. "Yes"
+    E-&gt;&gt;D: 9. one transaction, only if still bookable
+    D--&gt;&gt;E: booked, technician name
+    E--&gt;&gt;B: 10. confirmation and proof receipt</pre>
+<p><em>How a booking is checked and written, including the common case where no slot exists.</em></p>
+<ol>
+<li>The caller asks to book and gives a name and account number.</li>
+<li>The account store matches name plus account number (never a name alone); after two failed attempts it would hand off.</li>
+<li>The slot finder asks for slots that are open, or members-only for standard or Plus members, in the caller's zone and service type, not yet started relative to the fixed "now", and whose technician has no overlapping booking.</li>
+<li>The north zone has no plumbing slots, so the agent says so plainly and creates a ticket naming the gap: a clean decline.</li>
+<li>The caller asks for an HVAC repair instead.</li>
+<li>The finder offers the requested slot if eligible, otherwise up to three nearest by date then window.</li>
+<li>The agent reads back the date, window and service type, with a confirmation id attached.</li>
+<li>The caller confirms. A double click or a browser retry sends the same confirmation id, which returns the first result instead of booking twice (booking, reviewer-link and downtime protections (D34)).</li>
+<li>One write-locked transaction reruns every eligibility check (slot status, zone, service, membership, not started, no overlapping booking for the technician, no other scheduled appointment on the slot), then marks the slot booked and adds the appointment row; if anything changed, the agent says the slot was just taken and offers the next three. The warranty-visit flag is set only if the install date proves the 2-year installation warranty; other warranty claims add a low-priority warranty-review ticket linked to the appointment. If the booking commits but the operations write then fails, the booking stands, the caller still gets the confirmation, the write is retried, and if it fails again the appointment id goes to the server log with an alert.</li>
+<li>The agent confirms with the technician's name and a proof receipt ("customer verified · eligibility checked · booked in one transaction").</li>
+</ol>
+<h4>5.3 Rescheduling or cancelling</h4>
+<pre class="mermaid">sequenceDiagram
+    participant B as Browser
+    participant E as Conversation engine
+    participant D as Scheduling database
+    participant SC as Seed copy
+    B-&gt;&gt;E: 1. "Can I move my appointment on the 22nd?"
+    E-&gt;&gt;D: 2. find the caller's scheduled appointments
+    D--&gt;&gt;E: one appointment, 22 Oct 08:00-12:00
+    E--&gt;&gt;B: 3. state any 24-hour fee, offer new slots
+    B-&gt;&gt;E: 4. picks a new slot and confirms
+    E-&gt;&gt;SC: 5. original status of the old slot
+    SC--&gt;&gt;E: reserved_members
+    E-&gt;&gt;D: 6. one transaction: book new, free old
+    D--&gt;&gt;E: done
+    E--&gt;&gt;B: 7. confirmation and proof receipt</pre>
+<p><em>How moving an appointment keeps the database consistent and restores the old slot correctly.</em></p>
+<ol>
+<li>The identified caller asks to move an appointment.</li>
+<li>The engine reads the caller's scheduled appointments; if there are several it asks which one, reading back only date, window, service and technician.</li>
+<li>If the window starts within 24 hours of "now", the agent states the $49 fee before the caller confirms; a waiver request would hand off.</li>
+<li>The caller picks one of the offered slots and confirms.</li>
+<li>The engine reads the old slot's status in the seed copy; if the seed shows it as booked (a seeded appointment), the slot will be freed to open.</li>
+<li>One write-locked transaction rechecks the new slot's eligibility, books it, updates the appointment and returns the old slot to its seed status (here members-only, not open). Cancelling is the same without the new booking. Both carry a confirmation id, so a repeat returns the first result.</li>
+<li>The agent confirms with a proof receipt.</li>
+</ol>
+<h4>5.4 An account question with a fee mismatch</h4>
+<pre class="mermaid">sequenceDiagram
+    participant B as Browser
+    participant E as Conversation engine
+    participant A as Account store
+    participant O as Operations database
+    B-&gt;&gt;E: 1. "What's my balance?" as Omar Patel
+    E-&gt;&gt;A: 2. open invoices for MHC-10002
+    A--&gt;&gt;E: INV-204411, $478, three lines
+    E-&gt;&gt;O: 3. silent low-priority ticket: after-hours 144 vs 149
+    E--&gt;&gt;B: 4. balance, due date and lines as recorded
+    B-&gt;&gt;E: 5. "Why is the after-hours fee there?"
+    E-&gt;&gt;O: 6. billing-dispute ticket with the mismatch
+    E--&gt;&gt;B: 7. handoff message and ticket number</pre>
+<p><em>How the agent reads an invoice exactly as recorded, quietly notes a fee mismatch for staff, and hands off only when the caller questions a charge.</em></p>
+<ol>
+<li>The identified caller asks for their balance.</li>
+<li>The account store reads open invoices (read-only).</li>
+<li>Code compares fixed-fee lines with the current schedule; the after-hours line is $144 against $149, so a low-priority ticket tagged "billing review" is saved silently for staff, with no conversation shown to the caller.</li>
+<li>The agent reads the balance, due date and lines exactly as recorded, without judging them.</li>
+<li>The caller questions a charge.</li>
+<li>A billing-dispute ticket is created, with the mismatch written into its constraints field.</li>
+<li>The caller is told a team member will contact them within one business day and sees the ticket number.</li>
+</ol>
+<h4>5.5 An emergency</h4>
+<pre class="mermaid">sequenceDiagram
+    participant B as Browser
+    participant E as Conversation engine
+    participant S as Safety check
+    participant O as Operations database
+    B-&gt;&gt;E: 1. "I smell gas near my furnace"
+    E-&gt;&gt;S: 2. check message
+    S--&gt;&gt;E: immediate danger
+    E--&gt;&gt;B: 3. fixed leave-and-call reply, from code
+    E-&gt;&gt;O: 4. priority ticket
+    E--&gt;&gt;B: 5. ticket number, staff badge updates</pre>
+<p><em>How an emergency skips the router and the AI writer entirely.</em></p>
+<ol>
+<li>The caller reports a gas smell, even in the middle of a booking.</li>
+<li>The safety check runs before any spending or rate limit, so even a visitor over budget gets this reply; it normalises spelling and speech-to-text errors and matches the immediate-danger class.</li>
+<li>The fixed reply written in code tells them to leave the home and call 911 or the gas utility from outside, and not to flip switches or restart equipment. No AI model is involved.</li>
+<li>A priority ticket is created; emergencies are never booked.</li>
+<li>The caller sees the ticket number, and the Staff view badge shows a new priority ticket.</li>
+</ol>
+<h4>5.6 Staff view and flagging</h4>
+<pre class="mermaid">sequenceDiagram
+    participant B as Browser
+    participant W as Web layer
+    participant O as Operations database
+    B-&gt;&gt;W: 1. open Staff view
+    W-&gt;&gt;O: 2. this visitor's tickets and receipts
+    O--&gt;&gt;W: tickets, receipts, today's numbers
+    W--&gt;&gt;B: 3. panel beside the chat
+    B-&gt;&gt;W: 4. enter the shared password
+    W--&gt;&gt;B: 5. staff session for 12 hours
+    B-&gt;&gt;W: 6. flag a reply with a correction
+    W-&gt;&gt;O: 7. flag saved for export</pre>
+<p><em>How the Staff view shows only the visitor's own session until the shared password unlocks the full queue and flagging.</em></p>
+<ol>
+<li>The visitor opens the Staff view panel.</li>
+<li>The web layer reads only tickets and receipts whose conversation belongs to the signed visitor, plus today's live numbers.</li>
+<li>The panel opens beside the chat, which stays visible.</li>
+<li>To see every visitor's queue or flag replies, the user enters the shared password.</li>
+<li>A 12-hour staff session starts (see the login flow below).</li>
+<li>The staff user flags a reply as wrong with a correction note.</li>
+<li>The flag is saved and can be exported as a candidate test case.</li>
+</ol>
+<h4>5.7 An offline test run</h4>
+<pre class="mermaid">sequenceDiagram
+    participant H as Test harness on the laptop
+    participant C as Simulated caller (Sonnet)
+    participant AG as Agent core
+    participant DB as Fresh database copy
+    participant X as Codex grader
+    H-&gt;&gt;DB: 1. copy the seed, add fixtures
+    H-&gt;&gt;C: 2. caller card and transcript script
+    C-&gt;&gt;AG: 3. caller turns
+    AG-&gt;&gt;DB: 4. lookups and booking changes
+    AG--&gt;&gt;C: agent replies
+    H-&gt;&gt;DB: 5. check booking changes
+    H-&gt;&gt;X: 6. answers in batches of about 20
+    X--&gt;&gt;H: JSON verdicts with model name
+    H-&gt;&gt;H: 7. score first runs, weight by template</pre>
+<p><em>How the held-out set is measured against a fresh database copy, never the live one.</em></p>
+<ol>
+<li>For each case the harness copies the seed database and adds its fixtures (an invoice, or a synthetic customer if none matches).</li>
+<li>Sonnet 5.5 plays the caller from the caller card and the transcript.</li>
+<li>The caller's turns go to the same agent core the web app uses, called directly with no web layer.</li>
+<li>The agent does its lookups and booking changes on the copy.</li>
+<li>Code checks the database changes against the expected outcome.</li>
+<li>Knowledge answers go to Codex in batches of about 20 for JSON verdicts; the author is told first so Codex is set to a frontier model.</li>
+<li>The first run of each case is scored, failures are retried once and reported as flaky if they then pass, and containment is weighted by each template's call count.</li>
+</ol>
+<h3>6. User flow</h3>
+<pre class="mermaid">flowchart TD
+    A["Open the site link"] --&gt;|"lands on"| B["Chat tab"]
+    B --&gt;|"clicks a suggested question or types"| C["Agent replies, sentence by sentence"]
+    B --&gt;|"opens"| R["Results tab"]
+    R --&gt;|"clicks a try-this scenario"| C
+    C --&gt;|"agent hands off"| T["Ticket number in the chat"]
+    T --&gt;|"badge appears"| SV["Staff view panel beside the chat"]
+    SV --&gt;|"opens a receipt"| HR["How this reply was made"]
+    SV --&gt;|"enters the shared password"| FQ["Full queue and flagging"]
+    C --&gt;|"keeps asking"| C</pre>
+<p><em>The reviewer's path: start chatting, try the scenarios from Results, cause a handoff, then inspect the ticket and the reply receipts beside the chat.</em></p>
+<h3>7. Login and permissions</h3>
+<pre class="mermaid">flowchart TD
+    A["Request arrives"] --&gt;|"no cookie"| B["New public visitor, signed cookie set"]
+    A --&gt;|"secret reviewer link, used once"| C["Reviewer session set, redirect to clean address"]
+    A --&gt;|"valid cookie"| D["Known visitor"]
+    D --&gt;|"chat and own Staff view"| E["Own conversations, tickets, receipts"]
+    D --&gt;|"correct shared password"| F["Staff session, 12 hours"]
+    F --&gt;|"may see"| G["All visitors' queue and flagging"]
+    D --&gt;|"5 wrong passwords in 15 minutes"| H["Sign-in locked for 15 minutes"]</pre>
+<p><em>Three levels of access: any visitor sees only their own session, the reviewer link adds a protected budget, and the shared password unlocks the full queue.</em></p>
+<p>The visitor cookie is signed, HttpOnly, Secure, SameSite=Lax and lasts 7 days. The reviewer link's token is checked once, turned into a signed reviewer session with the reserve budget, and the browser is redirected to the plain address so the token never stays in the address bar, history or logs. The reviewer token and the hashed staff password are Fly.io secrets, never in the repository. The flag form carries a token against forged requests. Phone numbers, emails and street addresses are masked at every level.</p>
+<h3>8. States</h3>
+<h4>8.1 Appointment slot status</h4>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; open: seeded
+    [*] --&gt; reserved_members: seeded
+    [*] --&gt; blocked: seeded
+    open --&gt; booked: any eligible caller books
+    reserved_members --&gt; booked: a member books
+    booked --&gt; open: cancelled or moved, seed says open or booked
+    booked --&gt; reserved_members: cancelled or moved, seed says members-only
+    booked --&gt; [*]: nightly reset restores seed
+    open --&gt; [*]: nightly reset restores seed</pre>
+<p><em>A slot can only be booked from open or members-only; a freed slot returns to its seed status, or to open if the seed itself shows it booked; the nightly reset restores every slot.</em></p>
+<h4>8.2 Conversation lifecycle</h4>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; open: first message in a tab
+    open --&gt; in_flow: router picks a flow
+    in_flow --&gt; open: flow finished
+    in_flow --&gt; handed_off: handoff or emergency
+    open --&gt; handed_off: handoff or emergency
+    handed_off --&gt; handed_off: more messages added to ticket
+    open --&gt; closed: 30 minutes idle or caller ends
+    in_flow --&gt; abandoned: 30 minutes idle mid-flow
+    handed_off --&gt; closed: 30 minutes idle</pre>
+<p><em>Conversations stay open across follow-ups, keep adding to their ticket after a handoff, and close after 30 idle minutes; a conversation idle in the middle of a flow counts as abandoned for live containment.</em></p>
+<h4>8.3 Ticket</h4>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; open: handoff, emergency or clean decline
+    open --&gt; open: later messages appended
+    open --&gt; closed: staff close it
+    closed --&gt; [*]</pre>
+<p><em>Tickets open on any handoff, gather later messages, and are closed by staff.</em></p>
+<h3>9. Data sent to outside services</h3>
+<pre class="mermaid">flowchart LR
+    CALLER["Caller's message"] --&gt;|"raw text"| MASK["Masking in code"]
+    MASK --&gt;|"phone, email, street masked"| LOG[("Operations database")]
+    CALLER --&gt;|"text plus facts chosen by code"| ANT["Anthropic"]
+    CALLER --&gt;|"question text only"| VOY["Voyage AI"]
+    LOG --&gt;|"answers and references, offline"| CDX["Codex, OpenAI"]
+    TR["Transcripts"] --&gt;|"template text, offline"| CDX
+    KB["Current documents"] --&gt;|"section text, offline"| VOY</pre>
+<p><em>What leaves the app: Anthropic sees the conversation and the facts code selected; Voyage sees questions and document sections; Codex sees transcripts and graded answers offline; logs keep only masked text.</em></p>
+<p>Anthropic receives the caller's own text (needed to understand and identify them) plus facts chosen by code; it never receives internal documents as written or database rows a flow does not need. All customer data is synthetic, but the habits are production ones: internal documents are never sent as written (only paraphrased rules), the model never receives database rows beyond the facts a flow needs, logs are masked and purged after 30 days, and keys live only in <code>.env</code> locally and Fly.io secrets in production.</p>
+<h3>10. Background jobs and alerts</h3>
+<pre class="mermaid">flowchart TD
+    CLK["Real-time clock, Austin"] --&gt;|"03:00 nightly"| RST["Nightly reset of scheduling tables"]
+    CLK --&gt;|"daily"| PRG["Purge logs older than 30 days"]
+    START["App startup"] --&gt;|"was a reset missed?"| RST
+    RST --&gt;|"takes the gate exclusively, one transaction from seed"| SDB[("Scheduling database")]
+    RST --&gt;|"result ok, retried or failed"| JR[("Job runs")]
+    PRG --&gt;|"deletes old, unflagged conversations"| ODB[("Operations database")]
+    MON["Error, write and spend counters"] --&gt;|"threshold crossed"| AL["Alert webhook to the author"]
+    RST --&gt;|"failed after one retry"| AL
+    FLY["Fly.io health check"] --&gt;|"no answer"| AL2["Fly restarts the machine"]
+    UPM["Outside uptime monitor"] --&gt;|"no answer"| AL3["Downtime alert to the author"]</pre>
+<p><em>Two scheduled jobs and the alerting paths; the reset waits for a lock, runs at startup if missed, and alerts after one failed retry.</em></p>
+<ol>
+<li>At 03:00 Austin time the reset takes the app-wide gate exclusively (every message handler holds it shared, so messages arriving meanwhile wait, and the reset waits for messages in progress to finish), replaces the scheduling tables from the seed copy in one transaction, records the run, and releases the gate.</li>
+<li>If the app starts and the last successful reset is older than the most recent 03:00, the reset runs immediately.</li>
+<li>A failed reset is retried once, then the author is alerted and the dashboard shows it.</li>
+<li>The daily purge deletes conversations older than 30 days with their messages, receipts and model calls, except conversations with a flag, which are kept until exported.</li>
+<li>Alerts fire on 3 or more errors in 10 minutes (or over 20 percent of at least 10 messages), any failed database write, a failed reset, and daily spend passing $5; Fly.io's health check restarts the machine if the health endpoint stops answering, and a free outside uptime monitor alerts the author about downtime, which the app cannot report while it is down.</li>
+</ol>
+<h3>11. Deployment</h3>
+<pre class="mermaid">flowchart LR
+    DEV["Author's laptop"] --&gt;|"quick test run, then deploy"| BUILD["Fly.io builds the image"]
+    BUILD --&gt;|"code, search index, seed copy"| M["One always-on machine, one worker"]
+    SEC["Fly.io secrets"] --&gt;|"API keys, reviewer token, password hash"| M
+    VOL[("Attached disk")] --&gt;|"scheduling and operations databases"| M
+    SNAP["Daily disk snapshot"] --&gt;|"restore if needed"| VOL
+    INET["Public internet"] --&gt;|"HTTPS requests"| M</pre>
+<p><em>One machine with one disk: each release carries the code, search index and seed copy, so rolling back a release rolls back prompts and index together.</em></p>
+<p>Rollback runbook (in the README, practised once): roll back to the previous Fly.io release; if data is damaged, restore the disk from the latest daily snapshot; the nightly reset rebuilds the scheduling data from the seed in any case.</p>
+<h3>12. Code structure</h3>
+<pre class="mermaid">flowchart TB
+    WEB["web: routes, pages, stream, staff auth"] --&gt;|"calls"| CORE["core: conversation engine"]
+    CORE --&gt;|"calls"| SAFE["safety"]
+    CORE --&gt;|"calls"| ROUTE["routing"]
+    CORE --&gt;|"calls"| KNOW["knowledge"]
+    CORE --&gt;|"calls"| ACCT["accounts"]
+    CORE --&gt;|"calls"| SCHED["scheduling"]
+    CORE --&gt;|"calls"| HAND["handoff"]
+    CORE --&gt;|"calls"| REPLY["replies: writer and checks"]
+    CORE --&gt;|"records to"| OPS["ops: logs, limits, alerts, jobs"]
+    EVAL["eval: harness, simulator, grader"] --&gt;|"drives"| CORE
+    PIPE["pipeline: templates, labels, index, findings"] --&gt;|"produces data for"| KNOW</pre>
+<p><em>Every package depends on the core only through plain function calls; the offline evaluation drives the same core the web uses.</em></p>
+<table>
+<thead><tr><th>Folder</th><th>Contents</th></tr></thead>
+<tbody>
+<tr><td><code>app/web/</code></td><td>Page routes, the chat stream, the Staff view, cookie and staff-password handling</td></tr>
+<tr><td><code>app/core/</code></td><td>Conversation engine, conversation state, the pipeline order</td></tr>
+<tr><td><code>app/safety/</code></td><td>Emergency patterns, normalisation, fixed safety replies</td></tr>
+<tr><td><code>app/routing/</code></td><td>Haiku router call and its structured result</td></tr>
+<tr><td><code>app/knowledge/</code></td><td>Index loading, keyword and meaning search, rank fusion, threshold</td></tr>
+<tr><td><code>app/accounts/</code></td><td>Identity checks, invoice, membership and system lookups, fee-mismatch check</td></tr>
+<tr><td><code>app/scheduling/</code></td><td>Slot eligibility, alternatives, booking, reschedule and cancel transactions, seed lookups</td></tr>
+<tr><td><code>app/handoff/</code></td><td>Tickets, reason tags, appending later messages</td></tr>
+<tr><td><code>app/replies/</code></td><td>Sonnet writer, reply types, sentence checks, internal-text match</td></tr>
+<tr><td><code>app/ops/</code></td><td>Operations database, logging and masking, spending and rate limits, alerts, nightly reset, purge</td></tr>
+<tr><td><code>app/config.py</code></td><td>Pinned model IDs, fixed "now", thresholds and limits</td></tr>
+<tr><td><code>pipeline/</code></td><td>Template grouping, labeling sheets, Codex labeling, document list, conflict register, index build, and the findings document <code>docs/FINDINGS.md</code> (ranking table, human baselines, scope lists, executive findings)</td></tr>
+<tr><td><code>eval/</code></td><td>Test-set builder (caller cards, fixtures), simulator, Codex grader, metrics and reports</td></tr>
+<tr><td><code>data/</code></td><td>Document list, conflict register, built index, labels, test set, results</td></tr>
+<tr><td><code>tests/</code></td><td>Unit and flow tests run by <code>python -m pytest</code></td></tr>
+</tbody>
+</table>
+<h3>13. Evaluation files</h3>
+<p>The test evidence is kept as versioned files in <code>data/</code>, so held-out isolation and scoring can be checked by anyone reading the repository.</p>
+<table>
+<thead><tr><th>File</th><th>What it holds</th></tr></thead>
+<tbody>
+<tr><td><code>data/templates.csv</code></td><td>Each transcript's template id, the template's call count, and the reviewed merge list</td></tr>
+<tr><td><code>data/labels.csv</code></td><td>Haiku's, Codex's and the author's call reason per template, with the Codex model name</td></tr>
+<tr><td><code>data/split.json</code></td><td>The random seed, the working and held-out template lists, and a hash of the held-out test cases recorded when they were frozen</td></tr>
+<tr><td><code>data/testset/&lt;case&gt;.json</code></td><td>One test case: template, caller card, fixtures, expected outcome, expected handoff reason, reference answer and its document line spans</td></tr>
+<tr><td><code>data/results/&lt;run&gt;/attempts.jsonl</code></td><td>One line per attempt: case, attempt number, first-run flag, conversation, database checks, model ids and settings, grader verdict and grader model</td></tr>
+<tr><td><code>data/results/&lt;run&gt;/summary.json</code></td><td>The computed numbers and their intervals for that run</td></tr>
+<tr><td><code>data/grader_check.csv</code></td><td>The pre-chosen sample, the author's blind grades and the grader's verdicts</td></tr>
+</tbody>
+</table>
+<p>The held-out hash is recorded in git before any tuning; the final run checks the files still match it.</p>
+<h3>14. Diagrams added or skipped</h3>
+<ul>
+<li>System overview, main parts, both database diagrams, seven request flows and the user flow: always drawn.</li>
+<li>Login and permissions: added, because of the visitor cookie, reviewer link and staff password.</li>
+<li>State diagrams: added for slot status, conversation lifecycle and tickets, which all change over time.</li>
+<li>Data flow: added, because text goes to Anthropic, Voyage and Codex.</li>
+<li>Background jobs: added, for the nightly reset, log purge and alerts.</li>
+<li>Deployment: added, for the Fly.io machine, disk, secrets and snapshots.</li>
+<li>Code structure: added, because there are more than five packages.</li>
+<li>API map: skipped, because no separate front end or outside system calls the app; the pages and the chat stream are served by the same app.</li>
+<li>Business process: skipped as a separate diagram; the handoff to staff is shown in the Staff view flow and the ticket states.</li>
+</ul>
+<h3>15. Trade-offs and what to revisit</h3>
+<ul>
+<li><strong>One machine, one worker.</strong> Simple and enough for a demo; a real deployment would need a second machine and a scheduler outside the web process.</li>
+<li><strong>SQLite.</strong> Matches the provided data and keeps everything on one disk; many simultaneous writers would need a server database.</li>
+<li><strong>Index shipped in the release.</strong> Rebuilding the index means a new release, which is fine for 17 documents and makes rollback complete; a large, often-edited knowledge base would need a separate index service.</li>
+<li><strong>Sentence-by-sentence release.</strong> Safer than word-by-word streaming, at the cost of about a second before the first words appear.</li>
+<li><strong>Fixed patterns for safety.</strong> Predictable and testable, but they need the adversarial set to cover paraphrases and speech-to-text errors.</li>
+</ul>
+<h3>Glossary</h3>
+<ul>
+<li><strong>Web application:</strong> the program that serves the pages and answers chat messages.</li>
+<li><strong>FastAPI:</strong> a Python framework for building web applications.</li>
+<li><strong>Worker process:</strong> one running copy of the web application handling requests.</li>
+<li><strong>Server-sent events:</strong> a way for a server to keep pushing text to a browser over one open connection.</li>
+<li><strong>SQLite:</strong> a database stored in a single file, with no separate database server.</li>
+<li><strong>Write-ahead logging:</strong> a SQLite mode that lets reads continue while a write is happening.</li>
+<li><strong>Seed copy:</strong> an untouched copy of the original scheduling database used for the nightly reset and to restore slots.</li>
+<li><strong>Operations database:</strong> the second database holding logs, tickets, costs and job records.</li>
+<li><strong>Transaction:</strong> a group of database changes that all happen together or not at all.</li>
+<li><strong>Router:</strong> the step that decides which flow a message belongs to.</li>
+<li><strong>Flow:</strong> a conversation path with fixed steps and rules enforced in code.</li>
+<li><strong>Reply type:</strong> a fixed shape for a reply (such as a price answer or a booking confirmation) that the writer must fill.</li>
+<li><strong>Reciprocal-rank fusion:</strong> a way to merge two ranked result lists by giving each item points based on its position in each list.</li>
+<li><strong>Embedding:</strong> a list of numbers representing a text's meaning, used for meaning-based search.</li>
+<li><strong>Receipt:</strong> the stored explanation of how a reply was made.</li>
+<li><strong>Ticket:</strong> the record of a handed-off conversation for staff.</li>
+<li><strong>Signed cookie:</strong> a small browser-stored value the server can verify was not altered.</li>
+<li><strong>HttpOnly, Secure, SameSite:</strong> cookie settings that hide it from page scripts, send it only over HTTPS, and limit it to this site.</li>
+<li><strong>Forged request:</strong> a request another site tricks a logged-in browser into sending; a form token blocks it.</li>
+<li><strong>Webhook:</strong> a web address the app calls to deliver a message, such as an alert.</li>
+<li><strong>Health endpoint:</strong> a web address the host checks regularly to confirm the app is alive.</li>
+<li><strong>Fly.io secret:</strong> a setting such as a key stored by the host, not in the code.</li>
+<li><strong>Disk snapshot:</strong> a saved copy of the attached disk that can be restored.</li>
+<li><strong>Release:</strong> one deployed version of the app; rolling back returns to the previous release.</li>
+<li><strong>Fixture:</strong> prepared test data added to a database copy for one test case.</li>
+<li><strong>Simulated caller:</strong> an AI playing the customer in a test conversation.</li>
+<li><strong>Template:</strong> a call pattern repeated across many transcripts with only details changed.</li>
+<li><strong>Masking:</strong> replacing phone numbers, emails and street addresses with placeholders.</li>
+<li><strong>Microdollar:</strong> one millionth of a dollar, used to add up small AI costs exactly.</li>
+<li><strong>Reset gate:</strong> a lock inside the app that every message holds briefly and the nightly reset holds alone, so they never overlap.</li>
+<li><strong>Confirmation id:</strong> a one-time id attached to a read-back so a repeated "yes" cannot book twice.</li>
+<li><strong>Uptime monitor:</strong> an outside service that regularly checks the site and alerts when it stops answering.</li>
+<li><strong>Hash:</strong> a short fingerprint of a file; if the file changes, the fingerprint changes.</li>
+</ul>
+</section>
+<section id="decisions">
+<h2>Decisions</h2>
+<p>Every material decision for this project, in the order it was made. A model can only propose a decision; only the author settles one.</p>
+<h3>D1: If the honestly measured containment rate (the share of calls the agent finishes without a human) comes out below the PRD's 60 to 75 percent target, what do we report?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Report the honest number with the reason and the ceiling (the share of calls whose reason the agent handles)</li>
+<li>Widen the agent's scope to more call reasons until the number reaches 60 percent</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/PRD_REVIEW.md">docs/PRD_REVIEW.md</a>: Finding F2: the target may be unreachable without answering calls the agent should hand off, which breaks the PRD's rule 'Do not let the agent guess'.</li>
+<li><a href="https://www.twig.so/blog/voice-ai-agents-metrics-csat-aht-containment">https://www.twig.so/blog/voice-ai-agents-metrics-csat-aht-containment</a>: Industry sources warn that containment alone misleads: a confident wrong answer still counts as contained.</li>
+</ul></li>
+<li><strong>Choice:</strong> Report the honest number with the reason and the ceiling; still choose the scope to cover as many calls as safely possible.</li>
+<li><strong>Reason:</strong> The PRD judges 'Is the containment number real?' and says 'a confident wrong answer is worse than a handoff'. Reporting a lower honest number still meets the literal requirement to measure and report containment; it only risks missing the target, which the review flagged as possibly unreachable.</li>
+</ul>
+<h3>D2: How do we choose which call reasons the agent handles and which it hands to a human?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "How do we choose which call reasons the agent handles, while meeting the PRD's 'answer the top 3 call drivers' word for word?" (D12)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Pick from the transcripts by volume, leaving out risky reasons, and always handle scheduling</li>
+<li>Pick three knowledge-base reasons and add scheduling as a fourth</li>
+<li>Let the exec team's guesses decide</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/PRD_REVIEW.md">docs/PRD_REVIEW.md</a>: Finding F3: 'top 3 call drivers' may or may not include scheduling, and a common reason may be unsafe to automate.</li>
+<li><a href="https://alhena.ai/blog/ai-to-human-handoff/">https://alhena.ai/blog/ai-to-human-handoff/</a>: Hand off when the AI cannot, the customer will not, or the AI should not (high stakes).</li>
+</ul></li>
+<li><strong>Choice:</strong> Choose from the transcripts, ranked by volume. A common reason that is risky to automate (emergencies, billing disputes, complaints) is escalated. Scheduling counts as one of the three handled reasons if it ranks there and is handled anyway if it does not.</li>
+<li><strong>Reason:</strong> The PRD says the transcripts, not the exec team, show what matters, and judges 'Judgment on scope'. Scheduling is a required competency. This meets the PRD's 'top 3 call drivers' requirement as long as three handled reasons come from the ranked list; if one of the top three is unsafe, the next one down is handled instead and the reason is documented.</li>
+</ul>
+<h3>D3: Do we build the voice extra credit (answering real phone calls)?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Leave it out of the plan; try it only if every required goal is built, tested and deployed with a day to spare</li>
+<li>Plan it from the start alongside the chat agent</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/PRD_REVIEW.md">docs/PRD_REVIEW.md</a>: Finding F32: voice is about two to four days of work on its own; the project has four working days.</li>
+<li><a href="docs/MODEL_RESEARCH.md">docs/MODEL_RESEARCH.md</a>: Voice needs replies in under about a second, a phone provider, and speech-to-text and text-to-speech.</li>
+</ul></li>
+<li><strong>Choice:</strong> Leave voice out of the plan and list it under open questions. Build the agent core to take text in and give text out, independent of the chat screen, so a phone front end can be added later without a rebuild.</li>
+<li><strong>Reason:</strong> Voice is extra credit; the PRD says a chat agent 'is still a complete submission' and 'a smaller system that works and is measured beats a larger one'. Leaving it out drops no required item.</li>
+</ul>
+<h3>D4: Where do we host the public web app?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Fly.io: one small always-on server with an attached disk, about $2 to $3 a month</li>
+<li>Render free plus a free Turso hosted database: free, but sleeps and takes 30 to 60 seconds to wake</li>
+<li>Oracle Cloud Always Free server: free, but the most setup and signup capacity problems</li>
+<li>Hugging Face Spaces: free, but sleeps and loses its files</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="https://fly.io/pricing.md">https://fly.io/pricing.md</a>: Pay as you go; small machine about $2 a month, disk $0.15 per GB a month; free allowance ended October 2024 for new accounts.</li>
+<li><a href="https://snapdeploy.dev/state-of-free-hosting">https://snapdeploy.dev/state-of-free-hosting</a>: Render free sleeps after 15 minutes; Hugging Face free disk is not kept; Railway is effectively paid after a trial.</li>
+<li><a href="https://infoq.com/news/2026/07/oracle-cloud-free-tier-limits/">https://infoq.com/news/2026/07/oracle-cloud-free-tier-limits/</a>: Oracle cut its free server allowance in mid-2026 with inconsistent enforcement.</li>
+</ul></li>
+<li><strong>Choice:</strong> Fly.io, with the SQLite booking database on an attached disk.</li>
+<li><strong>Reason:</strong> The data README says the reviewer tests against the same database and bookings must actually write to it, so the database must survive restarts. The reviewer opens the URL first, so the app should not sleep. Fly.io also supports the always-open connections a phone call would need later. Cost is small next to the AI spending.</li>
+</ul>
+<h3>D5: Which AI models and services does the project use?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Claude Sonnet 5.5 for the conversation, Claude Haiku 5.5 for sorting transcripts, an OpenAI model for grading, Voyage AI for embeddings, a $5 daily spending cap</li>
+<li>Claude Opus 5.5 or Fable 5.1 for the conversation</li>
+<li>A Google or OpenAI model for the conversation</li>
+<li>An embedding model running on our own server</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="https://openrouter.ai/benchmarks/tau2-bench-airline">https://openrouter.ai/benchmarks/tau2-bench-airline</a>: Customer service benchmark run 2026-10-16: Sonnet 5.5 78.0% at $0.16 a task in 82 seconds; Opus 5.5 75.8% at $0.33; Fable 5.1 79.2% at $0.72; Haiku 5.5 75.3% at $0.012. The top twenty are within about five points, which is mostly noise.</li>
+<li><a href="https://arxiv.org/abs/2601.00596">https://arxiv.org/abs/2601.00596</a>: JourneyBench: an agent whose steps are controlled by code follows policy better than a larger model given one long prompt.</li>
+<li><a href="docs/MODEL_RESEARCH.md">docs/MODEL_RESEARCH.md</a>: Full comparison, industry measures and best practices.</li>
+</ul></li>
+<li><strong>Choice:</strong> Claude Sonnet 5.5 runs the conversation; Claude Haiku 5.5 sorts the 420 transcripts by call reason; an OpenAI model (picked in the spec) grades test answers; Voyage AI's free allowance provides embeddings; AI spending has a hard cap of about $5 a day, after which the agent hands off.</li>
+<li><strong>Reason:</strong> Sonnet 5.5 is in the top group, fastest of it, and half the price of Opus 5.5, and speed matters for a waiting caller. Grading with another company's model avoids the agent grading its own work. A hosted embedding service keeps the server small. The spending cap protects a public URL that reviewers will try to break.</li>
+</ul>
+<h3>D6: How do we stop reviewers' test bookings from filling the calendar on the public site?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Reset the one real database to its original seeded data every night</li>
+<li>Give each visitor a separate copy of the database</li>
+<li>Never reset</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="call_data/README.md">call_data/README.md</a>: 'The reviewer will test the live agent against the same database, so bookings must actually write to it.'</li>
+<li><a href="docs/PRD_REVIEW.md">docs/PRD_REVIEW.md</a>: Finding F4: reviewers trying to break the site can book every slot, so the next visitor sees no availability.</li>
+</ul></li>
+<li><strong>Choice:</strong> Write every booking to the one real database, and restore the original seeded data once a night.</li>
+<li><strong>Reason:</strong> A separate copy per visitor would break the data README's rule that bookings write to the same database. A nightly reset keeps that rule, keeps bookings visible until midnight, and keeps the scheduling demo working for every reviewer.</li>
+</ul>
+<h3>D7: How does the agent deal with knowledge-base documents that are outdated, duplicated, internal-only or contradictory?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "How does the agent deal with knowledge-base documents that are outdated, duplicated, placeholders, internal-only or contradictory?" (D22)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Settle conflicts once when building the search index: leave stale documents out with a written list, use internal notes as hidden rules, hand off account-specific and still-conflicting questions</li>
+<li>Index everything and let the agent prefer the newest document at answer time</li>
+<li>Index everything and let the agent hand off whenever two results disagree</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="call_data/README.md">call_data/README.md</a>: 'Some documents are current, some are not, and some contradict each other.' The internal folder 'should not be read verbatim to customers.'</li>
+<li><a href="call_data/knowledge_base/">call_data/knowledge_base/</a>: Current files are dated; stale ones (archive folder, old FAQ copy) are undated and give wrong fees, warranty terms, membership prices and transfer rules.</li>
+<li><a href="https://blog.premai.io/rag-evaluation-metrics-frameworks-testing-2026">https://blog.premai.io/rag-evaluation-metrics-frameworks-testing-2026</a>: An answer can be faithful to its retrieved document and still be wrong if that document is out of date.</li>
+</ul></li>
+<li><strong>Choice:</strong> Leave the archive folder and the undated old FAQ copy out of search, with a written list of every excluded document and why; turn the internal agent notes into hidden rules (no firm prices, no refunds, hand off fee waivers and discounts); hand off questions that depend on the caller's own account unless the database answers them; hand off if two current documents still disagree.</li>
+<li><strong>Reason:</strong> Deciding at index time makes the behaviour testable and repeatable instead of depending on the model's judgement on each call, and the exclusion list documents the traps that the PRD judges ('Did you catch the traps?'). Fee waivers and discounts need a human's authority. No required item is dropped: the top handled call reasons are still answered from the current documents.</li>
+</ul>
+<h3>D8: Who judges whether each test conversation was resolved correctly?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Code checks bookings and handoffs; an OpenAI grader checks knowledge answers against reference answers from the current documents; the author hand-grades about 30 to measure grader agreement</li>
+<li>An AI grader judges everything</li>
+<li>The author hand-grades everything</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/PRD_REVIEW.md">docs/PRD_REVIEW.md</a>: Findings F10, F20 and F21: 'resolved' is undefined, transcript answers may be outdated, and grading with the agent's own model flatters it.</li>
+<li><a href="https://blog.premai.io/rag-evaluation-metrics-frameworks-testing-2026">https://blog.premai.io/rag-evaluation-metrics-frameworks-testing-2026</a>: Pair automated scoring with human review of a representative sample.</li>
+</ul></li>
+<li><strong>Choice:</strong> Bookings and handoffs are checked by code; knowledge answers are graded by an OpenAI model against reference answers written from the current documents (drafted by Claude, spot-checked by the author); the author hand-grades about 30 answers and the agreement rate is reported.</li>
+<li><strong>Reason:</strong> Code checks are exact where an exact answer exists. A different company's grader avoids self-grading. The hand-graded sample turns 'the grader is right' from a claim into a measured number, which the PRD asks for ('Show the numbers, not just the claim'). Reference answers come from current documents because staff in the transcripts may have quoted outdated policy.</li>
+</ul>
+<h3>D9: What does a handoff to a human look like when there are no real staff behind the agent?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>A plain message to the caller plus a ticket on a staff page that shares a screen with the monitoring dashboard</li>
+<li>A message to the caller only</li>
+<li>A separate staff application</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="https://alhena.ai/blog/ai-to-human-handoff/">https://alhena.ai/blog/ai-to-human-handoff/</a>: A clean handoff carries identity, intent, prior attempts, constraints and emotional state; 4 of 15 live deployments tested in 2026 passed no context.</li>
+<li><a href="docs/PRD_REVIEW.md">docs/PRD_REVIEW.md</a>: Finding F13: 'hands off with enough context' implies something visible the reviewer can check.</li>
+</ul></li>
+<li><strong>Choice:</strong> Tell the caller plainly what is happening, and create a ticket with the five handoff fields shown on a staff page that shares a screen with the monitoring dashboard.</li>
+<li><strong>Reason:</strong> Makes the PRD's 'hands off with enough context that a human can pick up without starting over' visible and checkable by the reviewer, at about half a day, by reusing the dashboard screen the monitoring requirement needs anyway.</li>
+</ul>
+<h3>D10: How is the agent built?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>A: one AI with four tools and the policy in its instruction prompt</li>
+<li>B: a router that sorts each message into a handled call reason, scheduling or handoff, then code-controlled flows for each</li>
+<li>C: a reviewed answer bank for the top questions, with the AI only rephrasing and running bookings</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="https://arxiv.org/abs/2601.00596">https://arxiv.org/abs/2601.00596</a>: JourneyBench: agents whose policy steps are controlled in code follow policy far better than larger models given the whole policy in one prompt.</li>
+<li><a href="docs/MODEL_RESEARCH.md">docs/MODEL_RESEARCH.md</a>: Best practice: keep actions narrow and checked in code; ground every factual answer in a retrieved passage and hand off when none supports it.</li>
+</ul></li>
+<li><strong>Choice:</strong> B: router plus code-controlled flows. Scheduling runs as fixed steps checked in code (identify customer, choose service, offer slots matching zone and membership, read back, book); knowledge answers come only from retrieved passages and hand off on low retrieval confidence or no supporting passage; handoff builds a five-field ticket. The AI writes every reply.</li>
+<li><strong>Reason:</strong> The PRD rewards clean failure and evidence. B is the only option where booking rules and refusals cannot be argued around and where each part (routing, retrieval, answers, bookings, handoffs) has its own measured number. It meets every required item; C was rejected because it bends the literal requirement to build a retrieval pipeline with deliberate chunking, embedding and retrieval choices.</li>
+</ul>
+<h3>D11: Should the chat offer common questions up front, combining the router approach with a menu of common questions?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "Should the suggested-question buttons use cached answers, and what is cut first if time runs short?" (D16)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Router plus flows with suggested-question buttons: buttons send their question into the same flows, with answers generated from the documents at index-build time and cached</li>
+<li>Buttons that show pre-written canned answers (the rejected answer-bank approach)</li>
+<li>No buttons; free text only</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/DESIGN.md">docs/DESIGN.md</a>: The answer-bank approach was rejected because it bends the PRD's requirement to answer through a retrieval pipeline; buttons that are shortcuts into the same flows avoid that.</li>
+<li><a href="docs/PRD.md">docs/PRD.md</a>: Reviewers 'will ask their own questions and try to break it', so the free-text path must still be fully built and is what the test set measures.</li>
+</ul></li>
+<li><strong>Choice:</strong> Keep the router and code-controlled flows, and add 4 to 6 suggested-question buttons chosen from the discovery ranking. A click sends that question straight to its flow (skipping only the router); its answer is generated from retrieved documents when the index is built and cached, and refreshed on every rebuild. The free-text box stays.</li>
+<li><strong>Reason:</strong> Faster for callers (one click, instant reply), no misrouting on common questions, and the reviewer sees at once what the agent handles. It keeps every answer grounded in the retrieval pipeline, so no PRD requirement is bent. Cost is about 2 to 3 hours; it does not shorten the build, because the free-text path is still required.</li>
+</ul>
+<h3>D12: How do we choose which call reasons the agent handles, while meeting the PRD's 'answer the top 3 call drivers' word for word?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Replaces:</strong> "How do we choose which call reasons the agent handles and which it hands to a human?" (D2)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Answer the knowledge part of every real top-three reason through document search; within a risky reason, answer the safe part and hand off the rest; show the observed top three and the agent's scope as two lists</li>
+<li>Choose three safe reasons from near the top of the ranking, skipping risky ones (the replaced rule)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/DESIGN_PRD_REVIEW.md">docs/DESIGN_PRD_REVIEW.md</a>: Codex: the replaced rule substitutes 'three safe reasons from near the top' for 'the top 3 call drivers' and may leave a real top-three reason unanswered through retrieval.</li>
+<li><a href="call_data/knowledge_base/policies/escalation_and_safety.md">call_data/knowledge_base/policies/escalation_and_safety.md</a>: Lists what agents can resolve directly (scheduling changes, explaining invoice line items, payment links, membership, warranty, service area and hours) and what goes to a supervisor (billing disputes, refunds, complaints).</li>
+</ul></li>
+<li><strong>Choice:</strong> Rank call reasons by volume. For each of the real top three, the agent answers its knowledge questions through document search, including policy questions inside scheduling calls (cancellation fees, windows); bookings use the database. If a top-three reason has risky parts (a billing dispute, a refund), the agent answers the safe part (such as explaining invoice line items) and hands off the rest. Scheduling is handled whatever its rank. The findings document shows the observed top three and the agent's scope as two lists, and any gap goes to the PM.</li>
+<li><strong>Reason:</strong> Meets the PRD's 'retrieval pipeline that lets the agent answer the top 3 call drivers accurately' word for word, while keeping the rule that risky requests go to a human. The replaced rule could leave a required top-three driver unanswered.</li>
+</ul>
+<h3>D13: Are rescheduling, cancelling and confirming existing appointments part of the core scope?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Yes: all three in the core scheduling flow, kept narrow and never cut</li>
+<li>Only if discovery shows they are common (the earlier design)</li>
+<li>No: new bookings only, as the PRD's minimum bar</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="call_data/scheduling_db/SCHEMA.md">call_data/scheduling_db/SCHEMA.md</a>: Lists 'Reschedule / cancel: update the existing appointment and free the old slot' and 'Confirm: look up scheduled appointments' as expected agent behavior.</li>
+<li><a href="call_data/knowledge_base/policies/escalation_and_safety.md">call_data/knowledge_base/policies/escalation_and_safety.md</a>: 'What agents can resolve directly: Scheduling, rescheduling, cancelling, and confirming appointments.'</li>
+<li><a href="docs/DESIGN_PRD_REVIEW.md">docs/DESIGN_PRD_REVIEW.md</a>: Codex: making these conditional turns required data behavior into an option; the reviewer can test the seeded appointment immediately.</li>
+</ul></li>
+<li><strong>Choice:</strong> Confirm (look up scheduled appointments), cancel (free the old slot in the same database transaction; inside 24 hours state the $49 late fee from the current FAQ, and hand off any waiver request) and reschedule (book the new slot and free the old one together) are core and never cut.</li>
+<li><strong>Reason:</strong> The data's schema and the company's own policy treat them as standard agent work, and the reviewer can test them with seeded customer Linda Foster's appointment. About half a day, reusing the booking steps. This adds scope beyond the PRD's minimum bar but does not depart from any requirement.</li>
+</ul>
+<h3>D14: Who provides the independent ground-truth call-reason labels that the router and the discovery ranking are checked against?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "Who provides the independent ground-truth call-reason labels?" (D18)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>The author labels about 27 of an 80-transcript sample; an OpenAI frontier model run through the author's Codex subscription labels all 80; the author's labels check the frontier model</li>
+<li>The author hand-labels all 80</li>
+<li>Only the AI that produced the discovery labels (circular)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/DESIGN_PRD_REVIEW.md">docs/DESIGN_PRD_REVIEW.md</a>: Codex: grading the router against Haiku's own held-out labels measures agreement between related model judgments, not accuracy against independent truth.</li>
+</ul></li>
+<li><strong>Choice:</strong> Draw an 80-transcript sample (40 working set, 40 held-out) spread across call reasons. An OpenAI frontier model run through Codex (the author's subscription, no API cost; the author switches Codex to a frontier model when told labeling is starting) labels all 80 without seeing Haiku's labels. The author labels about 27 of them without seeing either AI's labels. Report author-versus-frontier agreement, frontier-versus-Haiku agreement, and router accuracy on the held-out 40 against the frontier labels, with the author's label winning where present. The README states that about two-thirds of ground-truth labels are model labels checked against the author's.</li>
+<li><strong>Reason:</strong> Makes router and discovery accuracy independent of the model being measured, at no API cost, and fits the author's available time (about 25 minutes). The frontier model is from a different company than the Claude models used for discovery and routing.</li>
+</ul>
+<h3>D15: How is the OpenAI grader run?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Through Codex under the author's subscription, offline, in batches, with the model name recorded and an API fallback setting</li>
+<li>Through the OpenAI API at about $1 to $3 per full test run</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/MODEL_RESEARCH.md">docs/MODEL_RESEARCH.md</a>: Grading with a different company's model avoids the agent grading its own work.</li>
+</ul></li>
+<li><strong>Choice:</strong> Grade test answers with an OpenAI model run through Codex on the author's laptop, about 20 answers per call, recording the model name with every result. An API setting stays as a fallback. The author is reminded to set Codex to a frontier model before each graded run. The OpenAI API key becomes optional.</li>
+<li><strong>Reason:</strong> The author prefers no additional API cost and already has a Codex subscription. Grading is offline and never runs on the live site, so slower runs are acceptable. The grader is still from a different company than the agent, as the grading decision (D8) requires.</li>
+</ul>
+<h3>D16: Should the suggested-question buttons use cached answers, and what is cut first if time runs short?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "What is simplified up front, and what is cut first if time runs short?" (D23)</li>
+<li><strong>Replaces:</strong> "Should the chat offer common questions up front, combining the router approach with a menu of common questions?" (D11)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-16</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Keep the buttons without cached answers (a click sends the question through the live flow, skipping only the router), cut them first if time runs short, and protect a never-cut list of required evidence</li>
+<li>Keep buttons with cached answers (the replaced decision)</li>
+<li>Drop the buttons</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/DESIGN_PRD_REVIEW.md">docs/DESIGN_PRD_REVIEW.md</a>: Codex: cached button answers add a second answer path that no requirement needs, and the earlier cut order removed evidence before interface polish.</li>
+</ul></li>
+<li><strong>Choice:</strong> Keep 4 to 6 suggested-question buttons that send their question through the live flow with the router skipped; no cached answers. Cut order if time runs short: the buttons, then the cost-per-conversation breakdown, the consistency runs, the extra measures beyond the core retrieval and answer set, the adversarial set down to 15 cases, then the threshold curve. Never cut: deployment, the top-driver findings, retrieval evaluation, booking with rescheduling, cancelling and confirming, emergency replies, handoff tickets, the PRD's required numbers, health checks, the README and the video.</li>
+<li><strong>Reason:</strong> Keeps the one-click benefit for about 1 hour instead of 2 to 3, removes the second answer path, and makes sure evidence the reviewer judges is never traded for polish.</li>
+</ul>
+<h3>D17: Does the agent answer questions about the caller's own account from the database?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Yes: three read-only lookups (open invoices with balance, due date and line items; membership tier and renewal date; system brand and install date); every action that changes money or membership hands off and is reported as an action gap</li>
+<li>No: hand off every account question</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: Fresh review: by a rough count the top three call reasons are booking (31%), billing (18%) and membership (18%); most billing and membership calls are balance, renewal-date and install-date lookups or actions. Without lookups the rough containment ceiling is about 55%; with them about 65%.</li>
+<li><a href="call_data/scheduling_db/SCHEMA.md">call_data/scheduling_db/SCHEMA.md</a>: Seeded customer Omar Patel 'Has open invoice INV-204411 for $478.00'.</li>
+</ul></li>
+<li><strong>Choice:</strong> Add three read-only lookups after the caller is identified: open invoices (balance, due date and line items, read exactly as recorded), membership tier and renewal date, and system brand and install date. Payment links, autopay, cancelling auto-renew, upgrades, enrolment and anything else that changes money or membership hand off with a ticket, and are reported in the containment ceiling as the action gap. This extends the top-three scope rule (D12): top-three reasons are answered from documents and these lookups.</li>
+<li><strong>Reason:</strong> Matches what callers actually ask in the transcripts and lifts the rough ceiling into the PRD's 60 to 75 percent range with no added risk, because lookups only read. About half a day.</li>
+</ul>
+<h3>D18: Who provides the independent ground-truth call-reason labels?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Replaces:</strong> "Who provides the independent ground-truth call-reason labels that the router and the discovery ranking are checked against?" (D14)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Label the roughly 80 transcript templates: Codex (frontier model) labels all of them and the author labels about a third blind to check it</li>
+<li>Label an 80-transcript sample three ways (the replaced decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: The 420 calls come from about 80 templates (77 distinct opening requests after removing names, numbers and filler, checked by Claude). Labeling templates gives labels for all 420 calls; router accuracy on only 40 calls has a margin of error of about plus or minus 9 points.</li>
+</ul></li>
+<li><strong>Choice:</strong> Group the 420 transcripts by template. Codex, set to an OpenAI frontier model on the author's subscription (the author is told before it runs), labels every template without seeing Haiku's labels. The author labels about a third of the templates without seeing either AI's labels. Report author-versus-Codex and Codex-versus-Haiku agreement; router accuracy is measured on every held-out call, scored on the caller's first substantive message, with the author's label winning where present.</li>
+<li><strong>Reason:</strong> Labels all 420 calls at no API cost and about 25 minutes of the author's time, and makes the router-accuracy number meaningful.</li>
+</ul>
+<h3>D19: How does the agent treat a burning smell that is not reported with tripped breakers?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Urgent: a fixed reply in code and a priority handoff, never a normal booking</li>
+<li>Book a normal visit, as staff did in the transcripts</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="call_data/knowledge_base/policies/escalation_and_safety.md">call_data/knowledge_base/policies/escalation_and_safety.md</a>: Immediate danger includes 'Electrical burning smell combined with tripped breakers'.</li>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: 16 calls say 'I smell something burning from the vents'; staff booked normal visits; the troubleshooting guide's 'reset any tripped breaker' advice would be dangerous with a burning smell.</li>
+</ul></li>
+<li><strong>Choice:</strong> A burning smell on its own is urgent: a fixed reply written in code (turn the system off at the thermostat, do not reset breakers, leave the home if there is smoke) followed by a priority handoff; never booked as a normal visit, and breaker-reset advice is never given in the same conversation. All 16 such test cases are labeled this way. This also confirms that the fixed safety replies are written in code, an exception to the build decision's 'the AI writes every reply' (D10).</li>
+<li><strong>Reason:</strong> A confident booking for a possible fire hazard is worse than a handoff. Costs about 4 points of containment, reported openly.</li>
+</ul>
+<h3>D20: How are test cases built so the measured numbers mean something?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "How are test cases built so the measured numbers mean something (with the rehearsal on working-set cases)?" (D32)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Caller cards with real database customers, split by template, one weighted case per template, and a day-3 rehearsal</li>
+<li>Simulated callers read the transcripts as written, split by call reason</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: 0 of 131 transcript account numbers, 0 of 130 phone numbers and 0 of 42 invoice numbers exist in the database (Claude checked the account numbers). Splitting by call reason puts copies of the same template in both sets.</li>
+</ul></li>
+<li><strong>Choice:</strong> Each test case is tied to a real database customer matching the transcript's facts (zone, membership, brand, install age); the simulated caller gets a caller card with that customer's details, not the transcript's. Billing cases add their invoice to the fresh test database copy. Transcripts are grouped by template and split by template, so no template appears in both sets. The held-out run uses one case per template, weighted by its real call count; both calls and distinct scenarios are reported, with the margin of error on scenarios. A 10-case held-out rehearsal runs at the end of day 3, after which the agent is frozen.</li>
+<li><strong>Reason:</strong> Without real customers most test calls fail at identification and measure nothing; without a template split the held-out set leaks. About 5 to 6 hours, and it shrinks the held-out run from about 120 to about 50 to 60 conversations.</li>
+</ul>
+<h3>D21: Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule)?" (D27)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Fixed rules in code, as listed in the choice</li>
+<li>Leave these to the AI's judgment</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="call_data/knowledge_base/faq/customer_faq.md">call_data/knowledge_base/faq/customer_faq.md</a>: 'Cancellations or reschedules more than 24 hours before the window are free. Inside 24 hours there is a $49 late-cancellation fee.'</li>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: North zone has no plumbing slots and central has no estimate slots (Claude checked); Omar Patel's invoice charges $144 after-hours against the published $149 and an $89 diagnostic fee on top of a repair (Claude checked); seeded appointments include zone mismatches and overlapping afternoon bookings.</li>
+</ul></li>
+<li><strong>Choice:</strong> (1) 'Now' is one setting: 2026-10-16 09:00, Austin (US Central) time; windows that have started are never offered. (2) The $49 notice applies to both cancelling and rescheduling inside 24 hours; waiver requests hand off. (3) If no eligible slot exists in the three-week range for that zone and service, the agent says so plainly and hands off with a ticket, a clean decline. (4) A slot is refused if its technician is already booked in an overlapping window; existing appointments are left as recorded and the mismatches documented. (5) Invoice lines are read exactly as recorded and never called right or wrong; any questioned charge, or a fixed fee that differs from the current schedule, hands off as a billing dispute with the mismatch on the ticket. (6) The warranty-visit flag is set when the install date is within 2 years of now, or the caller reports a repeat failure of a part repaired within 1 year; otherwise 0. (7) Members are tiers standard or plus. (8) Callers are identified by account number, service address or phone together with their name, never by name alone. (9) Read-backs give date, window, service and technician only, never the stored issue text; new bookings record the fixed now. (10) No waitlist is promised.</li>
+<li><strong>Reason:</strong> Each rule closes a trap found in the data that a reviewer can hit with the seeded customers, and code rules cannot be argued around. About 5 to 7 hours in total.</li>
+</ul>
+<h3>D22: How does the agent deal with knowledge-base documents that are outdated, duplicated, placeholders, internal-only or contradictory?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Replaces:</strong> "How does the agent deal with knowledge-base documents that are outdated, duplicated, internal-only or contradictory?" (D7)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>An explicit document list and a conflict register decide what is searchable</li>
+<li>Folder and file-name rules (the replaced decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/DESIGN_PRD_REVIEW.md">docs/DESIGN_PRD_REVIEW.md</a>: The dated 2024 scheduling guide sits outside the archive folder and contradicts the current FAQ; an internal safety policy sits outside the internal folder.</li>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: The technician-delay document grants a fee waiver; the FAQ and the service-area document disagree on Dripping Springs and Manor; 'dated means current' is false for this knowledge base.</li>
+</ul></li>
+<li><strong>Choice:</strong> An explicit document list records each file's status (current, stale or placeholder), audience (customers or internal), effective date and reason. Left out of search: the archive folder, the old FAQ copy, the 2024 scheduling guide and the empty duct-cleaning file. Internal, feeding code rules only: the agent discretion notes, the safety policy and the technician-delay document. A conflict register settles known disagreements (the later effective date wins, for example the April 2026 service area over the March FAQ); the agent hands off only conflicts the register does not settle. The PDF fee table keeps its row and column pairs. The internal rules are paraphrased for the model and replies are checked for verbatim internal text.</li>
+<li><strong>Reason:</strong> Folder rules missed real traps; an explicit list makes every inclusion and exclusion testable and becomes evidence for 'Did you catch the traps?'.</li>
+</ul>
+<h3>D23: What is simplified up front, and what is cut first if time runs short?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "What is simplified up front, what is cut first if time runs short, and how do the suggested-question buttons work?" (D24)</li>
+<li><strong>Replaces:</strong> "Should the suggested-question buttons use cached answers, and what is cut first if time runs short?" (D16)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Simplify the evaluation and keep buttons without caching; new cut order naming the big items</li>
+<li>Keep the earlier cut order (the replaced decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: The earlier cut order held only small items; the knowledge base is under 3,000 tokens, so a 'whole knowledge base in the prompt' comparison answers 'why retrieve at all?'.</li>
+</ul></li>
+<li><strong>Choice:</strong> Simplified now: the held-out run is one weighted case per template; retrieval compares keyword-only against combined search, plus one 'whole current knowledge base in the prompt' comparison on answer correctness; precision, mean reciprocal rank and a second chunking setting are dropped; the private reviewer budget is described, not built (the spend alert and the clean cap handoff stay). Suggested-question buttons stay, without cached answers. Cut order if time runs short: the buttons, the cost-per-conversation breakdown, the consistency runs, the flag export, the pre-deploy test run, the measures beyond the core set (recall and hit rate at five, stale-trap accuracy, answer correctness, faithfulness), the adversarial set down to 15 cases, then the threshold curve. Never cut: deployment, the top-driver findings, retrieval evaluation, booking with confirming, cancelling and rescheduling, the account lookups, the emergency replies, handoff tickets, flagging, the PRD's required numbers, health checks, the README and the video.</li>
+<li><strong>Reason:</strong> Saves about 1 to 1.5 days, which pays for the account lookups, the test fixtures and the data rules, and keeps every number the reviewer judges.</li>
+</ul>
+<h3>D24: What is simplified up front, what is cut first if time runs short, and how do the suggested-question buttons work?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Replaces:</strong> "What is simplified up front, and what is cut first if time runs short?" (D23)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Buttons only fill in the question text and go through exactly the same path as typing; simplifications and cut order unchanged</li>
+<li>Buttons skip the router (the replaced decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: The earlier cut order held only small items; the knowledge base is under 3,000 tokens, so a 'whole knowledge base in the prompt' comparison answers 'why retrieve at all?'.</li>
+<li><a href="docs/SPEC.md">docs/SPEC.md</a>: Codex second opinion on the screen plan: buttons that skip the router could look rigged to a reviewer and hide routing mistakes.</li>
+</ul></li>
+<li><strong>Choice:</strong> Simplified now: the held-out run is one weighted case per template; retrieval compares keyword-only against combined search, plus one 'whole current knowledge base in the prompt' comparison on answer correctness; precision, mean reciprocal rank and a second chunking setting are dropped; the private reviewer budget is described, not built (the spend alert and the clean cap handoff stay). Suggested-question buttons stay, without cached answers, and only fill in the question text: a click goes through exactly the same path as typing, including the router. Cut order if time runs short: the buttons, the cost-per-conversation breakdown, the consistency runs, the flag export, the pre-deploy test run, the measures beyond the core set (recall and hit rate at five, stale-trap accuracy, answer correctness, faithfulness), the adversarial set down to 15 cases, then the threshold curve. Never cut: deployment, the top-driver findings, retrieval evaluation, booking with confirming, cancelling and rescheduling, the account lookups, the emergency replies, handoff tickets, flagging, the PRD's required numbers, health checks, the README and the video.</li>
+<li><strong>Reason:</strong> Same savings as before. Buttons that use the normal path cannot look rigged, are measured like typed questions, and are simpler to build.</li>
+</ul>
+<h3>D25: Which model sorts each caller message into a flow (the router)?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Claude Haiku 5.5 for routing, Claude Sonnet 5.5 for writing replies</li>
+<li>Claude Sonnet 5.5 for both (as the models decision first said)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/MODEL_RESEARCH.md">docs/MODEL_RESEARCH.md</a>: Haiku 5.5 scored 75.3% against Sonnet 5.5's 78.0% on the airline customer service benchmark at about a tenth of the cost per task; sorting a message into a few flows is a much simpler job than the benchmark.</li>
+</ul></li>
+<li><strong>Choice:</strong> Claude Haiku 5.5 routes each message; Claude Sonnet 5.5 writes the replies. Routing accuracy is measured on the held-out set against the template labels, so a switch to Sonnet is a settings change if Haiku misroutes.</li>
+<li><strong>Reason:</strong> Meets the reply-speed budget (about 1.2 seconds for routing, median first word under 2 seconds) at a fraction of the cost, and routing accuracy is measured rather than assumed. Amends the models decision (D5).</li>
+</ul>
+<h3>D26: Exactly which call reasons does the agent handle, hand off, or answer and redirect?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Handle bookings (including estimates), existing appointments, billing and membership questions answerable from documents or lookups, and warranty questions and claims; hand off disputes, refunds, complaints, late technicians, account actions, emergencies and commercial work; answer and redirect hiring and wrong numbers</li>
+<li>Handle only the top three plus scheduling, handing off warranty</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/DATA_REVIEW.md">docs/DATA_REVIEW.md</a>: Warranty is the fourth reason (45 calls, 11 percent) and needs only documents, the install-date lookup and booking, all already in scope.</li>
+<li><a href="docs/SPEC.md">docs/SPEC.md</a>: Builder check: held-out expected outcomes must be frozen before tuning, so the handled list must be fixed now.</li>
+</ul></li>
+<li><strong>Choice:</strong> Handled: new bookings including replacement estimates; confirming, rescheduling and cancelling appointments; billing questions answered from documents or lookups (current balance, what an invoice is for, charged twice); membership questions (what it includes, price, renewal date); warranty questions and claims (coverage, registration, transfer, booking a warranty or repeat-repair visit with the warranty flag). Handed off: quote disputes and refunds, complaints and manager requests, late technicians, every account action (the action gap), safety emergencies (after the fixed safety reply), commercial work. Answered and redirected: hiring enquiries and wrong numbers, reported with and without.</li>
+<li><strong>Reason:</strong> Uses only abilities already in the design, adds warranty (about 11 points of scope ceiling) at no new build cost, and fixes the expected outcomes before tuning. Extends the top-three scope rule (D12) and account lookups (D17).</li>
+</ul>
+<h3>D27: Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule)?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule, evidence-based warranty flag and duplicate-charge rule)?" (D29)</li>
+<li><strong>Replaces:</strong> "Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity?" (D21)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Fixed rules in code with the narrow invoice rule: hand off only when the caller questions a charge; a fixed-fee amount mismatch silently creates a billing-review ticket</li>
+<li>Fixed rules with the broad invoice rule: any line differing from the schedule hands off (the replaced decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="call_data/knowledge_base/faq/customer_faq.md">call_data/knowledge_base/faq/customer_faq.md</a>: 'Cancellations or reschedules more than 24 hours before the window are free. Inside 24 hours there is a $49 late-cancellation fee.'</li>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: North zone has no plumbing slots and central has no estimate slots (Claude checked); Omar Patel's invoice charges $144 after-hours against the published $149 and an $89 diagnostic fee on top of a repair (Claude checked); seeded appointments include zone mismatches and overlapping afternoon bookings.</li>
+<li><a href="docs/SPEC.md">docs/SPEC.md</a>: Builder check: 45 of 81 invoices charge the $89 diagnostic fee on top of a repair and 22 charge it to members; a broad rule would hand off nearly every billing call.</li>
+</ul></li>
+<li><strong>Choice:</strong> (1) 'Now' is one setting: 2026-10-16 09:00, Austin (US Central) time; windows that have started are never offered. (2) The $49 notice applies to both cancelling and rescheduling inside 24 hours; waiver requests hand off. (3) If no eligible slot exists in the three-week range for that zone and service, the agent says so plainly and hands off with a ticket, a clean decline. (4) A slot is refused if its technician is already booked in an overlapping window; existing appointments are left as recorded and the mismatches documented. (5) Invoice lines are read exactly as recorded and never called right or wrong. The caller is handed off as a billing dispute only if they question a charge. A fixed-fee amount that differs from the current schedule (for example Omar Patel's $144 after-hours line against $149) silently creates a low-priority billing-review ticket for staff without interrupting the caller. The widespread pattern of a diagnostic fee charged alongside a repair or to a member goes in the findings document as an executive finding, with no per-call action. (6) The warranty-visit flag is set when the install date is within 2 years of now, or the caller reports a repeat failure of a part repaired within 1 year; otherwise 0. (7) Members are tiers standard or plus. (8) Callers are identified by account number, service address or phone together with their name, never by name alone. (9) Read-backs give date, window, service and technician only, never the stored issue text; new bookings record the fixed now. (10) No waitlist is promised.</li>
+<li><strong>Reason:</strong> Each rule closes a data trap a reviewer can hit with the seeded customers. The narrow invoice rule keeps billing questions containable while still catching the planted mismatch and never defending a questionable charge.</li>
+</ul>
+<h3>D28: How is AI spending capped so no visitor can use up the reviewer's budget?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "How is AI spending capped so no visitor, or group of visitors, can use up the reviewer's budget?" (D30)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>A per-visitor budget of about $0.40 a day plus a site-wide cap raised to $10 a day, with an alert at $5</li>
+<li>Build a private reviewer link with a reserved budget</li>
+<li>Keep a shared $5 cap and accept the risk</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/SPEC.md">docs/SPEC.md</a>: Builder check: with a shared $5 cap and 100 messages per visitor a day, two or three busy visitors can exhaust the budget before the reviewer arrives.</li>
+</ul></li>
+<li><strong>Choice:</strong> Each visitor (browser session, with the network address as a backstop) may spend about $0.40 a day, roughly 10 conversations; the site-wide cap is $10 a day; the author is alerted when daily spend passes $5. Hitting either limit gives a clean handoff with a plain message. Test runs use a separate key and budget. Amends the spending cap in the models decision (D5).</li>
+<li><strong>Reason:</strong> Stops any one visitor from starving the reviewer, for about an hour of work and a worst case of $10 a day during the review period.</li>
+</ul>
+<h3>D29: Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule, evidence-based warranty flag and duplicate-charge rule)?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Replaces:</strong> "Which data rules does the code enforce for time, fees, slots, invoices, warranty and identity (with the narrow invoice rule)?" (D27)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>The rules in the choice, including the warranty flag set only on database evidence and the fixed 'now' limited to customer-facing rules</li>
+<li>The earlier rules (the replaced decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="call_data/knowledge_base/faq/customer_faq.md">call_data/knowledge_base/faq/customer_faq.md</a>: 'Cancellations or reschedules more than 24 hours before the window are free. Inside 24 hours there is a $49 late-cancellation fee.'</li>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: North zone has no plumbing slots and central has no estimate slots (Claude checked); Omar Patel's invoice charges $144 after-hours against the published $149 and an $89 diagnostic fee on top of a repair (Claude checked); seeded appointments include zone mismatches and overlapping afternoon bookings.</li>
+<li><a href="docs/SPEC.md">docs/SPEC.md</a>: Builder check: 45 of 81 invoices charge the $89 diagnostic fee on top of a repair and 22 charge it to members; a broad rule would hand off nearly every billing call.</li>
+<li><a href="docs/SPEC_REVIEW.md">docs/SPEC_REVIEW.md</a>: Codex spec review findings, with the author's rulings.</li>
+</ul></li>
+<li><strong>Choice:</strong> (1) 'Now' for customer-facing scheduling and policy rules is one setting: 2026-10-16 09:00, Austin (US Central) time; windows that have started are never offered. Operations (spending and rate limits, the nightly reset, alerts, reply timing) use real time. (2) The $49 notice applies to both cancelling and rescheduling inside 24 hours; waiver requests hand off. (3) If no eligible slot exists in the three-week range for that zone and service, the agent says so plainly and hands off with a ticket, a clean decline. (4) A slot is refused if its technician is already booked in an overlapping window; existing appointments are left as recorded and the mismatches documented. (5) Invoice lines are read exactly as recorded and never called right or wrong. The caller is handed off as a billing dispute only if they question a charge. A fixed-fee amount that differs from the current schedule (for example Omar Patel's $144 after-hours line against $149) silently creates a low-priority billing-review ticket for staff without interrupting the caller. The widespread pattern of a diagnostic fee charged alongside a repair or to a member goes in the findings document as an executive finding, with no per-call action. (6) The warranty-visit flag is set only when the database install date proves the 2-year installation labour warranty applies; repeat-repair and 5-year member-installation claims, which the database cannot verify, are booked as normal visits with a warranty-review note for staff, and the caller is told there is no diagnostic fee if the technician confirms coverage. (11) For 'charged twice', the agent first gives the FAQ's pending-authorisation explanation and hands off only if the caller says both charges posted. (12) Cancelling or rescheduling restores the freed slot's original status (open or members-only) from the seeded database copy. (7) Members are tiers standard or plus. (8) Callers are identified by account number, service address or phone together with their name, never by name alone. (9) Read-backs give date, window, service and technician only, never the stored issue text; new bookings record the fixed now. (10) No waitlist is promised.</li>
+<li><strong>Reason:</strong> Each rule closes a data trap a reviewer can hit with the seeded customers. The narrow invoice rule keeps billing questions containable while still catching the planted mismatch and never defending a questionable charge. The warranty and duplicate-charge rules come from the spec review: the database has no repair history or membership-at-installation record, so fee waivers must rest on evidence.</li>
+</ul>
+<h3>D30: How is AI spending capped so no visitor, or group of visitors, can use up the reviewer's budget?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Replaces:</strong> "How is AI spending capped so no visitor can use up the reviewer's budget?" (D28)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Per-visitor $0.40 a day, site-wide $10 a day, alert at $5, plus a secret reviewer link with its own $3-a-day reserve</li>
+<li>Per-visitor and site-wide caps only (the replaced decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/SPEC.md">docs/SPEC.md</a>: Builder check: with a shared $5 cap and 100 messages per visitor a day, two or three busy visitors can exhaust the budget before the reviewer arrives.</li>
+<li><a href="docs/SPEC_REVIEW.md">docs/SPEC_REVIEW.md</a>: Codex spec review findings, with the author's rulings.</li>
+</ul></li>
+<li><strong>Choice:</strong> Each visitor (browser session, with the network address as a backstop) may spend about $0.40 a day, roughly 10 conversations; the site-wide cap is $10 a day; the author is alerted when daily spend passes $5. Hitting either limit gives a clean handoff with a plain message. Test runs use a separate key and budget. A secret reviewer link (its token stored as a Fly.io secret) draws on a separate $3-a-day reserve that other visitors cannot touch. Amends the spending cap in the models decision (D5).</li>
+<li><strong>Reason:</strong> Per-visitor limits alone cannot stop many sessions together from exhausting the shared cap; the reserve guarantees the reviewer a working demo for about 2 to 3 hours of work.</li>
+</ul>
+<h3>D31: What retention, masking and rollback protections does the live system have?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Purge conversation logs after 30 days, mask phone numbers, emails and street addresses, and keep a one-page rollback runbook practised once</li>
+<li>None beyond masking phone numbers and emails</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/SPEC_REVIEW.md">docs/SPEC_REVIEW.md</a>: Codex spec review findings, with the author's rulings.</li>
+<li><a href="docs/PRD_REVIEW.md">docs/PRD_REVIEW.md</a>: Personal data in logs (F26) and rollback and versioning (F30) were raised as missing requirements.</li>
+</ul></li>
+<li><strong>Choice:</strong> Conversation logs are purged after 30 days; phone numbers, emails and street addresses are masked in logs and the staff view (names and account numbers, which are synthetic and needed on tickets, stay). A one-page rollback runbook in the README covers rolling back a Fly.io release (prompts and the search index ship inside the release) and restoring the disk from Fly's daily snapshot, and it is practised once before submission.</li>
+<li><strong>Reason:</strong> Closes the personal-data and rollback gaps the PRD review raised, for about 3 to 4 hours in total; both are cuttable after the never-cut items.</li>
+</ul>
+<h3>D32: How are test cases built so the measured numbers mean something (with the rehearsal on working-set cases)?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Replaces:</strong> "How are test cases built so the measured numbers mean something?" (D20)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>As before, but the day-3 rehearsal uses working-set cases, the first run of each case is the scored one, and synthetic customers may be added where none matches</li>
+<li>Rehearse on held-out cases (the replaced decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/IDEAS_REVIEW.md">docs/IDEAS_REVIEW.md</a>: 0 of 131 transcript account numbers, 0 of 130 phone numbers and 0 of 42 invoice numbers exist in the database (Claude checked the account numbers). Splitting by call reason puts copies of the same template in both sets.</li>
+<li><a href="docs/SPEC_REVIEW.md">docs/SPEC_REVIEW.md</a>: Codex spec review findings, with the author's rulings.</li>
+</ul></li>
+<li><strong>Choice:</strong> Each test case is tied to a real database customer matching the transcript's facts (zone, membership, brand, install age); the simulated caller gets a caller card with that customer's details, not the transcript's. Billing cases add their invoice to the fresh test database copy. Transcripts are grouped by template and split by template, so no template appears in both sets. The held-out run uses one case per template, weighted by its real call count; both calls and distinct scenarios are reported, with the margin of error on scenarios. A 10-case rehearsal on working-set cases runs at the end of day 3, after which the agent is frozen. The first run of each held-out case is the scored result; a case that fails then passes on its one retry is reported as flaky. Where no real customer matches a transcript, the test copy may add a synthetic customer, marked as synthetic.</li>
+<li><strong>Reason:</strong> Rehearsing on held-out cases would break their independence; scoring only the first run stops retries from inflating results.</li>
+</ul>
+<h3>D33: What status does a freed slot get when the seed copy itself shows it as booked?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Restore the seed status when it was open or members-only; when the seed shows booked, free the slot to open, as the schema says freeing means</li>
+<li>Guess the earlier status from other data</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/ARCHITECTURE_REVIEW.md">docs/ARCHITECTURE_REVIEW.md</a>: Codex architecture review with the author's rulings.</li>
+<li><a href="call_data/scheduling_db/appointment_slots.csv">call_data/scheduling_db/appointment_slots.csv</a>: Seeded customer Linda Foster's slot 159 is 'booked' in the seed, so the seed cannot say what it was before.</li>
+</ul></li>
+<li><strong>Choice:</strong> When an appointment is cancelled or moved, its slot returns to the seed copy's status if that was open or members-only. If the seed copy shows the slot as booked (a seeded appointment), the slot is freed to open, which is what the schema's 'free the old slot (open)' rule says. Refines the freed-slot rule in the data rules (D29).</li>
+<li><strong>Reason:</strong> The seed cannot record a pre-booking status for seeded appointments; the schema's own rule gives a defined answer instead of a guess.</li>
+</ul>
+<h3>D34: Which protections are added to booking confirmations, the reviewer link and downtime alerts?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Confirmation IDs so a repeated yes returns the first result; a one-time reviewer token exchanged for a session and removed from the address; an outside uptime monitor on the health endpoint</li>
+<li>None of these</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/ARCHITECTURE_REVIEW.md">docs/ARCHITECTURE_REVIEW.md</a>: Codex architecture review with the author's rulings.</li>
+</ul></li>
+<li><strong>Choice:</strong> (1) Each read-back carries a confirmation ID; a repeated or retried confirmation returns the first result instead of changing the database again. (2) The secret reviewer link is used once to start a signed reviewer session, then redirects to a clean address, and the token is never logged. (3) A free outside uptime monitor checks the health endpoint and alerts the author when the site is down.</li>
+<li><strong>Reason:</strong> Protects the never-cut 100 percent booking-correctness target, stops a screenshot or shared link from leaking the reviewer reserve, and makes the required downtime alert possible. About 4 to 7 hours in total.</li>
+</ul>
+<h3>D35: Which technology stack does the system use?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Python 3.12, FastAPI with one worker, a normal request per message with its checked sentences streamed back by server-sent events, server-rendered pages, two SQLite files in write-ahead logging mode, a search index built offline and shipped in each release, an in-app scheduler behind an app-wide reset gate, a webhook for alerts</li>
+<li>A separate front-end application and a server database</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a>: Technology choices table and trade-offs.</li>
+<li><a href="docs/ARCHITECTURE_REVIEW.md">docs/ARCHITECTURE_REVIEW.md</a>: Codex architecture review with the author's rulings.</li>
+</ul></li>
+<li><strong>Choice:</strong> Python 3.12; FastAPI with one worker process; each caller message is an ordinary request and its checked sentences stream back as server-sent events tied to that message; server-rendered HTML with a little plain JavaScript; the provided scheduling SQLite file plus a separate operations SQLite file, both in write-ahead logging mode on the attached disk; the search index built offline and shipped inside each release; an in-app scheduler with an app-wide gate that messages hold shared and the nightly reset holds exclusively; alerts through a webhook; Anthropic and Voyage SDKs pinned.</li>
+<li><strong>Reason:</strong> The smallest stack that meets the spec on one Fly.io machine in four days; one worker keeps the reset gate and scheduler simple, and shipping the index in the release makes rollback complete.</li>
+</ul>
+<h3>Glossary</h3>
+<ul>
+<li><strong>Action gap:</strong> calls the agent understands but deliberately hands off because they need an action it is not allowed to take</li>
+<li><strong>Agent core:</strong> the conversation logic, document search, booking and handoff, separate from the screen or phone line the caller uses</li>
+<li><strong>Agent scope:</strong> the call reasons and parts of call reasons the agent answers itself</li>
+<li><strong>Agreement rate:</strong> the share of answers where the AI grader and the human grader gave the same verdict</li>
+<li><strong>Attached disk (volume):</strong> storage that stays when the server restarts</li>
+<li><strong>Batch:</strong> a group of items sent together in one request</li>
+<li><strong>Benchmark:</strong> a fixed public test used to compare models</li>
+<li><strong>Cached answer:</strong> an answer prepared in advance and reused so it appears instantly</li>
+<li><strong>Call driver:</strong> a reason customers call</li>
+<li><strong>Caller card:</strong> the facts given to the AI playing the caller: name, account number, phone, address and request</li>
+<li><strong>Clean decline:</strong> telling the caller plainly that no slot is available and handing off, counted as correct behaviour</li>
+<li><strong>Code-controlled flow:</strong> a conversation path whose steps and rules are enforced by program code rather than left to the AI</li>
+<li><strong>Codex:</strong> OpenAI's command-line coding agent, run here under the author's subscription</li>
+<li><strong>Cold start:</strong> the delay while a sleeping app wakes up for its first visitor</li>
+<li><strong>Conflict register:</strong> a written list of documents that disagree and which one wins, with the reason</li>
+<li><strong>Containment ceiling:</strong> the highest containment possible, equal to the share of calls about reasons the agent handles</li>
+<li><strong>Containment rate:</strong> the share of calls the AI finishes without passing them to a person</li>
+<li><strong>Cut order:</strong> the agreed order in which optional work is dropped if time runs out</li>
+<li><strong>Database transaction:</strong> a group of database changes that all happen together or not at all</li>
+<li><strong>Embedding:</strong> a list of numbers representing a text's meaning, used to find similar text</li>
+<li><strong>Escalate:</strong> hand the call to a human</li>
+<li><strong>Expected outcome:</strong> the result a test case should have (contained, handed off or clean decline), fixed before tuning</li>
+<li><strong>Fixture:</strong> prepared test data loaded into a test copy of the database</li>
+<li><strong>Grader:</strong> a model that scores whether the agent's answer was correct</li>
+<li><strong>Ground-truth label:</strong> the label treated as correct when measuring accuracy</li>
+<li><strong>Handoff ticket:</strong> a record of an escalated call with everything a human needs to continue it</li>
+<li><strong>Hidden rules:</strong> instructions the agent follows but never reads out to the caller</li>
+<li><strong>Idempotent:</strong> safe to repeat: doing it twice has the same effect as doing it once</li>
+<li><strong>Monitoring dashboard:</strong> a screen showing how the agent is performing: calls, containment, handoffs, failures and speed</li>
+<li><strong>Observed top three:</strong> the three most common call reasons in the transcripts, whatever the agent handles</li>
+<li><strong>Per-visitor budget:</strong> a daily spending limit for one visitor, so others still have budget left</li>
+<li><strong>Priority handoff:</strong> a handoff ticket marked to be picked up first</li>
+<li><strong>Read-only lookup:</strong> reading a caller's record without changing it</li>
+<li><strong>Reference answer:</strong> the correct answer to a test question, written in advance to compare the agent against</li>
+<li><strong>Reply-speed budget:</strong> the planned time each step may take so the whole reply arrives quickly</li>
+<li><strong>Retention:</strong> how long stored data is kept before it is deleted</li>
+<li><strong>Retrieval confidence:</strong> a score for how well the best document passage matches the question</li>
+<li><strong>Rollback:</strong> returning a live system to its previous working version</li>
+<li><strong>Router:</strong> the step that decides which flow a caller's message belongs to</li>
+<li><strong>Search index:</strong> the prepared, searchable copy of the documents that the agent looks things up in</li>
+<li><strong>Seed copy:</strong> the untouched original scheduling database shipped with each release</li>
+<li><strong>Seeded data:</strong> the starting rows the database ships with, including the four test customers</li>
+<li><strong>Server-sent events:</strong> a one-way stream of text from server to browser</li>
+<li><strong>Speech-to-text / text-to-speech:</strong> turning spoken audio into written words, and written words into spoken audio</li>
+<li><strong>Suggested-question button:</strong> a clickable common question shown in the chat so the caller need not type it</li>
+<li><strong>Transcript template:</strong> a call pattern that repeats across many transcripts with only names, numbers and filler words changed</li>
+<li><strong>Uptime monitor:</strong> an outside service that regularly checks a site and alerts when it stops answering</li>
+<li><strong>Whole-knowledge-base comparison:</strong> giving the AI every current document at once instead of searching, to show whether search earns its place</li>
+<li><strong>Write-ahead logging:</strong> a SQLite mode that lets reads continue during writes</li>
+</ul>
+</section>
+<section id="gates">
+<h2>Milestone gates</h2>
+<p>No milestone gates yet.</p>
+</section>
+<section id="final-checks">
+<h2>Final checks</h2>
+<p>Final checks have not run yet.</p>
+</section>
+</main>
+<script type="module">
+function showError(node, reason) {
+  const box = document.createElement("div");
+  box.className = "diagram-error";
+  box.textContent = "This diagram could not be drawn: " + reason;
+  const source = document.createElement("pre");
+  source.textContent = node.textContent;
+  box.appendChild(source);
+  node.replaceWith(box);
+}
+const diagrams = [...document.querySelectorAll("pre.mermaid")];
+try {
+  const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.esm.min.mjs");
+  mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
+  const drawable = [];
+  for (const node of diagrams) {
+    try {
+      await mermaid.parse(node.textContent);
+      drawable.push(node);
+    } catch (error) {
+      showError(node, String(error.message || error).split("\n")[0]);
+    }
+  }
+  // Mermaid scales each diagram down to fit the page width, never up past its natural size.
+  await mermaid.run({ nodes: drawable });
+} catch (error) {
+  for (const node of diagrams) {
+    if (node.isConnected && !node.dataset.processed) showError(node, "the Mermaid library did not load (are you offline?)");
+  }
+}
+</script>
+</body>
+</html>

@@ -443,6 +443,44 @@ can only propose a decision; only the author settles one.
 - **Choice:** Each test case is tied to a real database customer matching the transcript's facts (zone, membership, brand, install age); the simulated caller gets a caller card with that customer's details, not the transcript's. Billing cases add their invoice to the fresh test database copy. Transcripts are grouped by template and split by template, so no template appears in both sets. The held-out run uses one case per template, weighted by its real call count; both calls and distinct scenarios are reported, with the margin of error on scenarios. A 10-case rehearsal on working-set cases runs at the end of day 3, after which the agent is frozen. The first run of each held-out case is the scored result; a case that fails then passes on its one retry is reported as flaky. Where no real customer matches a transcript, the test copy may add a synthetic customer, marked as synthetic.
 - **Reason:** Rehearsing on held-out cases would break their independence; scoring only the first run stops retries from inflating results.
 
+## D33: What status does a freed slot get when the seed copy itself shows it as booked?
+
+- **Status:** settled
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Restore the seed status when it was open or members-only; when the seed shows booked, free the slot to open, as the schema says freeing means
+  - Guess the earlier status from other data
+- **Research:**
+  - [docs/ARCHITECTURE_REVIEW.md](docs/ARCHITECTURE_REVIEW.md): Codex architecture review with the author's rulings.
+  - [call_data/scheduling_db/appointment_slots.csv](call_data/scheduling_db/appointment_slots.csv): Seeded customer Linda Foster's slot 159 is 'booked' in the seed, so the seed cannot say what it was before.
+- **Choice:** When an appointment is cancelled or moved, its slot returns to the seed copy's status if that was open or members-only. If the seed copy shows the slot as booked (a seeded appointment), the slot is freed to open, which is what the schema's 'free the old slot (open)' rule says. Refines the freed-slot rule in the data rules (D29).
+- **Reason:** The seed cannot record a pre-booking status for seeded appointments; the schema's own rule gives a defined answer instead of a guess.
+
+## D34: Which protections are added to booking confirmations, the reviewer link and downtime alerts?
+
+- **Status:** settled
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Confirmation IDs so a repeated yes returns the first result; a one-time reviewer token exchanged for a session and removed from the address; an outside uptime monitor on the health endpoint
+  - None of these
+- **Research:**
+  - [docs/ARCHITECTURE_REVIEW.md](docs/ARCHITECTURE_REVIEW.md): Codex architecture review with the author's rulings.
+- **Choice:** (1) Each read-back carries a confirmation ID; a repeated or retried confirmation returns the first result instead of changing the database again. (2) The secret reviewer link is used once to start a signed reviewer session, then redirects to a clean address, and the token is never logged. (3) A free outside uptime monitor checks the health endpoint and alerts the author when the site is down.
+- **Reason:** Protects the never-cut 100 percent booking-correctness target, stops a screenshot or shared link from leaking the reviewer reserve, and makes the required downtime alert possible. About 4 to 7 hours in total.
+
+## D35: Which technology stack does the system use?
+
+- **Status:** settled
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Python 3.12, FastAPI with one worker, a normal request per message with its checked sentences streamed back by server-sent events, server-rendered pages, two SQLite files in write-ahead logging mode, a search index built offline and shipped in each release, an in-app scheduler behind an app-wide reset gate, a webhook for alerts
+  - A separate front-end application and a server database
+- **Research:**
+  - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Technology choices table and trade-offs.
+  - [docs/ARCHITECTURE_REVIEW.md](docs/ARCHITECTURE_REVIEW.md): Codex architecture review with the author's rulings.
+- **Choice:** Python 3.12; FastAPI with one worker process; each caller message is an ordinary request and its checked sentences stream back as server-sent events tied to that message; server-rendered HTML with a little plain JavaScript; the provided scheduling SQLite file plus a separate operations SQLite file, both in write-ahead logging mode on the attached disk; the search index built offline and shipped inside each release; an in-app scheduler with an app-wide gate that messages hold shared and the nightly reset holds exclusively; alerts through a webhook; Anthropic and Voyage SDKs pinned.
+- **Reason:** The smallest stack that meets the spec on one Fly.io machine in four days; one worker keeps the reset gate and scheduler simple, and shipping the index in the release makes rollback complete.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
@@ -472,6 +510,7 @@ can only propose a decision; only the author settles one.
 - **Ground-truth label:** the label treated as correct when measuring accuracy
 - **Handoff ticket:** a record of an escalated call with everything a human needs to continue it
 - **Hidden rules:** instructions the agent follows but never reads out to the caller
+- **Idempotent:** safe to repeat: doing it twice has the same effect as doing it once
 - **Monitoring dashboard:** a screen showing how the agent is performing: calls, containment, handoffs, failures and speed
 - **Observed top three:** the three most common call reasons in the transcripts, whatever the agent handles
 - **Per-visitor budget:** a daily spending limit for one visitor, so others still have budget left
@@ -484,8 +523,12 @@ can only propose a decision; only the author settles one.
 - **Rollback:** returning a live system to its previous working version
 - **Router:** the step that decides which flow a caller's message belongs to
 - **Search index:** the prepared, searchable copy of the documents that the agent looks things up in
+- **Seed copy:** the untouched original scheduling database shipped with each release
 - **Seeded data:** the starting rows the database ships with, including the four test customers
+- **Server-sent events:** a one-way stream of text from server to browser
 - **Speech-to-text / text-to-speech:** turning spoken audio into written words, and written words into spoken audio
 - **Suggested-question button:** a clickable common question shown in the chat so the caller need not type it
 - **Transcript template:** a call pattern that repeats across many transcripts with only names, numbers and filler words changed
+- **Uptime monitor:** an outside service that regularly checks a site and alerts when it stops answering
 - **Whole-knowledge-base comparison:** giving the AI every current document at once instead of searching, to show whether search earns its place
+- **Write-ahead logging:** a SQLite mode that lets reads continue during writes
