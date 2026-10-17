@@ -42,7 +42,7 @@ The input classes the spec implies but no requirement spells out, most likely to
 The author can open the draft findings document (the top call reasons, the human baseline and the executive findings) and the document list.
 
 - [x] Task 1: project setup, pinned configuration and the agent-core interface. Requirements: R33
-- [ ] Task 2: load transcripts and group them into templates. Requirements: R1
+- [x] Task 2: load transcripts and group them into templates. Requirements: R1
 - [ ] Task 3: label call reasons with Haiku, Codex and the author's sheet. Requirements: R2, R3, R4
 - [ ] Task 4: generate the findings document. Requirements: R5, R6, R7, R8, R56
 - [ ] Task 5: document list, conflict register and format conversion. Requirements: R24, R25, R26

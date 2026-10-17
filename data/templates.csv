@@ -1,0 +1,421 @@
+call_id,template_id,template_calls,request,outcome
+CALL-20260706-0101,T28588235,11,i smell something burning from the vents,booked
+CALL-20260706-0182,Teff9802d,5,i smell something burning from the vents,waitlist
+CALL-20260707-0002,Ta049acca,6,i need to cancel my appointment my brother in law ended up fixing it,cancelled
+CALL-20260707-0053,Tf7d382d9,10,did you guys register my new unit with the manufacturer i never got anything,answered
+CALL-20260707-0096,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260707-0148,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260707-0170,Td1e329a6,10,my thermostat is blank,booked
+CALL-20260707-0392,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260708-0115,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260708-0255,Tdbe75aee,15,what s my current balance,answered
+CALL-20260709-0010,Tf7d382d9,10,did you guys register my new unit with the manufacturer i never got anything,answered
+CALL-20260709-0082,T28588235,11,i smell something burning from the vents,booked
+CALL-20260709-0103,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260709-0129,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260709-0134,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260709-0315,Tc36da844,7,my trane compressor died and the system is only three years old is that under warranty,answered
+CALL-20260709-0347,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260709-0356,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260709-0365,T1b970162,6,my kitchen sink is backing up,waitlist
+CALL-20260710-0028,T28588235,11,i smell something burning from the vents,booked
+CALL-20260710-0081,T9e29febc,4,two things my ac is blowing warm and i want to get someone out and i want to know if joining the maintenance plan would save me money on this,answered
+CALL-20260710-0121,Tdbe75aee,15,what s my current balance,answered
+CALL-20260710-0124,T2d967470,8,just wanted to confirm i still have someone coming thursday,confirmed
+CALL-20260710-0135,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260710-0136,T3c30d716,8,i want a full refund on the repair it didn t fix anything and i had to call another company,callback
+CALL-20260710-0254,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260710-0335,Ta3b7b18f,5,your technician told my wife the system needed a # # replacement and i got a second opinion and it was a # capacitor i want to speak to someone in charge,callback
+CALL-20260710-0364,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260710-0373,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260711-0030,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260711-0063,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260711-0109,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260711-0248,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260711-0380,Td1e329a6,10,my thermostat is blank,booked
+CALL-20260712-0007,T9919897a,6,does the labor warranty cover a repeat repair you fixed my blower in march and it s doing the same thing,booked
+CALL-20260712-0046,Tea4efe8a,3,i smell gas near my furnace,safety
+CALL-20260712-0067,T8f924285,6,are you guys hiring hvac techs i saw a posting,redirect
+CALL-20260712-0104,T0a995037,8,how much is the maintenance plan,answered
+CALL-20260712-0195,Tf7d382d9,10,did you guys register my new unit with the manufacturer i never got anything,answered
+CALL-20260712-0227,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260712-0328,T9e29febc,4,two things my ac is blowing warm and i want to get someone out and i want to know if joining the maintenance plan would save me money on this,answered
+CALL-20260713-0036,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260713-0075,T28588235,11,i smell something burning from the vents,booked
+CALL-20260713-0253,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260713-0263,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260713-0285,T2603f4e6,4,i m a member do i get a discount on a new system,answered
+CALL-20260713-0287,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260713-0314,T0ad82d45,6,can i upgrade from the regular plan to the plus plan mid year,action
+CALL-20260713-0320,T9f56ade3,6,the ac is making a loud grinding noise,booked
+CALL-20260714-0019,T0ad82d45,6,can i upgrade from the regular plan to the plus plan mid year,action
+CALL-20260714-0178,T391b9f20,2,the ac runs but the air is warm,waitlist
+CALL-20260714-0200,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260714-0234,T28588235,11,i smell something burning from the vents,booked
+CALL-20260714-0246,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260714-0326,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260714-0366,T8f924285,6,are you guys hiring hvac techs i saw a posting,redirect
+CALL-20260715-0021,Tdbe75aee,15,what s my current balance,answered
+CALL-20260715-0061,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260715-0100,T3c30d716,8,i want a full refund on the repair it didn t fix anything and i had to call another company,callback
+CALL-20260715-0213,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260715-0289,T28588235,11,i smell something burning from the vents,booked
+CALL-20260715-0351,T8f924285,6,are you guys hiring hvac techs i saw a posting,redirect
+CALL-20260716-0006,T0a995037,8,how much is the maintenance plan,answered
+CALL-20260716-0020,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260716-0107,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260716-0240,Td1e329a6,10,my thermostat is blank,booked
+CALL-20260716-0317,T9919897a,6,does the labor warranty cover a repeat repair you fixed my blower in march and it s doing the same thing,booked
+CALL-20260716-0367,T1dee0920,7,my ac isn t cooling,booked
+CALL-20260716-0379,T8f924285,6,are you guys hiring hvac techs i saw a posting,redirect
+CALL-20260717-0180,T85ab9f16,1,there are sparks coming from the outdoor unit,safety
+CALL-20260717-0359,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260718-0045,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260718-0060,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260718-0062,Taa2454c8,6,i want to talk to a manager the tech who came out yesterday was rude tracked mud through my house and left without explaining anything,callback
+CALL-20260718-0111,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260718-0262,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260718-0319,T9f56ade3,6,the ac is making a loud grinding noise,booked
+CALL-20260718-0349,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260718-0360,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260718-0419,Tdbe75aee,15,what s my current balance,answered
+CALL-20260719-0059,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260719-0153,Tc36da844,7,my goodman compressor died and the system is only three years old is that under warranty,answered
+CALL-20260719-0217,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260719-0226,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260719-0272,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260719-0413,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260720-0157,T9f56ade3,6,the ac is making a loud grinding noise,booked
+CALL-20260720-0216,T1b970162,6,my kitchen sink is backing up,waitlist
+CALL-20260720-0279,T1dee0920,7,my ac isn t cooling,booked
+CALL-20260720-0292,Tc36da844,7,my carrier compressor died and the system is only three years old is that under warranty,answered
+CALL-20260720-0371,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260721-0093,T1d504a74,5,my carbon monoxide detector is going off,safety
+CALL-20260721-0108,T0a995037,8,how much is the maintenance plan,answered
+CALL-20260721-0110,Tf0d9c2f5,4,i need my annual tune up,waitlist
+CALL-20260721-0125,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260721-0242,T70425efa,3,the ac is making a loud grinding noise,waitlist
+CALL-20260721-0258,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260721-0261,T33be9400,9,my window was # to # and it s #:# nobody s here and nobody s called,late_tech
+CALL-20260721-0321,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260721-0333,T9f56ade3,6,the ac is making a loud grinding noise,booked
+CALL-20260722-0064,T9919897a,6,does the labor warranty cover a repeat repair you fixed my blower in march and it s doing the same thing,booked
+CALL-20260722-0161,T9f473de6,8,we just bought a house and the previous owner had a system installed by you does the warranty transfer,answered
+CALL-20260722-0198,Taa2454c8,6,i want to talk to a manager the tech who came out yesterday was rude tracked mud through my house and left without explaining anything,callback
+CALL-20260722-0249,Tf7d382d9,10,did you guys register my new unit with the manufacturer i never got anything,answered
+CALL-20260723-0035,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260723-0042,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260723-0172,Td12bdf25,3,my thermostat is blank,waitlist
+CALL-20260723-0251,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260723-0276,Tc36da844,7,my trane compressor died and the system is only three years old is that under warranty,answered
+CALL-20260724-0040,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260724-0113,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260724-0308,T9e29febc,4,two things my ac is blowing warm and i want to get someone out and i want to know if joining the maintenance plan would save me money on this,answered
+CALL-20260724-0325,Ta049acca,6,i need to cancel my appointment my brother in law ended up fixing it,cancelled
+CALL-20260724-0337,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260724-0391,T19162cee,5,i ve called three times about the same problem and nobody has called me back i m done,callback
+CALL-20260725-0112,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260725-0288,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260725-0293,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260725-0329,T28588235,11,i smell something burning from the vents,booked
+CALL-20260725-0355,T33be9400,9,my window was # to # and it s #:# nobody s here and nobody s called,late_tech
+CALL-20260725-0378,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260726-0141,T391b9f20,2,the ac runs but the air is warm,waitlist
+CALL-20260726-0189,Ta3b7b18f,5,your technician told my wife the system needed a # # replacement and i got a second opinion and it was a # capacitor i want to speak to someone in charge,callback
+CALL-20260726-0220,Ta049acca,6,i need to cancel my appointment my brother in law ended up fixing it,cancelled
+CALL-20260726-0307,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260726-0331,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260727-0076,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260727-0080,Tdbe75aee,15,what s my current balance,answered
+CALL-20260727-0138,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260727-0215,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260727-0300,T2603f4e6,4,i m a member do i get a discount on a new system,answered
+CALL-20260728-0050,T9bb3779a,9,the ac runs but the air is warm,booked
+CALL-20260728-0089,Teba1e31f,5,i manage a # unit strip center and i need a quote on replacing four rooftop units,callback
+CALL-20260728-0094,Td1e329a6,10,my thermostat is blank,booked
+CALL-20260728-0193,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260728-0194,Tf7d382d9,10,did you guys register my new unit with the manufacturer i never got anything,answered
+CALL-20260728-0264,Tea4efe8a,3,i smell gas near my furnace,safety
+CALL-20260728-0281,T9bb3779a,9,the ac runs but the air is warm,booked
+CALL-20260729-0041,Taa2454c8,6,i want to talk to a manager the tech who came out yesterday was rude tracked mud through my house and left without explaining anything,callback
+CALL-20260729-0260,Taa2454c8,6,i want to talk to a manager the tech who came out yesterday was rude tracked mud through my house and left without explaining anything,callback
+CALL-20260729-0278,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260729-0324,T9919897a,6,does the labor warranty cover a repeat repair you fixed my blower in march and it s doing the same thing,booked
+CALL-20260730-0048,T2603f4e6,4,i m a member do i get a discount on a new system,answered
+CALL-20260730-0054,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260730-0183,T2d967470,8,just wanted to confirm i still have someone coming thursday,confirmed
+CALL-20260730-0222,Taa2454c8,6,i want to talk to a manager the tech who came out yesterday was rude tracked mud through my house and left without explaining anything,callback
+CALL-20260730-0223,T19162cee,5,i ve called three times about the same problem and nobody has called me back i m done,callback
+CALL-20260730-0233,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260730-0274,Tc36da844,7,my trane compressor died and the system is only three years old is that under warranty,answered
+CALL-20260730-0306,T19162cee,5,i ve called three times about the same problem and nobody has called me back i m done,callback
+CALL-20260730-0323,Tf7d382d9,10,did you guys register my new unit with the manufacturer i never got anything,answered
+CALL-20260730-0346,T9f473de6,8,we just bought a house and the previous owner had a system installed by you does the warranty transfer,answered
+CALL-20260730-0372,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260730-0396,Teba1e31f,5,i manage a # unit strip center and i need a quote on replacing four rooftop units,callback
+CALL-20260731-0047,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260731-0301,Tdbe75aee,15,what s my current balance,answered
+CALL-20260801-0024,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260801-0176,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260801-0208,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260801-0334,T9bb3779a,9,the ac runs but the air is warm,booked
+CALL-20260802-0015,T6f36e785,3,the water heater pilot light keeps going out,waitlist
+CALL-20260802-0016,T8f5cf73c,4,the water heater pilot light keeps going out,booked
+CALL-20260802-0079,Taa2454c8,6,i want to talk to a manager the tech who came out yesterday was rude tracked mud through my house and left without explaining anything,callback
+CALL-20260802-0282,T1b970162,6,my kitchen sink is backing up,waitlist
+CALL-20260803-0004,Tc36da844,7,my carrier compressor died and the system is only three years old is that under warranty,answered
+CALL-20260803-0056,T0ad82d45,6,can i upgrade from the regular plan to the plus plan mid year,action
+CALL-20260803-0086,T9f473de6,8,we just bought a house and the previous owner had a system installed by you does the warranty transfer,answered
+CALL-20260803-0155,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260803-0190,Tdbe75aee,15,what s my current balance,answered
+CALL-20260804-0188,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260805-0154,T2d967470,8,just wanted to confirm i still have someone coming thursday,confirmed
+CALL-20260805-0173,Tf7d382d9,10,did you guys register my new unit with the manufacturer i never got anything,answered
+CALL-20260805-0214,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260805-0244,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260805-0290,T1d504a74,5,my carbon monoxide detector is going off,safety
+CALL-20260806-0077,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260806-0102,T2d967470,8,just wanted to confirm i still have someone coming thursday,confirmed
+CALL-20260806-0174,T0ad82d45,6,can i upgrade from the regular plan to the plus plan mid year,action
+CALL-20260806-0207,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260806-0230,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260806-0284,T33be9400,9,my window was # to # and it s #:# nobody s here and nobody s called,late_tech
+CALL-20260806-0377,Teff9802d,5,i smell something burning from the vents,waitlist
+CALL-20260807-0011,Td1e329a6,10,my thermostat is blank,booked
+CALL-20260807-0202,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260807-0312,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260807-0401,Td1e329a6,10,my thermostat is blank,booked
+CALL-20260808-0146,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260808-0159,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260808-0271,T33be9400,9,my window was # to # and it s #:# nobody s here and nobody s called,late_tech
+CALL-20260808-0322,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260809-0039,T9f473de6,8,we just bought a house and the previous owner had a system installed by you does the warranty transfer,answered
+CALL-20260809-0117,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260809-0128,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260809-0197,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260809-0376,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260810-0008,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260810-0025,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260810-0058,T8f5cf73c,4,the water heater pilot light keeps going out,booked
+CALL-20260810-0078,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260810-0088,T6f36e785,3,the water heater pilot light keeps going out,waitlist
+CALL-20260810-0162,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260810-0210,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260810-0219,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260810-0237,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260810-0239,T28588235,11,i smell something burning from the vents,booked
+CALL-20260810-0296,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260810-0414,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260811-0085,Tc36da844,7,my rheem compressor died and the system is only three years old is that under warranty,answered
+CALL-20260811-0275,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260811-0299,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260811-0305,T8f5cf73c,4,the water heater pilot light keeps going out,booked
+CALL-20260811-0369,T1b970162,6,my kitchen sink is backing up,waitlist
+CALL-20260812-0116,T1b970162,6,my kitchen sink is backing up,waitlist
+CALL-20260812-0169,T3c30d716,8,i want a full refund on the repair it didn t fix anything and i had to call another company,callback
+CALL-20260812-0302,Td12bdf25,3,my thermostat is blank,waitlist
+CALL-20260812-0405,T0ad82d45,6,can i upgrade from the regular plan to the plus plan mid year,action
+CALL-20260813-0018,Td1e329a6,10,my thermostat is blank,booked
+CALL-20260813-0031,Tc749ab58,5,is this meridian dental,redirect
+CALL-20260813-0156,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260813-0247,T33be9400,9,my window was # to # and it s #:# nobody s here and nobody s called,late_tech
+CALL-20260813-0350,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260813-0398,T1dee0920,7,my ac isn t cooling,booked
+CALL-20260814-0003,T1dee0920,7,my ac isn t cooling,booked
+CALL-20260814-0122,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260814-0123,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260814-0420,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260815-0114,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260815-0270,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260815-0345,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260815-0406,Tf7d382d9,10,did you guys register my new unit with the manufacturer i never got anything,answered
+CALL-20260816-0038,T1d504a74,5,my carbon monoxide detector is going off,safety
+CALL-20260816-0097,T33be9400,9,my window was # to # and it s #:# nobody s here and nobody s called,late_tech
+CALL-20260816-0106,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260816-0191,T3c30d716,8,i want a full refund on the repair it didn t fix anything and i had to call another company,callback
+CALL-20260816-0224,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260816-0268,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260816-0313,Tdbe75aee,15,what s my current balance,answered
+CALL-20260816-0368,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260816-0389,T9f473de6,8,we just bought a house and the previous owner had a system installed by you does the warranty transfer,answered
+CALL-20260817-0241,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260817-0330,T9bb3779a,9,the ac runs but the air is warm,booked
+CALL-20260817-0354,Td1e329a6,10,my thermostat is blank,booked
+CALL-20260818-0072,T9bb3779a,9,the ac runs but the air is warm,booked
+CALL-20260818-0092,T3c30d716,8,i want a full refund on the repair it didn t fix anything and i had to call another company,callback
+CALL-20260818-0151,T33be9400,9,my window was # to # and it s #:# nobody s here and nobody s called,late_tech
+CALL-20260818-0184,Tf0d9c2f5,4,i need my annual tune up,waitlist
+CALL-20260818-0206,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260818-0243,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260818-0298,T8f924285,6,are you guys hiring hvac techs i saw a posting,redirect
+CALL-20260819-0014,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260819-0131,Tdbe75aee,15,what s my current balance,answered
+CALL-20260819-0147,Td1e329a6,10,my thermostat is blank,booked
+CALL-20260819-0163,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260819-0177,T19162cee,5,i ve called three times about the same problem and nobody has called me back i m done,callback
+CALL-20260819-0228,Teba1e31f,5,i manage a # unit strip center and i need a quote on replacing four rooftop units,callback
+CALL-20260819-0245,T81429224,5,there s water pooling around the indoor unit,waitlist
+CALL-20260820-0013,T28588235,11,i smell something burning from the vents,booked
+CALL-20260820-0043,Taca6d958,14,i need to pay invoice inv # can i do it over the phone,action
+CALL-20260820-0252,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260820-0374,Tc749ab58,5,is this meridian dental,redirect
+CALL-20260821-0181,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260821-0199,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260821-0310,Tdbe75aee,15,what s my current balance,answered
+CALL-20260821-0353,T3c30d716,8,i want a full refund on the repair it didn t fix anything and i had to call another company,callback
+CALL-20260822-0175,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260822-0185,Tea4efe8a,3,i smell gas near my furnace,safety
+CALL-20260822-0212,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260822-0341,T1d504a74,5,my carbon monoxide detector is going off,safety
+CALL-20260822-0343,Tf7d382d9,10,did you guys register my new unit with the manufacturer i never got anything,answered
+CALL-20260822-0383,T1b970162,6,my kitchen sink is backing up,waitlist
+CALL-20260823-0022,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260823-0068,T3c30d716,8,i want a full refund on the repair it didn t fix anything and i had to call another company,callback
+CALL-20260823-0142,T9f473de6,8,we just bought a house and the previous owner had a system installed by you does the warranty transfer,answered
+CALL-20260823-0295,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260823-0412,T2d967470,8,just wanted to confirm i still have someone coming thursday,confirmed
+CALL-20260824-0033,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260824-0408,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260825-0005,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260825-0066,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260825-0118,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260825-0145,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260825-0192,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260825-0266,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260825-0370,T1c979c8b,3,the furnace won t kick on,waitlist
+CALL-20260825-0415,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260826-0073,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260826-0095,T1dee0920,7,my ac isn t cooling,booked
+CALL-20260826-0225,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260826-0277,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260826-0304,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260826-0309,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260826-0390,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260827-0065,T3c30d716,8,i want a full refund on the repair it didn t fix anything and i had to call another company,callback
+CALL-20260827-0084,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260827-0091,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260827-0149,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260827-0344,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260828-0120,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260828-0211,Tf0d9c2f5,4,i need my annual tune up,waitlist
+CALL-20260828-0267,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260828-0316,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260828-0409,T8f924285,6,are you guys hiring hvac techs i saw a posting,redirect
+CALL-20260829-0049,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260829-0057,T9f473de6,8,we just bought a house and the previous owner had a system installed by you does the warranty transfer,answered
+CALL-20260829-0404,T2603f4e6,4,i m a member do i get a discount on a new system,answered
+CALL-20260830-0090,T6f36e785,3,the water heater pilot light keeps going out,waitlist
+CALL-20260830-0105,T9f473de6,8,we just bought a house and the previous owner had a system installed by you does the warranty transfer,answered
+CALL-20260830-0130,T81429224,5,there s water pooling around the indoor unit,waitlist
+CALL-20260830-0165,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260830-0209,T2d967470,8,just wanted to confirm i still have someone coming thursday,confirmed
+CALL-20260830-0259,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260830-0269,T1c979c8b,3,the furnace won t kick on,waitlist
+CALL-20260830-0286,Ta3b7b18f,5,your technician told my wife the system needed a # # replacement and i got a second opinion and it was a # capacitor i want to speak to someone in charge,callback
+CALL-20260830-0388,T33be9400,9,my window was # to # and it s #:# nobody s here and nobody s called,late_tech
+CALL-20260831-0051,T19162cee,5,i ve called three times about the same problem and nobody has called me back i m done,callback
+CALL-20260831-0167,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260831-0231,T0a995037,8,how much is the maintenance plan,answered
+CALL-20260831-0297,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260831-0339,Ta3b7b18f,5,your technician told my wife the system needed a # # replacement and i got a second opinion and it was a # capacitor i want to speak to someone in charge,callback
+CALL-20260831-0362,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260901-0127,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260901-0238,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260901-0410,Tdbe75aee,15,what s my current balance,answered
+CALL-20260902-0001,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260902-0027,T70425efa,3,the ac is making a loud grinding noise,waitlist
+CALL-20260902-0152,Ta049acca,6,i need to cancel my appointment my brother in law ended up fixing it,cancelled
+CALL-20260902-0168,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260902-0229,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260902-0375,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260902-0386,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260903-0026,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260904-0069,Tf7d382d9,10,did you guys register my new unit with the manufacturer i never got anything,answered
+CALL-20260904-0144,T0ad82d45,6,can i upgrade from the regular plan to the plus plan mid year,action
+CALL-20260904-0186,Tc749ab58,5,is this meridian dental,redirect
+CALL-20260904-0265,T9bb3779a,9,the ac runs but the air is warm,booked
+CALL-20260904-0340,Ta049acca,6,i need to cancel my appointment my brother in law ended up fixing it,cancelled
+CALL-20260904-0418,T28588235,11,i smell something burning from the vents,booked
+CALL-20260905-0201,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260905-0318,T1d504a74,5,my carbon monoxide detector is going off,safety
+CALL-20260905-0357,T9bb3779a,9,the ac runs but the air is warm,booked
+CALL-20260905-0363,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260906-0032,Teff9802d,5,i smell something burning from the vents,waitlist
+CALL-20260906-0055,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260906-0087,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260906-0132,T9919897a,6,does the labor warranty cover a repeat repair you fixed my blower in march and it s doing the same thing,booked
+CALL-20260906-0280,Tc749ab58,5,is this meridian dental,redirect
+CALL-20260906-0283,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260906-0348,T9bb3779a,9,the ac runs but the air is warm,booked
+CALL-20260906-0399,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260906-0411,Ta3b7b18f,5,your technician told my wife the system needed a # # replacement and i got a second opinion and it was a # capacitor i want to speak to someone in charge,callback
+CALL-20260907-0140,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260907-0143,T1dee0920,7,my ac isn t cooling,booked
+CALL-20260907-0204,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260907-0221,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260907-0232,T1c979c8b,3,the furnace won t kick on,waitlist
+CALL-20260907-0393,Td1e329a6,10,my thermostat is blank,booked
+CALL-20260908-0017,Ta12ddc61,13,i want to cancel my comfort club membership,action
+CALL-20260908-0029,Teff9802d,5,i smell something burning from the vents,waitlist
+CALL-20260908-0052,T81429224,5,there s water pooling around the indoor unit,waitlist
+CALL-20260908-0158,T2d967470,8,just wanted to confirm i still have someone coming thursday,confirmed
+CALL-20260908-0160,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260908-0164,Tdbe75aee,15,what s my current balance,answered
+CALL-20260908-0205,T81429224,5,there s water pooling around the indoor unit,waitlist
+CALL-20260908-0257,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260908-0352,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260908-0407,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260909-0119,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260909-0137,T5a0b5fd4,14,i want to set up autopay for my membership,action
+CALL-20260909-0327,T9919897a,6,does the labor warranty cover a repeat repair you fixed my blower in march and it s doing the same thing,booked
+CALL-20260909-0416,Ta049acca,6,i need to cancel my appointment my brother in law ended up fixing it,cancelled
+CALL-20260910-0150,T9f56ade3,6,the ac is making a loud grinding noise,booked
+CALL-20260910-0166,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260910-0203,Tdbe75aee,15,what s my current balance,answered
+CALL-20260910-0236,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260910-0291,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260910-0358,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260910-0387,T4ecda9c7,16,the tech quoted me # and the invoice says # that s not what i agreed to,callback
+CALL-20260910-0400,T9bb3779a,9,the ac runs but the air is warm,booked
+CALL-20260911-0034,T2d967470,8,just wanted to confirm i still have someone coming thursday,confirmed
+CALL-20260911-0171,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260911-0179,Tf0d9c2f5,4,i need my annual tune up,waitlist
+CALL-20260911-0235,T0a995037,8,how much is the maintenance plan,answered
+CALL-20260911-0256,Tbc5df324,12,my system is # years old and i m thinking about replacing it what would that cost,booked
+CALL-20260912-0083,Tdbe75aee,15,what s my current balance,answered
+CALL-20260912-0099,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260912-0139,T0a995037,8,how much is the maintenance plan,answered
+CALL-20260912-0218,T81429224,5,there s water pooling around the indoor unit,waitlist
+CALL-20260912-0361,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260912-0394,Tbaf67f84,12,what does the comfort club membership actually include,answered
+CALL-20260913-0012,T8f5cf73c,4,the water heater pilot light keeps going out,booked
+CALL-20260913-0044,Td12bdf25,3,my thermostat is blank,waitlist
+CALL-20260913-0196,Tf995585c,11,there s water pooling around the indoor unit,booked
+CALL-20260913-0250,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260913-0273,T1dee0920,7,my ac isn t cooling,booked
+CALL-20260913-0342,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260913-0382,T738adaab,14,i got an email saying my membership is renewing when does it actually charge,answered
+CALL-20260914-0009,T7d8fb3e5,14,i need to file a warranty claim the unit you installed last year stopped working,booked
+CALL-20260914-0070,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260914-0074,Tdbe75aee,15,what s my current balance,answered
+CALL-20260914-0381,T148d6c30,11,i think i got charged twice there are two # charges on my card from you guys,answered
+CALL-20260915-0133,T28588235,11,i smell something burning from the vents,booked
+CALL-20260915-0303,Tb9afdda4,13,i got an invoice inv # for # and i m not sure what it s for,action
+CALL-20260915-0385,T0a995037,8,how much is the maintenance plan,answered
+CALL-20260916-0098,T33be9400,9,my window was # to # and it s #:# nobody s here and nobody s called,late_tech
+CALL-20260916-0311,Teff9802d,5,i smell something burning from the vents,waitlist
+CALL-20260916-0336,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260916-0338,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260916-0397,T0a995037,8,how much is the maintenance plan,answered
+CALL-20260916-0403,Teba1e31f,5,i manage a # unit strip center and i need a quote on replacing four rooftop units,callback
+CALL-20260917-0023,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260917-0126,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260917-0187,Teba1e31f,5,i manage a # unit strip center and i need a quote on replacing four rooftop units,callback
+CALL-20260917-0332,T9e29febc,4,two things my ac is blowing warm and i want to get someone out and i want to know if joining the maintenance plan would save me money on this,answered
+CALL-20260917-0395,Te8bcef76,15,i have a tech coming tomorrow but something came up can i move it,moved
+CALL-20260918-0071,Tb456e16e,16,the furnace won t kick on,booked
+CALL-20260918-0294,T9f56ade3,6,the ac is making a loud grinding noise,booked
+CALL-20260918-0384,Tfc7d7be8,12,i need my annual tune up,booked
+CALL-20260918-0417,Tc749ab58,5,is this meridian dental,redirect
+CALL-20260919-0037,T3baed8ff,12,my kitchen sink is backing up,booked
+CALL-20260919-0402,T70425efa,3,the ac is making a loud grinding noise,waitlist
