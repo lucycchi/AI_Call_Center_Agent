@@ -13,19 +13,19 @@ rootdir: /home/lucyc/gauntlet/AI_Call_Center_Agent
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.15.1, langsmith-0.14.11
-collected 111 items
+collected 130 items
 
-tests/eval/test_cases.py .........................                       [ 22%]
-tests/eval/test_retrieval_metrics.py .........                           [ 30%]
-tests/knowledge/test_search.py ............                              [ 41%]
-tests/pipeline/test_documents.py .......                                 [ 47%]
-tests/pipeline/test_findings.py .....................                    [ 66%]
-tests/pipeline/test_labels.py ..............                             [ 79%]
-tests/pipeline/test_templates.py .........                               [ 87%]
+tests/eval/test_cases.py ...................................             [ 26%]
+tests/eval/test_retrieval_metrics.py ................                    [ 39%]
+tests/knowledge/test_search.py ..............                            [ 50%]
+tests/pipeline/test_documents.py .......                                 [ 55%]
+tests/pipeline/test_findings.py .....................                    [ 71%]
+tests/pipeline/test_labels.py ..............                             [ 82%]
+tests/pipeline/test_templates.py .........                               [ 89%]
 tests/test_config.py ..........                                          [ 96%]
 tests/test_engine_interface.py ....                                      [100%]
 
-============================= 111 passed in 1.98s ==============================
+============================= 130 passed in 3.62s ==============================
 ```
 
 ## Requirement coverage
@@ -93,3 +93,5 @@ The author chose to fix everything recommended (all of groups A, B and C):
 - **Refreeze:** the rebuilt cases change the held-out fingerprint. This is allowed because no agent tuning has happened (R10); it is recorded as a new decision with the new fingerprint.
 - **Retrieval measures:** separate test key, one retry, $8 stop, and the model and settings recorded; summary names the set; evidence spans narrowed to the exact answering lines (R29); coverage over handled-reason caller questions only (R30); stale questions scored on the answer at grading (Task 19), with an index check and the excluded list read from the document list; keyword-only answers added; keyword-only mode skips Voyage and the keyword top is kept only when a word matches; keep-each-list's-top rule kept and recorded as a decision, re-measured and reported honestly against meaning-only.
 - **Architecture document:** all wording fixes from both checks.
+
+**After the fixes.** The retrieval answers were rerun on the separate test key (Sonnet 5.5, 800 tokens, low effort, one retry; $0.52): 72 answers from keyword-only search, combined search and the whole knowledge base for the 24 working-set questions, waiting for grading (Task 19). Working-set retrieval: keyword-only recall 69% and hit rate 71%; meaning-only 98% and 100%; combined 94% and 100%; stale-question hit rate 100% for combined; coverage 0.875 of handled-reason questions; no excluded document in the index. The author chose the revised Comfort Club savings answer (a team member confirms whether benefits apply on the day of joining) and settled the refreeze decision (D40).

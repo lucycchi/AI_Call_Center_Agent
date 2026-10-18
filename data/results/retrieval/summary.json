@@ -1,10 +1,12 @@
 {
- "questions": 23,
- "coverage": 0.8695652173913043,
+ "set": "working",
+ "questions": 24,
+ "coverage": 0.875,
+ "index_has_excluded_documents": false,
  "keyword": {
-  "recall_at_5": 0.675,
-  "hit_at_5": 0.7,
-  "stale_trap_accuracy": 0.8333333333333334,
+  "recall_at_5": 0.6904761904761905,
+  "hit_at_5": 0.7142857142857143,
+  "stale_trap_hit_at_5": 0.8333333333333334,
   "misses": [
    "case-T0a995037",
    "case-T2603f4e6",
@@ -15,15 +17,24 @@
   ]
  },
  "meaning": {
-  "recall_at_5": 0.9833333333333334,
+  "recall_at_5": 0.9841269841269842,
   "hit_at_5": 1.0,
-  "stale_trap_accuracy": 1.0,
+  "stale_trap_hit_at_5": 1.0,
   "misses": []
  },
  "combined": {
-  "recall_at_5": 0.9333333333333333,
+  "recall_at_5": 0.9365079365079365,
   "hit_at_5": 1.0,
-  "stale_trap_accuracy": 1.0,
+  "stale_trap_hit_at_5": 1.0,
   "misses": []
+ },
+ "settings": {
+  "embedding_model": "voyage-4",
+  "writer_model": "claude-sonnet-5-5",
+  "writer_max_tokens": 800,
+  "writer_effort": "low",
+  "retries": 1,
+  "top_k": 5,
+  "answer_cost_usd": 0.5153
  }
 }
