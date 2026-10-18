@@ -32,7 +32,8 @@ ANSWERABLE = [
     ("Can I pay by card over the phone?", "Card numbers are never taken over the phone; Meridian sends a secure payment "
      "link by text or email, valid for 24 hours.", [(FAQ, "Payment", ("Card numbers",))]),
     ("How much does it cost to clear a clogged drain?", "Drain clearing typically costs $149 to $290 depending on access; "
-     "the technician confirms the final price on site.", [(CATALOG, "Plumbing (residential)", ("Drain clearing",))]),
+     "the technician confirms the final price on site.", [(CATALOG, "Plumbing (residential)", ("Drain clearing",)),
+     ("pricing__repair_price_book_2026.md", "2026 Repair Price Book", ("confirms the final price",))]),
     ("What appointment windows do you have?", "8am to 12pm, 12pm to 4pm and 1pm to 5pm, plus 4pm to 7pm on Tuesdays and "
      "Thursdays.", [(FAQ, "Scheduling", ("Standard appointment windows",))]),
     ("Do you do duct cleaning?", "Meridian does not do duct cleaning itself; it partners with a third party and can give "
@@ -49,7 +50,7 @@ STALE_TRAPS = [
     ("Isn't the repair warranty only 90 days?", "No. Meridian repairs carry a 1-year labor warranty on the part repaired.",
      [(WARRANTY, "Repair warranty (Meridian labor warranty)", ("1-year labor warranty",))]),
     ("Is the Comfort Club still $149 a year?", "No. It is $189 a year per system, or $16.99 a month with a 12-month minimum.",
-     [(MEMBERSHIP, "Plans", ("$189 per year",))]),
+     [(MEMBERSHIP, "Plans", ("$189 per year",)), (MEMBERSHIP, "Billing and renewal", ("12-month minimum",))]),
     ("Is the after-hours emergency fee $129?", "No. After-hours emergency dispatch is $149, waived for Comfort Club members.",
      [(FAQ, "Hours & Contact", ("After-hours emergency line",)), (FEES, "Fees by membership level", ("After-hours emergency dispatch, Non-member", "After-hours emergency dispatch, Comfort Club Plus"))]),
     ("Are you only open until 6 on weekdays?", "No. Phone support is Monday to Friday 7am to 7pm and Saturday 8am to 4pm.",
@@ -79,10 +80,14 @@ def build_questions(seed: int = 20261016) -> list[dict]:
         case = json.loads(path.read_text())
         if case["needs_documents"]:
             asked = next(l for l in case["caller_script"] if not any(x in l.lower() for x in ("cut out", "driving", "hear me")))
+            # Follow-up knowledge questions in the same call are asked too (data/case_requests.csv).
+            for request in case["requests"][1:]:
+                if request["kind"] == "knowledge" and request["caller_words"] not in asked:
+                    asked += " " + next(l for l in case["caller_script"] if request["caller_words"] in l)
             questions.append({"qid": f"case-{case['case_id']}", "case_id": case["case_id"], "question": asked,
                               "kind": "answerable", "set": "held_out" if case["case_id"] in held else "working",
                               "reference_answer": case["reference_answer"], "evidence_spans": case["evidence_spans"],
-                              "handled_reason": True})
+                              "handled_reason": True, "calls_weight": case["calls_weight"]})
     rng = random.Random(seed)
     groups = {"answerable": [(q, a, s) for q, a, s in ANSWERABLE], "stale_trap": [(q, a, s) for q, a, s in STALE_TRAPS],
               "unanswerable": [(q, None, []) for q, _ in UNANSWERABLE]}

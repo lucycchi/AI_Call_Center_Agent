@@ -34,6 +34,7 @@
  "requests": [
   {
    "request": "complaint or manager",
+   "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "complaint"
   }

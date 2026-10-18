@@ -8,25 +8,25 @@
  "sample_call_id": "CALL-20260707-0170",
  "caller_script": [
   "Yeah, I need to schedule a service call. My thermostat is blank.",
-  "Yeah, it's MHC-41747.",
-  "Nate Lee.",
+  "Yeah, it's MHC-68866.",
+  "Kim Martinez.",
   "Next Tuesday if possible, 4 to 7, after work.",
   "Yeah, that works.",
   "Um, yep, same one.",
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-41747",
-  "name": "Nate Lee",
-  "phone": "512-475-8304",
-  "email": "nate.lee@example.com",
-  "service_address": "159 Windcrest Ave",
+  "customer_id": "MHC-68866",
+  "name": "Kim Martinez",
+  "phone": "512-926-6729",
+  "email": "kim.martinez@example.com",
+  "service_address": "3665 Oak Hollow Dr",
   "city": "Round Rock",
   "zip": "78664",
   "membership_tier": "none",
   "membership_renewal_date": null,
   "system_brand": "Lennox",
-  "system_install_date": "2023-02-04",
+  "system_install_date": "2013-04-04",
   "zone": "north",
   "synthetic": false,
   "zone_source": "drawn"
@@ -36,6 +36,7 @@
  "requests": [
   {
    "request": "hvac repair",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }

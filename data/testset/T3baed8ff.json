@@ -8,8 +8,8 @@
  "sample_call_id": "CALL-20260718-0360",
  "caller_script": [
   "Um, i'm calling to book a repair, my kitchen sink is backing up.",
-  "Yeah, it's MHC-18700.",
-  "Kim Murphy.",
+  "Yeah, it's MHC-31337.",
+  "Sofia Brown.",
   "Can you hear me okay?",
   "Monday if possible, first thing in the morning.",
   "Can you hear me okay?",
@@ -18,17 +18,17 @@
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-18700",
-  "name": "Kim Murphy",
-  "phone": "512-494-3705",
-  "email": "kim.murphy@example.com",
-  "service_address": "3722 Cedar Ridge Ln",
-  "city": "Cedar Park",
-  "zip": "78613",
-  "membership_tier": "none",
-  "membership_renewal_date": null,
+  "customer_id": "MHC-31337",
+  "name": "Sofia Brown",
+  "phone": "512-547-7902",
+  "email": "sofia.brown@example.com",
+  "service_address": "3307 Lakeshore Blvd",
+  "city": "Pflugerville",
+  "zip": "78660",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-07-11",
   "system_brand": "Lennox",
-  "system_install_date": "2015-08-06",
+  "system_install_date": "2017-07-27",
   "zone": "north",
   "synthetic": false,
   "zone_source": "drawn"
@@ -38,6 +38,7 @@
  "requests": [
   {
    "request": "plumbing",
+   "kind": "sub-reason",
    "expected_outcome": "clean_decline",
    "handoff_reason": "no plumbing capacity in north zone"
   }

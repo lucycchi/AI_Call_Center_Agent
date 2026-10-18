@@ -36,6 +36,7 @@
  "requests": [
   {
    "request": "burning smell",
+   "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "burning smell"
   }

@@ -33,14 +33,30 @@
  "requests": [
   {
    "request": "upgrade",
+   "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "action gap"
+  },
+  {
+   "request": "whether a Standard member can upgrade to Plus mid-year",
+   "kind": "knowledge",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Can I upgrade from the regular plan to the Plus plan mid-year?",
+   "reference": "UPGRADE"
   }
  ],
  "expected_outcome": "handed_off",
  "expected_handoff_reason": "action gap",
- "needs_documents": false,
- "reference_answer": null,
- "evidence_spans": [],
+ "needs_documents": true,
+ "reference_answer": "Yes. Standard members can upgrade to Comfort Club Plus at any time; the $80 difference is prorated for the months left in the current term.",
+ "evidence_spans": [
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Upgrades",
+   "start_line": 40,
+   "end_line": 40
+  }
+ ],
  "must_not": []
 }

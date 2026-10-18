@@ -52,8 +52,25 @@
  "requests": [
   {
    "request": "claim",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
+  },
+  {
+   "request": "how much compressor replacement labor costs",
+   "kind": "knowledge",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "How much is labor on a compressor?",
+   "reference": "COMPRESSOR"
+  },
+  {
+   "request": "book a warranty diagnostic visit",
+   "kind": "booking:hvac_repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Okay. Let's schedule it then.",
+   "reference": null
   }
  ],
  "expected_outcome": "contained",
@@ -78,6 +95,12 @@
    "heading": "HVAC repair",
    "start_line": 14,
    "end_line": 14
+  },
+  {
+   "file": "pricing__repair_price_book_2026.md",
+   "heading": "2026 Repair Price Book",
+   "start_line": 3,
+   "end_line": 3
   }
  ],
  "must_not": []

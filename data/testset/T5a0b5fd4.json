@@ -8,23 +8,23 @@
  "sample_call_id": "CALL-20260709-0347",
  "caller_script": [
   "I want to set up autopay for my membership.",
-  "Yeah, it's MHC-83707.",
-  "Luis Cruz.",
+  "Yeah, it's MHC-94607.",
+  "Nate Lee.",
   "Send the link.",
   "That's all, thank you so much."
  ],
  "caller_card": {
-  "customer_id": "MHC-83707",
-  "name": "Luis Cruz",
-  "phone": "512-599-8466",
-  "email": "luis.cruz@example.com",
-  "service_address": "9112 Windcrest Ave",
-  "city": "Round Rock",
-  "zip": "78664",
+  "customer_id": "MHC-94607",
+  "name": "Nate Lee",
+  "phone": "512-647-2837",
+  "email": "nate.lee@example.com",
+  "service_address": "1729 Cedar Ridge Ln",
+  "city": "Pflugerville",
+  "zip": "78660",
   "membership_tier": "standard",
-  "membership_renewal_date": "2027-04-04",
-  "system_brand": "American Standard",
-  "system_install_date": "2023-12-27",
+  "membership_renewal_date": "2027-07-18",
+  "system_brand": "Lennox",
+  "system_install_date": "2012-05-10",
   "zone": "north",
   "synthetic": false,
   "zone_source": "drawn"
@@ -34,6 +34,7 @@
  "requests": [
   {
    "request": "autopay",
+   "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "action gap"
   }

@@ -14,17 +14,17 @@
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-92941",
-  "name": "Derek Okafor",
-  "phone": "512-460-5987",
-  "email": "derek.okafor@example.com",
-  "service_address": "9402 Maple St",
-  "city": "Cedar Park",
-  "zip": "78613",
-  "membership_tier": "none",
-  "membership_renewal_date": null,
-  "system_brand": "Trane",
-  "system_install_date": "2019-03-10",
+  "customer_id": "MHC-60842",
+  "name": "Robert Diaz",
+  "phone": "512-614-4213",
+  "email": "robert.diaz@example.com",
+  "service_address": "7848 Maple St",
+  "city": "Pflugerville",
+  "zip": "78660",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-02-11",
+  "system_brand": "Rheem",
+  "system_install_date": "2012-09-12",
   "zone": "north",
   "synthetic": false,
   "zone_source": "drawn"
@@ -34,8 +34,25 @@
  "requests": [
   {
    "request": "what it includes or price",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
+  },
+  {
+   "request": "how much the Comfort Club costs",
+   "kind": "knowledge",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "And how much is it?",
+   "reference": "what it includes or price"
+  },
+  {
+   "request": "whether the Comfort Club covers plumbing",
+   "kind": "knowledge",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Does it cover plumbing?",
+   "reference": "what it includes or price"
   }
  ],
  "expected_outcome": "contained",
@@ -48,6 +65,12 @@
    "heading": "Plans",
    "start_line": 9,
    "end_line": 24
+  },
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Billing and renewal",
+   "start_line": 29,
+   "end_line": 29
   }
  ],
  "must_not": []

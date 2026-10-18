@@ -6,6 +6,7 @@ agent give the current fact rather than the old one. Here the report also checks
 document is in the index at all.
 
 Run: python -m eval.retrieval_eval   (needs the built index and VOYAGE_API_KEY; answers need EVAL_ANTHROPIC_API_KEY)
+     python -m eval.retrieval_eval --measures-only   (recomputes the retrieval measures; keeps the graded answers)
 """
 
 import csv
@@ -46,10 +47,13 @@ def hit_at_k(results: list[Chunk], needed: list[dict], k: int = TOP) -> bool:
     return any(_found(c, s) for c in results[:k] for s in needed)
 
 
-def coverage(questions: list[dict]) -> float:
-    """Share of handled-reason questions the current documents can answer at all (R30)."""
-    handled = [q for q in questions if q.get("handled_reason", True)]
-    return sum(bool(q["evidence_spans"]) for q in handled) / len(handled)
+def coverage(questions: list[dict]) -> float | None:
+    """Share of the knowledge questions callers ask under handled reasons that the current documents answer at all,
+    weighted by how many calls each comes from (R30). Only questions taken from the test cases count: hand-written
+    questions would let the measure move with how many were written."""
+    asked = [q for q in questions if q.get("case_id") and q.get("handled_reason", True)]
+    calls = sum(q.get("calls_weight", 1) for q in asked)
+    return sum(q.get("calls_weight", 1) for q in asked if q["evidence_spans"]) / calls if calls else None
 
 
 def stale_trap_passes(results: list[Chunk], needed: list[dict], k: int = TOP) -> bool:
@@ -58,7 +62,9 @@ def stale_trap_passes(results: list[Chunk], needed: list[dict], k: int = TOP) ->
 
 
 def compare_modes(questions: list[dict], searcher, question_set: str = "working") -> dict:
+    asked = [q for q in questions if q.get("case_id") and q.get("handled_reason", True)]
     report: dict = {"set": question_set, "questions": len(questions), "coverage": coverage(questions),
+                    "coverage_basis": f"{len(asked)} caller questions from {sum(q.get('calls_weight', 1) for q in asked)} calls",
                     "index_has_excluded_documents": any(c.document.startswith(EXCLUDED) for c in searcher.chunks)}
     answerable = [q for q in questions if q["evidence_spans"]]
     for mode in ("keyword", "meaning", "combined"):
@@ -98,6 +104,22 @@ Documents:
 Question: {question}"""
 
 
+def run_settings(answer_cost_usd: float | None) -> dict:
+    """Everything that shaped a run: SDK versions, models, token and retry limits, timeouts, and the spending cap."""
+    import anthropic
+    import voyageai
+
+    from app.config import SETTINGS
+    from app.knowledge.embedder import VOYAGE_RETRIES
+
+    return {"anthropic_sdk": anthropic.__version__, "voyage_sdk": voyageai.__version__,
+            "embedding_model": SETTINGS.embedding_model, "voyage_input_type": "query", "voyage_timeout_s": SETTINGS.voyage_timeout_s,
+            "voyage_retries": VOYAGE_RETRIES, "writer_model": SETTINGS.writer_model,
+            "writer_max_tokens": SETTINGS.eval_writer_max_tokens, "writer_effort": WRITER_EFFORT, "retries": SETTINGS.eval_retries,
+            "anthropic_timeout_s": SETTINGS.anthropic_timeout_s, "run_cap_usd": SETTINGS.eval_run_cap_usd, "top_k": TOP,
+            "answer_cost_usd": answer_cost_usd}
+
+
 class BudgetExceeded(RuntimeError):
     pass
 
@@ -131,13 +153,16 @@ def sonnet_writer(cap_usd: float | None = None) -> Callable[[str, str], str]:
     return write
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    import sys
+
     from dotenv import load_dotenv
 
     from app.knowledge.embedder import VoyageEmbedder
     from app.knowledge.index import load_index
     from app.knowledge.search import Searcher
 
+    measures_only = "--measures-only" in (sys.argv[1:] if argv is None else argv)
     load_dotenv(ROOT / ".env")
     chunks, embeddings = load_index(ROOT / "data" / "index")
     searcher = Searcher(chunks, VoyageEmbedder(input_type="query"), embeddings)
@@ -145,18 +170,22 @@ def main() -> None:
     working = [q for q in questions if q["set"] == "working"]
     out = ROOT / "data" / "results" / "retrieval"
     out.mkdir(parents=True, exist_ok=True)
-    from app.config import SETTINGS
-
     report = compare_modes(working, searcher, "working")
-    whole_kb = "\n\n".join(p.read_text() for p in sorted((ROOT / "data" / "kb_text").glob("*.md")))
-    writer = sonnet_writer()
-    answer_both_ways(working, searcher, writer, whole_kb, out / "answers_to_grade.jsonl", model=SETTINGS.writer_model)
-    report["settings"] = {"embedding_model": SETTINGS.embedding_model, "writer_model": SETTINGS.writer_model,
-                          "writer_max_tokens": SETTINGS.eval_writer_max_tokens, "writer_effort": WRITER_EFFORT,
-                          "retries": SETTINGS.eval_retries, "top_k": TOP, "answer_cost_usd": round(writer.spent[0], 4)}
-    (out / "summary.json").write_text(json.dumps(report, indent=1))
-    print(json.dumps({k: v for k, v in report.items() if k in ("set", "questions", "coverage", "keyword", "meaning", "combined", "settings")}, indent=1))
+    if measures_only:
+        previous = json.loads((out / "summary.json").read_text()) if (out / "summary.json").exists() else {}
+        cost = previous.get("settings", {}).get("answer_cost_usd")
+        report["answers"] = "kept from the previous run (answers_to_grade.jsonl)"
+    else:
+        from app.config import SETTINGS
 
+        whole_kb = "\n\n".join(p.read_text() for p in sorted((ROOT / "data" / "kb_text").glob("*.md")))
+        writer = sonnet_writer()
+        answer_both_ways(working, searcher, writer, whole_kb, out / "answers_to_grade.jsonl", model=SETTINGS.writer_model)
+        cost = round(writer.spent[0], 4)
+    report["settings"] = run_settings(cost)
+    (out / "summary.json").write_text(json.dumps(report, indent=1))
+    print(json.dumps({k: v for k, v in report.items() if k in ("set", "questions", "coverage", "coverage_basis", "keyword",
+                                                               "meaning", "combined", "settings")}, indent=1))
 
 if __name__ == "__main__":
     main()

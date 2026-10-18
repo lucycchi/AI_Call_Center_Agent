@@ -32,6 +32,7 @@
  "requests": [
   {
    "request": "hiring",
+   "kind": "sub-reason",
    "expected_outcome": "redirect",
    "handoff_reason": null
   }

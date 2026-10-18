@@ -8,33 +8,33 @@
  "sample_call_id": "CALL-20260707-0002",
  "caller_script": [
   "Um, i need to cancel my appointment. My brother-in-law ended up fixing it.",
-  "Yeah, it's MHC-55482.",
-  "Grace Nguyen.",
+  "Yeah, it's MHC-46517.",
+  "Carlos Reyes.",
   "Great.",
   "That's all, thank you so much."
  ],
  "caller_card": {
-  "customer_id": "MHC-55482",
-  "name": "Grace Nguyen",
-  "phone": "512-950-9284",
-  "email": "grace.nguyen@example.com",
-  "service_address": "9128 Brookside Ct",
-  "city": "Leander",
-  "zip": "78641",
+  "customer_id": "MHC-46517",
+  "name": "Carlos Reyes",
+  "phone": "512-760-5047",
+  "email": "carlos.reyes@example.com",
+  "service_address": "579 Pecan Grove Rd",
+  "city": "Georgetown",
+  "zip": "78626",
   "membership_tier": "none",
   "membership_renewal_date": null,
-  "system_brand": "Rheem",
-  "system_install_date": "2026-03-19",
+  "system_brand": "American Standard",
+  "system_install_date": "2021-05-12",
   "zone": "north",
   "synthetic": false,
   "zone_source": "drawn"
  },
  "appointment": {
-  "appointment_id": 59,
-  "slot_id": 111,
+  "appointment_id": 64,
+  "slot_id": 126,
   "slot_date": "2026-10-21",
   "window": "13:00-17:00",
-  "tech_id": 1,
+  "tech_id": 5,
   "zone": "north",
   "source": "seed"
  },
@@ -42,6 +42,7 @@
  "requests": [
   {
    "request": "cancel appointment",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }

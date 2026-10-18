@@ -39,7 +39,7 @@
     "issued_date": "2026-10-02",
     "due_date": "2026-11-01",
     "amount_cents": 124000,
-    "balance_cents": 124000,
+    "balance_cents": 0,
     "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 115100}]"
    }
   }
@@ -47,6 +47,7 @@
  "requests": [
   {
    "request": "charged twice",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }

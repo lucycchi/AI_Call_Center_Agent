@@ -70,7 +70,8 @@ REFERENCES = {
                                   "diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is "
                                   "$269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off "
                                   "plumbing repairs.",
-                                  [(MEMBERSHIP, "Plans", ("$189 per year", "15% off plumbing repairs"))]),
+                                  [(MEMBERSHIP, "Plans", ("$189 per year", "15% off plumbing repairs")),
+                                   (MEMBERSHIP, "Billing and renewal", ("12-month minimum",))]),
     "member discount on a new system": ("Comfort Club members (Standard and Plus) get $500 off a full system replacement. "
                                         "Replacements start with a free in-home estimate.",
                                         [(MEMBERSHIP, "Plans", ("$500 off any full system replacement",)),
@@ -89,8 +90,8 @@ REFERENCES = {
                       "year, the return visit and labor are free.",
                       [(WARRANTY, "Repair warranty (Meridian labor warranty)", ("1-year labor warranty", "same part fails"))]),
     "replacement estimate": ("Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split "
-                             "system typically costs $8,000 to $16,000 installed, and the technician or advisor confirms the "
-                             "price.",
+                             "system typically costs $8,000 to $16,000 installed, depending on tonnage, efficiency rating, "
+                             "ductwork condition and brand.",
                              [(CATALOG, "System replacement", ("Free in-home estimate", "$8,000"))]),
 }
 COMPRESSOR = ("If the unit is registered, the manufacturer covers the compressor part for 10 years. The standard 2-year "
@@ -99,12 +100,22 @@ COMPRESSOR = ("If the unit is registered, the manufacturer covers the compressor
               "compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",
               [(WARRANTY, "Manufacturer parts warranty (residential, when registered)", ("| Trane |", "Labor to replace")),
                (WARRANTY, "New system installation warranty", ("2-year labor warranty", "5-year labor warranty")),
-               ("pricing__repair_price_book_2026.md", "HVAC repair", ("Compressor replacement labor",))])
+               ("pricing__repair_price_book_2026.md", "HVAC repair", ("Compressor replacement labor",)),
+               ("pricing__repair_price_book_2026.md", "2026 Repair Price Book", ("confirms the final price",))])
 MEMBERSHIP_SAVINGS = ("Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee "
                       "waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't "
                       "say whether those benefits apply to a visit booked on the day you join, so a team member confirms that "
                       "when setting up the membership.",
                       [(MEMBERSHIP, "Plans", ("$189 per year", "15% off all repairs"))])
+UPGRADE = ("Yes. Standard members can upgrade to Comfort Club Plus at any time; the $80 difference is prorated for the "
+           "months left in the current term.",
+           [(MEMBERSHIP, "Upgrades", ("may upgrade to Plus",))])
+CANCEL_BEFORE_RENEWAL = ("Yes. Members can cancel auto-renewal at any time before the renewal date. An annual plan bills once on "
+                         "the enrollment date and renews on the same date each year.",
+                         [(MEMBERSHIP, "Cancellation", ("cancel auto-renewal",)),
+                          (MEMBERSHIP, "Billing and renewal", ("Annual plans bill once",))])
+NAMED_REFERENCES = {"MEMBERSHIP_SAVINGS": MEMBERSHIP_SAVINGS, "UPGRADE": UPGRADE,
+                    "CANCEL_BEFORE_RENEWAL": CANCEL_BEFORE_RENEWAL, "COMPRESSOR": COMPRESSOR}
 
 
 def expected_outcome(reason: str, sub: str, zone: str | None) -> tuple[str, str | None]:
@@ -177,6 +188,9 @@ def caller_card(db: sqlite3.Connection, zone: str | None, tier: str | None, bran
             "system_install_date": install_after or "2020-01-01", "zone": zone, "synthetic": True, "zone_source": source}
 
 
+PLAN = re.compile(r"maintenance plan|comfort club", re.I)
+ENROL = re.compile(r"\b(add it|sign me up|enrol+ me|i(?:'d| would)? (?:like|want) to join)\b", re.I)
+
 AGES = {w: n for n, w in enumerate("one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
                                    "fifteen sixteen seventeen eighteen nineteen twenty".split(), 1)}
 
@@ -189,6 +203,8 @@ def _requirements(sub: str, text: str) -> dict:
         need["tier"] = "standard" if sub == "upgrade" else "member"
     if sub in ("claim", "registration"):
         need["install_after"] = "2025-10-16"
+    if PLAN.search(text) and ENROL.search(text):
+        need["tier"] = "none"  # a caller asking to join is not yet a member
     age = re.search(rf"\b(\d+|{'|'.join(AGES)}) years? old\b", text, re.I)
     if age:
         year = SETTINGS.now.year - int(AGES.get(age.group(1).lower(), age.group(1)))
@@ -215,8 +231,9 @@ def use_card(lines: list[str], card: dict) -> list[str]:
     return out
 
 
-def _invoice_fixture(card: dict, text: str, n: int) -> dict:
-    """The invoice the caller describes: their invoice number, and the amount the invoice shows (not a quote)."""
+def _invoice_fixture(card: dict, text: str, n: int, paid: bool = False) -> dict:
+    """The invoice the caller describes: their invoice number, the amount the invoice shows (not a quote), and
+    already paid when the caller says they paid (charged twice, or asking for a refund)."""
     stated = re.search(r"invoice[^$]{0,30}\$([\d,]+)", text, re.I) or re.search(r"\$([\d,]+)", text)
     total = (int(stated.group(1).replace(",", "")) if stated else 245) * 100
     named = re.search(r"INV-\d{6}", text)
@@ -225,7 +242,7 @@ def _invoice_fixture(card: dict, text: str, n: int) -> dict:
     return {"table": "invoices", "row": {"invoice_id": named.group(0) if named else f"INV-{900000 + n}",
                                          "customer_id": card["customer_id"], "appointment_id": None,
                                          "issued_date": "2026-10-02", "due_date": "2026-11-01",
-                                         "amount_cents": total, "balance_cents": total, "line_items": json.dumps(lines)}}
+                                         "amount_cents": total, "balance_cents": 0 if paid else total, "line_items": json.dumps(lines)}}
 
 
 def _window_in(text: str) -> str | None:
@@ -238,21 +255,38 @@ APPOINTMENT_DATES = {"reschedule": "2026-10-17", "confirm": "2026-10-22", "cance
                      "technician late": "2026-10-16"}
 
 
+# What the caller's words say the appointment is for, when they say.
+SERVICE_WORDS = [(re.compile(r"\b(fix|fixing|fixed|repair)\b", re.I), "hvac_repair"),
+                 (re.compile(r"\btune-?up\b", re.I), "hvac_tune_up"),
+                 (re.compile(r"\b(sink|drain|water heater|plumb\w*)\b", re.I), "plumbing"),
+                 (re.compile(r"\bestimate\b", re.I), "estimate")]
+
+
+def _service_in(lines: list[str]) -> str | None:
+    text = " ".join(lines)
+    return next((service for words, service in SERVICE_WORDS if words.search(text)), None)
+
+
 def _overlaps(a: str, b: str) -> bool:
     (a1, a2), (b1, b2) = a.split("-"), b.split("-")
     return a1 < b2 and b1 < a2
 
 
-def _existing_appointment(db: sqlite3.Connection, need: dict, day: str, window: str | None, n: int,
+def _existing_appointment(db: sqlite3.Connection, need: dict, day: str, window: str | None, service: str | None, n: int,
                           rng: random.Random) -> tuple[dict, dict, list[dict]]:
     """The caller's appointment, in order of preference: a matching real customer's scheduled appointment in the seed;
     an open seed slot booked for the card's customer; a new slot for a technician free in that window. The freed-slot
     rule (R55, D33) then covers every case: a seed slot returns to its seed status, booked ones and new ones to open."""
     customers = {c["customer_id"]: c for c in _customers(db)}
-    rows = db.execute("select a.appointment_id, a.customer_id, s.slot_id, s.window, s.tech_id, s.zone from appointments a "
-                      "join appointment_slots s using (slot_id) where a.status = 'scheduled' and s.slot_date = ? "
-                      "order by a.appointment_id", (day,)).fetchall()
-    seeded = [(row, customers[row[1]]) for row in rows if row[1] in customers and (window is None or row[3] == window)
+    rows = db.execute("select a.appointment_id, a.customer_id, s.slot_id, s.window, s.tech_id, s.zone, s.service_type "
+                      "from appointments a join appointment_slots s using (slot_id) where a.status = 'scheduled' "
+                      "and s.slot_date = ? order by a.appointment_id", (day,)).fetchall()
+    upcoming = dict(db.execute("select a.customer_id, count(*) from appointments a join appointment_slots s using (slot_id) "
+                               "where a.status = 'scheduled' and s.slot_date >= ? group by 1", (SETTINGS.now.date().isoformat(),)))
+    # The caller's appointment is the only one they have coming up, so "my appointment" is unambiguous, and it is for
+    # the service their words describe when they name one.
+    seeded = [(row[:6], customers[row[1]]) for row in rows if row[1] in customers and (window is None or row[3] == window)
+              and (service is None or row[6] == service) and upcoming.get(row[1]) == 1
               and row[5] == customers[row[1]]["zone"] and _matches(customers[row[1]], **need)]
     if seeded:
         (appointment_id, _, slot_id, slot_window, tech, zone), card = rng.choice(seeded)
@@ -261,7 +295,8 @@ def _existing_appointment(db: sqlite3.Connection, need: dict, day: str, window: 
                       "tech_id": tech, "zone": zone, "source": "seed"}, []
     card = caller_card(db, rng=rng, **need)
     open_slots = db.execute("select slot_id, window, tech_id from appointment_slots where status = 'open' and zone = ? "
-                            "and slot_date = ? order by slot_id", (card["zone"], day)).fetchall()
+                            "and slot_date = ? and service_type = ? order by slot_id",
+                            (card["zone"], day, service or "hvac_repair")).fetchall()
     open_slots = [s for s in open_slots if window is None or s[1] == window]
     appointment = {"table": "appointments", "row": {"appointment_id": 5000 + n, "slot_id": None, "customer_id": card["customer_id"],
                                                     "issue_description": "test appointment", "created_at": "2026-10-10",
@@ -284,30 +319,28 @@ def _existing_appointment(db: sqlite3.Connection, need: dict, day: str, window: 
                 appointment["row"]["slot_id"] = slot_id
                 slot = {"table": "appointment_slots", "row": {"slot_id": slot_id, "slot_date": day, "window": slot_window,
                                                               "tech_id": tech, "zone": card["zone"],
-                                                              "service_type": "hvac_repair", "status": "booked"}}
+                                                              "service_type": service or "hvac_repair", "status": "booked"}}
                 return card, {"appointment_id": 5000 + n, "slot_id": slot_id, "slot_date": day, "window": slot_window,
                               "tech_id": tech, "zone": card["zone"], "source": "planted"}, [slot, appointment]
     raise ValueError(f"no way to give the caller an appointment on {day} {window or ''} in {card['zone']}")
 
 
-PLAN = re.compile(r"maintenance plan|comfort club", re.I)
-ENROL = re.compile(r"\b(add it|sign me up|enrol+ me|i(?:'d| would)? (?:like|want) to join)\b", re.I)
-SAVINGS = re.compile(r"save me money|pays? for itself", re.I)
-EMAIL_COPY = re.compile(r"\bemail me\b.*\bcopy\b", re.I)
-
-
-def extra_requests(reason: str, lines: list[str]) -> list[dict]:
-    """Further requests in the same call beyond its labelled sub-reason; each is graded on its own (R14, R39)."""
-    text = " ".join(lines)
+def extra_requests(case_id: str, zone: str) -> list[dict]:
+    """Requests in the call beyond its labelled sub-reason, from the reviewed list in data/case_requests.csv
+    (written from every script and checked against the transcripts); each is graded on its own (R14, R39)."""
     extra = []
-    if reason == "new booking" and PLAN.search(text) and SAVINGS.search(text):
-        extra.append({"request": "whether joining the Comfort Club would save money", "expected_outcome": "contained",
-                      "handoff_reason": None})
-    if PLAN.search(text) and ENROL.search(text):
-        extra.append({"request": "join the Comfort Club", "expected_outcome": "handed_off", "handoff_reason": "action gap"})
-    if EMAIL_COPY.search(text):
-        extra.append({"request": "email an itemized copy of the invoice", "expected_outcome": "handed_off",
-                      "handoff_reason": "action gap"})
+    for row in csv.DictReader((ROOT / "data" / "case_requests.csv").open()):
+        if row["case_id"] != case_id:
+            continue
+        kind, outcome, why = row["kind"], "contained", None
+        if kind == "action":
+            outcome, why = "handed_off", "action gap"
+        elif kind.startswith("booking:"):
+            service = kind.split(":")[1].replace("hvac_", "")
+            if ZONE_CAPACITY.get(zone, {}).get(service, 1) == 0:
+                outcome, why = "clean_decline", f"no {service} capacity in {zone} zone"
+        extra.append({"request": row["request"], "kind": kind, "expected_outcome": outcome, "handoff_reason": why,
+                      "caller_words": row["caller_words"], "reference": row["reference"] or None})
     return extra
 
 
@@ -332,24 +365,25 @@ def build_cases(out: Path, seed: int = 20261016) -> list[dict]:
         need = _requirements(sub, text)
         appointment, fixtures = None, []
         if sub in APPOINTMENT_DATES:
-            card, appointment, fixtures = _existing_appointment(db, need, APPOINTMENT_DATES[sub], _window_in(text), n, rng)
+            card, appointment, fixtures = _existing_appointment(db, need, APPOINTMENT_DATES[sub], _window_in(text),
+                                                                _service_in(call.customer_lines), n, rng)
         else:
             card = caller_card(db, rng=rng, **need)
         if card["synthetic"]:
             fixtures.insert(0, {"table": "customers", "row": {k: card[k] for k in CUSTOMER_KEYS}})
         if reason == "billing":
-            fixtures.append(_invoice_fixture(card, " ".join(call.customer_lines), n))
+            fixtures.append(_invoice_fixture(card, " ".join(call.customer_lines), n, paid=sub in ("charged twice", "refund")))
         outcome, why = expected_outcome(reason, sub, card["zone"])
-        requests = [{"request": sub, "expected_outcome": outcome, "handoff_reason": why}] + extra_requests(reason, call.customer_lines)
+        requests = [{"request": sub, "kind": "sub-reason", "expected_outcome": outcome, "handoff_reason": why}] \
+            + extra_requests(template, card["zone"])
         handed = [r for r in requests if r["expected_outcome"] == "handed_off"]
         if handed:
             outcome, why = "handed_off", handed[0]["handoff_reason"]
-        if "compressor" in text.lower():
-            reference, spans = COMPRESSOR
-        elif any(r["request"].startswith("whether joining") for r in requests):
-            reference, spans = MEMBERSHIP_SAVINGS
-        else:
-            reference, spans = REFERENCES.get(sub, (None, []))
+        # The reference covers every knowledge request in the call: the sub-reason's, then each listed one.
+        keys = ["COMPRESSOR" if "compressor" in text.lower() else sub] + [r["reference"] for r in requests[1:] if r.get("reference")]
+        found = [ref for key in dict.fromkeys(keys) if (ref := NAMED_REFERENCES.get(key) or REFERENCES.get(key))]
+        reference = " ".join(text for text, _ in found) or None
+        spans = [span for _, section in found for span in section]
         case = {
             "case_id": template, "template_id": template, "family": row["family"], "calls_weight": int(row["template_calls"]),
             "reason": reason, "sub_reason": sub, "sample_call_id": call.call_id,

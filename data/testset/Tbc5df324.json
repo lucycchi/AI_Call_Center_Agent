@@ -53,14 +53,23 @@
  "requests": [
   {
    "request": "replacement estimate",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
+  },
+  {
+   "request": "book the free in-home estimate",
+   "kind": "booking:estimate",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Yeah, let's do that.",
+   "reference": null
   }
  ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": true,
- "reference_answer": "Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, and the technician or advisor confirms the price.",
+ "reference_answer": "Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, depending on tonnage, efficiency rating, ductwork condition and brand.",
  "evidence_spans": [
   {
    "file": "services__service_catalog.md",

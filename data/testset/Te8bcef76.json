@@ -8,41 +8,42 @@
  "sample_call_id": "CALL-20260711-0063",
  "caller_script": [
   "I have a tech coming tomorrow but something came up. Can I move it?",
-  "Yeah, it's MHC-29577.",
-  "Susan Singh.",
+  "Yeah, it's MHC-36446.",
+  "Nadia Lee.",
   "Any afternoon this week.",
   "Perfect.",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-29577",
-  "name": "Susan Singh",
-  "phone": "512-248-3163",
-  "email": "susan.singh@example.com",
-  "service_address": "8101 Brookside Ct",
-  "city": "Kyle",
-  "zip": "78640",
+  "customer_id": "MHC-36446",
+  "name": "Nadia Lee",
+  "phone": "512-496-8302",
+  "email": "nadia.lee@example.com",
+  "service_address": "8293 Maple St",
+  "city": "Leander",
+  "zip": "78641",
   "membership_tier": "none",
   "membership_renewal_date": null,
-  "system_brand": "Rheem",
-  "system_install_date": "2018-06-18",
-  "zone": "south",
+  "system_brand": "Lennox",
+  "system_install_date": "2022-01-04",
+  "zone": "north",
   "synthetic": false,
   "zone_source": "drawn"
  },
  "appointment": {
-  "appointment_id": 25,
-  "slot_id": 33,
+  "appointment_id": 23,
+  "slot_id": 31,
   "slot_date": "2026-10-17",
   "window": "08:00-12:00",
-  "tech_id": 3,
-  "zone": "south",
+  "tech_id": 1,
+  "zone": "north",
   "source": "seed"
  },
  "fixtures": [],
  "requests": [
   {
    "request": "reschedule",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }

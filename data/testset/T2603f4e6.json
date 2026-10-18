@@ -33,6 +33,7 @@
  "requests": [
   {
    "request": "member discount on a new system",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }

@@ -8,23 +8,23 @@
  "sample_call_id": "CALL-20260708-0115",
  "caller_script": [
   "I need to pay invoice INV-263891. Can I do it over the phone?",
-  "Yeah, it's MHC-83207.",
-  "Maria Reyes.",
+  "Yeah, it's MHC-46517.",
+  "Carlos Reyes.",
   "Got it. Thanks.",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-83207",
-  "name": "Maria Reyes",
-  "phone": "512-701-5321",
-  "email": "maria.reyes@example.com",
-  "service_address": "154 Harbor View Way",
-  "city": "Round Rock",
-  "zip": "78664",
-  "membership_tier": "standard",
-  "membership_renewal_date": "2027-10-04",
-  "system_brand": "Trane",
-  "system_install_date": "2021-02-21",
+  "customer_id": "MHC-46517",
+  "name": "Carlos Reyes",
+  "phone": "512-760-5047",
+  "email": "carlos.reyes@example.com",
+  "service_address": "579 Pecan Grove Rd",
+  "city": "Georgetown",
+  "zip": "78626",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "American Standard",
+  "system_install_date": "2021-05-12",
   "zone": "north",
   "synthetic": false,
   "zone_source": "drawn"
@@ -35,7 +35,7 @@
    "table": "invoices",
    "row": {
     "invoice_id": "INV-263891",
-    "customer_id": "MHC-83207",
+    "customer_id": "MHC-46517",
     "appointment_id": null,
     "issued_date": "2026-10-02",
     "due_date": "2026-11-01",
@@ -48,6 +48,7 @@
  "requests": [
   {
    "request": "pay an invoice",
+   "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "action gap"
   }

@@ -95,3 +95,23 @@ The author chose to fix everything recommended (all of groups A, B and C):
 - **Architecture document:** all wording fixes from both checks.
 
 **After the fixes.** The retrieval answers were rerun on the separate test key (Sonnet 5.5, 800 tokens, low effort, one retry; $0.52): 72 answers from keyword-only search, combined search and the whole knowledge base for the 24 working-set questions, waiting for grading (Task 19). Working-set retrieval: keyword-only recall 69% and hit rate 71%; meaning-only 98% and 100%; combined 94% and 100%; stale-question hit rate 100% for combined; coverage 0.875 of handled-reason questions; no excluded document in the index. The author chose the revised Comfort Club savings answer (a team member confirms whether benefits apply on the day of joining) and settled the refreeze decision (D40).
+
+## Review of the fixes
+
+Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent reviewed `git diff 68feeda..HEAD` against every finding and chosen fix above. Both ran all 131 tests (passed) and rebuilt the cases and questions byte for byte; the refrozen held-out hash verifies. Both found every original finding fixed except those below.
+
+| Finding | Codex | Claude |
+|---|---|---|
+| Some requests in a call are still not listed: the renewal-date caller also asks "can I still cancel before then?"; the held-out repeat-repair caller asks "can you get someone out?"; the compressor caller says "let's schedule it" | yes (top) | yes (top; booking ones unclear) |
+| The cancel case expects the customer's tune-up on 10/21, but the caller says "my brother-in-law ended up fixing it", which fits their repair on 10/28; appointments are chosen without the service type | | yes (top) |
+| The "join the plan" caller is drawn as an existing Comfort Club Plus member | | yes (top) |
+| Every planted invoice is fully unpaid, including the held-out "charged twice" caller (paid twice) and the refund caller | | yes (top) |
+| Six reference answers state facts outside their evidence spans (for example the 12-month minimum; "the technician confirms the final price") | yes (top) | spans include lines in between (minor) |
+| Coverage still depends on the hand-written question mix; the filter does not change the working-set figure (both out-of-scope questions are held out) | yes (unclear) | yes (unclear) |
+| Retrieval results do not record the SDK versions, the $8 cap, timeouts, or Voyage's input type and retries | yes | |
+| Planted-fixture id ranges (appointments from 5000, slots from 9000) still undocumented | yes | yes (harmless) |
+| Combined-search decision (D41) still proposed | yes | yes (unclear) |
+| Reschedule caller wants "any afternoon this week"; the first open afternoon is 10/21 | | yes (unclear) |
+| Tests check names and addresses in one case only; no tests of tier, appointment service, invoice balance or span support against the caller's words and the reference | yes | yes |
+
+**Author's choices on the review of the fixes:** fix everything recommended: a reviewed list of every request in each case (written from the scripts, checked by a fresh agent), read by the builder; seeded appointments matched on service type and preferring customers with one upcoming appointment; callers asking to join drawn as non-members; paid invoices for the charged-twice and refund calls; evidence spans covering every fact in the reference, with a test; coverage over the knowledge questions callers ask, weighted by calls; fuller run settings; fixture id ranges documented; stronger tests; no change to the reschedule case; one more held-out refreeze, recorded as a new decision replacing D40.

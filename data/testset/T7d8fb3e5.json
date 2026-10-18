@@ -34,8 +34,17 @@
  "requests": [
   {
    "request": "claim",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
+  },
+  {
+   "request": "book a warranty diagnostic visit",
+   "kind": "booking:hvac_repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Tomorrow if you can.",
+   "reference": null
   }
  ],
  "expected_outcome": "contained",

@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260723-0172",
  "caller_script": [
   "Hi, my thermostat is blank and I'd like to get someone out to look at it.",
-  "Marcus Walker, 1371 Sunset Terrace, Pflugerville.",
+  "Luis Diaz, 9860 Cedar Ridge Ln, Pflugerville.",
   "Next Tuesday if possible, the afternoon.",
   "Can you do anything earlier?",
   "Okay, do that. And book the slot.",
@@ -17,17 +17,17 @@
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-25475",
-  "name": "Marcus Walker",
-  "phone": "512-631-1642",
-  "email": "marcus.walker@example.com",
-  "service_address": "1371 Sunset Terrace",
+  "customer_id": "MHC-49756",
+  "name": "Luis Diaz",
+  "phone": "512-671-6928",
+  "email": "luis.diaz@example.com",
+  "service_address": "9860 Cedar Ridge Ln",
   "city": "Pflugerville",
   "zip": "78660",
   "membership_tier": "standard",
-  "membership_renewal_date": "2027-01-06",
+  "membership_renewal_date": "2027-04-06",
   "system_brand": "Rheem",
-  "system_install_date": "2015-08-30",
+  "system_install_date": "2019-06-18",
   "zone": "north",
   "synthetic": false,
   "zone_source": "transcript"
@@ -37,6 +37,7 @@
  "requests": [
   {
    "request": "hvac repair",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }

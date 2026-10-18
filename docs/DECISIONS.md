@@ -536,7 +536,7 @@ can only propose a decision; only the author settles one.
 
 ## D40: The milestone 2 reviews found errors in the frozen test cases (caller scripts kept the transcript's identity, wrong planted invoices, two-request calls expecting only a handoff, evidence spans tied to the chunker). Fix them and refreeze the held-out set, or leave the frozen set alone?
 
-- **Status:** settled
+- **Status:** replaced by "The review of the milestone 2 fixes found more errors in the rebuilt test cases (requests still unlisted, the cancel case on the wrong appointment, a Plus member asking to join, paid invoices shown as owed, evidence spans missing facts). Fix them and refreeze the held-out set again?" (D42)
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
 - **Options:**
   - Fix the case builder, rebuild all 52 cases and refreeze the held-out set with a new hash, recording the old hash
@@ -559,6 +559,20 @@ can only propose a decision; only the author settles one.
   - [data/results/retrieval/summary.json](data/results/retrieval/summary.json): On the working-set questions: plain fusion missed answers meaning search had first; keep-top fusion found every answer; meaning-only had the best recall at five; keyword-only was weakest.
 - **Choice:** Keep each list's top result, then reciprocal-rank fusion. The spec leaves the fusion method to the builder (R28). The results report meaning-only beside it honestly, and the rule was chosen on the working set only.
 - **Reason:** Plain fusion dropped meaning search's correct first answer whenever keyword search missed; keeping keyword search's top result protects exact-term questions (prices, place names) that meaning search can rank lower.
+
+## D42: The review of the milestone 2 fixes found more errors in the rebuilt test cases (requests still unlisted, the cancel case on the wrong appointment, a Plus member asking to join, paid invoices shown as owed, evidence spans missing facts). Fix them and refreeze the held-out set again?
+
+- **Status:** proposed
+- **Replaces:** "The milestone 2 reviews found errors in the frozen test cases (caller scripts kept the transcript's identity, wrong planted invoices, two-request calls expecting only a handoff, evidence spans tied to the chunker). Fix them and refreeze the held-out set, or leave the frozen set alone?" (D40)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
+- **Options:**
+  - Fix them, rebuild all 52 cases and refreeze the held-out set with a new hash, recording both earlier hashes
+  - Fix only the working set
+  - Leave the cases and note the errors
+- **Research:**
+  - [docs/gates/milestone-2.md](docs/gates/milestone-2.md): Codex and a fresh Claude agent reviewed the fixes; held-out cases affected: charged twice (paid invoice), repeat repair (booking request), upgrade (mid-year question).
+- **Choice:** Fix and refreeze. Every request beyond a call's labelled reason comes from a reviewed list (data/case_requests.csv) quoting the caller's words; seeded appointments are the customer's only upcoming one and match the service the caller describes; a caller asking to join is drawn as a non-member; charged-twice and refund invoices are planted paid; evidence spans cover every number in the reference, tested. The split is unchanged (37 working, 15 held out); the hash moves from 9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c to 8ed36e20700236c277d7c32fa18954c843435dd121f9d4407368d6e9023f59d4. New reference answers: upgrading mid-year (held out) and cancelling before renewal; the replacement-estimate answer no longer claims the advisor confirms the price, which no document says.
+- **Reason:** No agent exists yet, so refreezing is still allowed (R10); held-out cases with wrong data would make the final measurements wrong.
 
 ## Glossary
 

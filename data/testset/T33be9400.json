@@ -8,39 +8,40 @@
  "sample_call_id": "CALL-20260721-0261",
  "caller_script": [
   "Um, my window was 12 to 4 and it's 4:30. Nobody's here and nobody's called.",
-  "Sure, it's Nate Lee, 512-475-8304.",
+  "Sure, it's Linda Murphy, 512-201-3058.",
   "Okay. I just need to know if I should wait.",
   "That's all, thank you so much."
  ],
  "caller_card": {
-  "customer_id": "MHC-41747",
-  "name": "Nate Lee",
-  "phone": "512-475-8304",
-  "email": "nate.lee@example.com",
-  "service_address": "159 Windcrest Ave",
-  "city": "Round Rock",
-  "zip": "78664",
+  "customer_id": "MHC-99400",
+  "name": "Linda Murphy",
+  "phone": "512-201-3058",
+  "email": "linda.murphy@example.com",
+  "service_address": "3910 Ridgeline Pass",
+  "city": "Buda",
+  "zip": "78610",
   "membership_tier": "none",
   "membership_renewal_date": null,
-  "system_brand": "Lennox",
-  "system_install_date": "2023-02-04",
-  "zone": "north",
+  "system_brand": "Trane",
+  "system_install_date": "2025-09-28",
+  "zone": "south",
   "synthetic": false,
   "zone_source": "drawn"
  },
  "appointment": {
-  "appointment_id": 19,
-  "slot_id": 26,
+  "appointment_id": 7,
+  "slot_id": 9,
   "slot_date": "2026-10-16",
   "window": "12:00-16:00",
-  "tech_id": 7,
-  "zone": "north",
+  "tech_id": 3,
+  "zone": "south",
   "source": "seed"
  },
  "fixtures": [],
  "requests": [
   {
    "request": "technician late",
+   "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "late technician"
   }

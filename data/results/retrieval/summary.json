@@ -1,14 +1,14 @@
 {
  "set": "working",
- "questions": 24,
- "coverage": 0.875,
+ "questions": 25,
+ "coverage": 1.0,
+ "coverage_basis": "9 caller questions from 85 calls",
  "index_has_excluded_documents": false,
  "keyword": {
-  "recall_at_5": 0.6904761904761905,
-  "hit_at_5": 0.7142857142857143,
+  "recall_at_5": 0.6931818181818182,
+  "hit_at_5": 0.7727272727272727,
   "stale_trap_hit_at_5": 0.8333333333333334,
   "misses": [
-   "case-T0a995037",
    "case-T2603f4e6",
    "case-Tbaf67f84",
    "case-Tbc5df324",
@@ -17,23 +17,31 @@
   ]
  },
  "meaning": {
-  "recall_at_5": 0.9841269841269842,
+  "recall_at_5": 0.9431818181818182,
   "hit_at_5": 1.0,
   "stale_trap_hit_at_5": 1.0,
   "misses": []
  },
  "combined": {
-  "recall_at_5": 0.9365079365079365,
+  "recall_at_5": 0.8977272727272727,
   "hit_at_5": 1.0,
   "stale_trap_hit_at_5": 1.0,
   "misses": []
  },
+ "answers": "kept from the previous run (answers_to_grade.jsonl)",
  "settings": {
+  "anthropic_sdk": "1.15.0",
+  "voyage_sdk": "0.5.0",
   "embedding_model": "voyage-4",
+  "voyage_input_type": "query",
+  "voyage_timeout_s": 5,
+  "voyage_retries": 1,
   "writer_model": "claude-sonnet-5-5",
   "writer_max_tokens": 800,
   "writer_effort": "low",
   "retries": 1,
+  "anthropic_timeout_s": 20,
+  "run_cap_usd": 8.0,
   "top_k": 5,
   "answer_cost_usd": 0.5153
  }

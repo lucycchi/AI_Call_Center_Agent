@@ -56,6 +56,6 @@
   "Tdbe75aee",
   "Teff9802d"
  ],
- "held_out_hash": "9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c",
- "status": "refrozen 2026-10-18 after the milestone 2 gate fixes, before any agent tuning (refreezing the held-out cases (D40)); previous hash 7cdaec4bc6b1c44407e8fe2da8a9415899bf1cf4c759ad586c884cf0c9eec5f0. Reference answers are unchanged except one new working-set answer (Comfort Club savings, case T9e29febc)"
+ "held_out_hash": "8ed36e20700236c277d7c32fa18954c843435dd121f9d4407368d6e9023f59d4",
+ "status": "refrozen 2026-10-18 after the review of the milestone 2 fixes, before any agent tuning (second refreeze of the held-out cases (D42), replacing D40); previous hashes 9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c and 7cdaec4bc6b1c44407e8fe2da8a9415899bf1cf4c759ad586c884cf0c9eec5f0. New reference answers: upgrade mid-year (held out, T0ad82d45), cancel before renewal (T738adaab); reworded: replacement estimate (Tbc5df324)"
 }

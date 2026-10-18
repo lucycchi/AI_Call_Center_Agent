@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260710-0081",
  "caller_script": [
   "Two things. My AC is blowing warm and I want to get someone out, and I want to know if joining the maintenance plan would save me money on this.",
-  "Jennifer Hernandez, 3252 Brookside Ct, Hutto.",
+  "Omar Martinez, 2452 Windcrest Ave, Pflugerville.",
   "So it pays for itself basically.",
   "Yeah, add it and book the visit.",
   "Book it.",
@@ -16,17 +16,17 @@
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-82140",
-  "name": "Jennifer Hernandez",
-  "phone": "512-342-9974",
-  "email": "jennifer.hernandez@example.com",
-  "service_address": "3252 Brookside Ct",
-  "city": "Hutto",
-  "zip": "78634",
-  "membership_tier": "plus",
-  "membership_renewal_date": "2027-06-08",
-  "system_brand": "Trane",
-  "system_install_date": "2017-01-15",
+  "customer_id": "MHC-90012",
+  "name": "Omar Martinez",
+  "phone": "512-481-8477",
+  "email": "omar.martinez@example.com",
+  "service_address": "2452 Windcrest Ave",
+  "city": "Pflugerville",
+  "zip": "78660",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Rheem",
+  "system_install_date": "2012-11-12",
   "zone": "north",
   "synthetic": false,
   "zone_source": "transcript"
@@ -36,18 +36,25 @@
  "requests": [
   {
    "request": "hvac repair",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   },
   {
    "request": "whether joining the Comfort Club would save money",
+   "kind": "knowledge",
    "expected_outcome": "contained",
-   "handoff_reason": null
+   "handoff_reason": null,
+   "caller_words": "would save me money on this",
+   "reference": "MEMBERSHIP_SAVINGS"
   },
   {
    "request": "join the Comfort Club",
+   "kind": "action",
    "expected_outcome": "handed_off",
-   "handoff_reason": "action gap"
+   "handoff_reason": "action gap",
+   "caller_words": "add it",
+   "reference": null
   }
  ],
  "expected_outcome": "handed_off",

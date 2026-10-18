@@ -33,6 +33,7 @@
  "requests": [
   {
    "request": "what it includes or price",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }
@@ -47,6 +48,12 @@
    "heading": "Plans",
    "start_line": 9,
    "end_line": 24
+  },
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Billing and renewal",
+   "start_line": 29,
+   "end_line": 29
   }
  ],
  "must_not": []

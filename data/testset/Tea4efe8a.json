@@ -32,6 +32,7 @@
  "requests": [
   {
    "request": "gas, carbon monoxide or sparks",
+   "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "emergency"
   }

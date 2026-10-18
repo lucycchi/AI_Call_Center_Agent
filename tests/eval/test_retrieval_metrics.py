@@ -36,7 +36,7 @@ def test_only_the_top_five_results_count():
 
 def test_coverage_is_the_share_of_questions_the_documents_can_answer():
     questions = [{"evidence_spans": [A]}, {"evidence_spans": [B]}, {"evidence_spans": []}]
-    assert round(coverage(questions), 3) == 0.667
+    assert coverage(questions) is None  # no caller questions to measure
 
 
 def test_stale_trap_passes_only_when_the_current_fact_is_found_and_nothing_excluded_comes_back():
@@ -94,7 +94,7 @@ def test_question_set_has_the_case_questions_stale_traps_and_unanswerable_ones()
     assert kinds == {"answerable", "stale_trap", "unanswerable"}
     assert sum(q["kind"] == "stale_trap" for q in questions) >= 6
     assert sum(q["kind"] == "unanswerable" for q in questions) >= 4
-    assert sum(q.get("case_id") is not None for q in questions) == 11
+    assert sum(q.get("case_id") is not None for q in questions) == 13
     for q in questions:
         assert q["set"] in {"working", "held_out"}
         if q["kind"] != "unanswerable":
@@ -113,10 +113,19 @@ def test_every_kind_of_question_has_both_working_and_held_out_examples():
 
 # Milestone 2 gate fixes.
 
-def test_coverage_counts_only_handled_reason_questions():
-    questions = [{"evidence_spans": [A], "handled_reason": True}, {"evidence_spans": [], "handled_reason": True},
-                 {"evidence_spans": [], "handled_reason": False}]
-    assert coverage(questions) == 0.5
+def test_coverage_is_the_call_weighted_share_of_caller_questions_the_documents_answer():
+    questions = [{"case_id": "a", "calls_weight": 3, "evidence_spans": [A], "handled_reason": True},
+                 {"case_id": "b", "calls_weight": 1, "evidence_spans": [], "handled_reason": True},
+                 {"case_id": None, "evidence_spans": [], "handled_reason": True}]
+    assert coverage(questions) == 0.75
+
+
+def test_the_run_settings_record_versions_limits_and_voyage_settings():
+    from eval.retrieval_eval import run_settings
+    settings = run_settings(answer_cost_usd=0.5)
+    for key in ("anthropic_sdk", "voyage_sdk", "embedding_model", "voyage_input_type", "voyage_timeout_s", "voyage_retries",
+                "writer_model", "writer_max_tokens", "writer_effort", "retries", "anthropic_timeout_s", "run_cap_usd", "top_k"):
+        assert settings[key] is not None, key
 
 
 def test_unanswerable_questions_outside_the_handled_reasons_are_marked():

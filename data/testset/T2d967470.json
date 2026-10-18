@@ -41,6 +41,7 @@
  "requests": [
   {
    "request": "confirm",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }

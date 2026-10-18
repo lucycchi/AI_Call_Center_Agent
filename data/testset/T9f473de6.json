@@ -8,21 +8,21 @@
  "sample_call_id": "CALL-20260722-0161",
  "caller_script": [
   "We just bought a house and the previous owner had a system installed by you. Does the warranty transfer?",
-  "It's 6198 Sunset Terrace, Round Rock.",
+  "It's 2987 Maple St, Hutto.",
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-48492",
-  "name": "Jennifer Garcia",
-  "phone": "512-398-2230",
-  "email": "jennifer.garcia@example.com",
-  "service_address": "6198 Sunset Terrace",
-  "city": "Round Rock",
-  "zip": "78664",
-  "membership_tier": "none",
-  "membership_renewal_date": null,
+  "customer_id": "MHC-46493",
+  "name": "Nate Walker",
+  "phone": "512-354-2359",
+  "email": "nate.walker@example.com",
+  "service_address": "2987 Maple St",
+  "city": "Hutto",
+  "zip": "78634",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-05-03",
   "system_brand": "Carrier",
-  "system_install_date": "2013-07-19",
+  "system_install_date": "2021-06-14",
   "zone": "north",
   "synthetic": false,
   "zone_source": "transcript"
@@ -32,6 +32,7 @@
  "requests": [
   {
    "request": "transfer",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }

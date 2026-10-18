@@ -33,8 +33,17 @@
  "requests": [
   {
    "request": "repeat repair",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
+  },
+  {
+   "request": "book a visit for the repeat repair",
+   "kind": "booking:hvac_repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Can you get someone out?",
+   "reference": null
   }
  ],
  "expected_outcome": "contained",

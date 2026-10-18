@@ -1,4 +1,5 @@
 import csv
+import re
 import json
 import shutil
 import sqlite3
@@ -201,11 +202,10 @@ def test_a_case_with_two_requests_expects_both_parts(tmp_path):
         assert case["requests"] and case["requests"][0]["request"] == case["sub_reason"]
 
 
-def test_saying_you_are_a_member_is_not_a_request_to_join():
-    from eval.build_cases import extra_requests
-    assert extra_requests("new booking", ["I'm a Comfort Club member and my AC is out."]) == []
-    assert [r["request"] for r in extra_requests("new booking", ["Is the maintenance plan worth it?", "Yeah, add it."])] \
-        == ["join the Comfort Club"]
+def test_a_caller_asking_to_join_is_drawn_as_a_non_member_and_saying_you_are_a_member_is_not_joining():
+    from eval.build_cases import _requirements
+    assert _requirements("hvac repair", "Is the maintenance plan worth it? Yeah, add it.")["tier"] == "none"
+    assert _requirements("hvac repair", "I'm a Comfort Club member and my AC is out.")["tier"] is None
 
 
 def test_any_stated_system_age_sets_the_install_year():
@@ -268,3 +268,99 @@ def test_evidence_spans_are_the_answering_lines_not_the_chunkers_sections(monkey
     lines = (ROOT / "data" / "kb_text" / "faq__customer_faq.md").read_text().splitlines()
     [span] = build._spans([("faq__customer_faq.md", "Payment", ("Card numbers",))])
     assert "Card numbers" in lines[span["start_line"] - 1]
+
+
+# Review of the fixes.
+
+def _transcript_identities():
+    from pipeline.transcripts import load_transcripts
+    from eval.build_cases import NAME_LINE, STREET
+    import re
+    data = ROOT / "call_data"
+    calls = {c.call_id: c for c in load_transcripts(data / "call_transcripts", data / "call_transcripts_index.csv")}
+    out = {}
+    for path in sorted((ROOT / "data" / "testset").glob("*.json")):
+        case = json.loads(path.read_text())
+        lines = calls[case["sample_call_id"]].customer_lines
+        names = {m.group(2).lower() for l in lines if (m := NAME_LINE.match(l.strip()))}
+        streets = {m.group(0) for l in lines for m in re.finditer(STREET, l)}
+        out[case["case_id"]] = (names, streets)
+    return out
+
+
+def test_no_case_keeps_the_transcripts_name_or_street(tmp_path):
+    identities = _transcript_identities()
+    for case in _built(tmp_path):
+        script = " ".join(case["caller_script"])
+        names, streets = identities[case["case_id"]]
+        for name in names - {case["caller_card"]["name"].lower()}:
+            assert name not in script.lower(), (case["case_id"], name)
+        for street in streets - {case["caller_card"]["service_address"]}:
+            assert street not in script, (case["case_id"], street)
+
+
+def test_every_reviewed_request_is_in_its_case_and_quotes_the_caller(tmp_path):
+    cases = {c["case_id"]: c for c in _built(tmp_path)}
+    reviewed = list(csv.DictReader((ROOT / "data" / "case_requests.csv").open()))
+    assert reviewed
+    for row in reviewed:
+        case = cases[row["case_id"]]
+        assert row["caller_words"] in " ".join(case["caller_script"]), row
+        assert any(r["request"] == row["request"] and r["kind"] == row["kind"] for r in case["requests"]), row
+
+
+def test_the_renewal_caller_also_asks_about_cancelling_and_the_repeat_repair_caller_books(tmp_path):
+    cases = {c["case_id"]: c for c in _built(tmp_path)}
+    renewal = cases["T738adaab"]
+    assert renewal["needs_documents"] and "before the renewal date" in renewal["reference_answer"]
+    assert any(r["kind"] == "booking:hvac_repair" for r in cases["T9919897a"]["requests"])
+
+
+def test_the_cancel_case_cancels_the_repair_the_caller_describes(tmp_path):
+    case = next(c for c in _built(tmp_path) if c["case_id"] == "Ta049acca")
+    db = sqlite3.connect(SEED)
+    service = db.execute("select service_type from appointment_slots where slot_id = ?",
+                         (case["appointment"]["slot_id"],)).fetchone()[0]
+    assert service == "hvac_repair"
+    upcoming = db.execute("select count(*) from appointments a join appointment_slots s using (slot_id) "
+                          "where a.customer_id = ? and a.status = 'scheduled' and s.slot_date >= '2026-10-16'",
+                          (case["caller_card"]["customer_id"],)).fetchone()[0]
+    assert upcoming == 1
+
+
+def test_the_caller_asking_to_join_is_not_already_a_member(tmp_path):
+    case = next(c for c in _built(tmp_path) if c["case_id"] == "T9e29febc")
+    assert case["caller_card"]["membership_tier"] == "none"
+
+
+def test_charged_twice_and_refund_invoices_are_already_paid(tmp_path):
+    for case in _built(tmp_path):
+        if case["reason"] != "billing":
+            continue
+        invoice = next(f["row"] for f in case["fixtures"] if f["table"] == "invoices")
+        paid = case["sub_reason"] in ("charged twice", "refund")
+        assert invoice["balance_cents"] == (0 if paid else invoice["amount_cents"]), case["case_id"]
+
+
+def _digits(text):
+    from eval.build_cases import AGES
+    words = {str(AGES[w]) for w in re.findall(r"[a-z]+", text.lower()) if w in AGES}
+    return set(re.findall(r"\d+", text.replace(",", ""))) | words
+
+
+def test_every_number_in_a_reference_answer_is_in_its_evidence_lines(tmp_path):
+    from eval.knowledge_questions import build_questions
+    # Numbers the caller states (such as the system's age) need no document line.
+    items = [(c["case_id"], c["reference_answer"], c["evidence_spans"], _digits(" ".join(c["caller_script"])))
+             for c in _built(tmp_path) if c["reference_answer"]]
+    items += [(q["qid"], q["reference_answer"], q["evidence_spans"], _digits(q["question"]))
+              for q in build_questions() if q["reference_answer"]]
+    for name, reference, spans, stated in items:
+        evidence = ""
+        for span in spans:
+            lines = (ROOT / "data" / "kb_text" / span["file"]).read_text().splitlines()
+            evidence += " ".join(lines[span["start_line"] - 1:span["end_line"]])
+        missing = _digits(reference) - _digits(evidence) - stated
+        assert not missing, (name, missing)
+        if re.search(r"confirm\w* the (final )?price|confirmed by the technician", reference):
+            assert re.search(r"confirms the final price|quoted by the technician", evidence), (name, "price confirmation")

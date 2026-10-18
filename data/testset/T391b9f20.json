@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260714-0178",
  "caller_script": [
   "I'm calling to book a repair, the AC runs but the air is warm.",
-  "Sure, it's Nate Lee, 512-475-8304.",
+  "Sure, it's Kim Murphy, 512-494-3705.",
   "Tomorrow if possible, 12 to 4.",
   "Can you do anything earlier?",
   "Okay, do that. And book the slot.",
@@ -16,17 +16,17 @@
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-41747",
-  "name": "Nate Lee",
-  "phone": "512-475-8304",
-  "email": "nate.lee@example.com",
-  "service_address": "159 Windcrest Ave",
-  "city": "Round Rock",
-  "zip": "78664",
+  "customer_id": "MHC-18700",
+  "name": "Kim Murphy",
+  "phone": "512-494-3705",
+  "email": "kim.murphy@example.com",
+  "service_address": "3722 Cedar Ridge Ln",
+  "city": "Cedar Park",
+  "zip": "78613",
   "membership_tier": "none",
   "membership_renewal_date": null,
   "system_brand": "Lennox",
-  "system_install_date": "2023-02-04",
+  "system_install_date": "2015-08-06",
   "zone": "north",
   "synthetic": false,
   "zone_source": "drawn"
@@ -36,6 +36,7 @@
  "requests": [
   {
    "request": "hvac repair",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }

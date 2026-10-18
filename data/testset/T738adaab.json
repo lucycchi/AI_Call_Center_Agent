@@ -33,14 +33,36 @@
  "requests": [
   {
    "request": "renewal date",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
+  },
+  {
+   "request": "whether the membership can still be cancelled before it renews",
+   "kind": "knowledge",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "And I can still cancel before then?",
+   "reference": "CANCEL_BEFORE_RENEWAL"
   }
  ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
- "needs_documents": false,
- "reference_answer": null,
- "evidence_spans": [],
+ "needs_documents": true,
+ "reference_answer": "Yes. Members can cancel auto-renewal at any time before the renewal date. An annual plan bills once on the enrollment date and renews on the same date each year.",
+ "evidence_spans": [
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Cancellation",
+   "start_line": 34,
+   "end_line": 34
+  },
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Billing and renewal",
+   "start_line": 28,
+   "end_line": 28
+  }
+ ],
  "must_not": []
 }

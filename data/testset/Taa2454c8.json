@@ -8,23 +8,23 @@
  "sample_call_id": "CALL-20260718-0062",
  "caller_script": [
   "I want to talk to a manager. The tech who came out yesterday was rude, tracked mud through my house, and left without explaining anything.",
-  "Sure, it's Robert Okafor, 512-555-6966.",
+  "Sure, it's Maria Reyes, 512-701-5321.",
   "Today. Not next week.",
   "Nope, that covers it."
  ],
  "caller_card": {
-  "customer_id": "MHC-13342",
-  "name": "Robert Okafor",
-  "phone": "512-555-6966",
-  "email": "robert.okafor@example.com",
-  "service_address": "7868 Cedar Ridge Ln",
-  "city": "Kyle",
-  "zip": "78640",
-  "membership_tier": "none",
-  "membership_renewal_date": null,
+  "customer_id": "MHC-83207",
+  "name": "Maria Reyes",
+  "phone": "512-701-5321",
+  "email": "maria.reyes@example.com",
+  "service_address": "154 Harbor View Way",
+  "city": "Round Rock",
+  "zip": "78664",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-10-04",
   "system_brand": "Trane",
-  "system_install_date": "2020-12-20",
-  "zone": "south",
+  "system_install_date": "2021-02-21",
+  "zone": "north",
   "synthetic": false,
   "zone_source": "drawn"
  },
@@ -33,6 +33,7 @@
  "requests": [
   {
    "request": "complaint or manager",
+   "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "complaint"
   }

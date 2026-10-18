@@ -8,26 +8,26 @@
  "sample_call_id": "CALL-20260713-0320",
  "caller_script": [
   "Yeah, I need to schedule a service call. The AC is making a loud grinding noise.",
-  "Yeah, it's MHC-57204.",
-  "Michael Foster.",
+  "Yeah, it's MHC-13063.",
+  "James Singh.",
   "Friday if possible, 12 to 4.",
   "Sure, let's do that.",
   "Yep, same one.",
   "Nope, that covers it."
  ],
  "caller_card": {
-  "customer_id": "MHC-57204",
-  "name": "Michael Foster",
-  "phone": "512-294-5440",
-  "email": "michael.foster@example.com",
-  "service_address": "4170 Pecan Grove Rd",
-  "city": "Austin",
-  "zip": "78745",
+  "customer_id": "MHC-13063",
+  "name": "James Singh",
+  "phone": "512-981-8508",
+  "email": "james.singh@example.com",
+  "service_address": "3042 Harbor View Way",
+  "city": "Buda",
+  "zip": "78610",
   "membership_tier": "none",
   "membership_renewal_date": null,
   "system_brand": "Goodman",
-  "system_install_date": "2021-10-13",
-  "zone": "central",
+  "system_install_date": "2016-08-09",
+  "zone": "south",
   "synthetic": false,
   "zone_source": "drawn"
  },
@@ -36,6 +36,7 @@
  "requests": [
   {
    "request": "hvac repair",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   }

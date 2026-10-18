@@ -32,6 +32,7 @@
  "requests": [
   {
    "request": "commercial",
+   "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "commercial"
   }

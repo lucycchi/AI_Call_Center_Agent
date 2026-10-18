@@ -9,23 +9,23 @@
  "caller_script": [
   "I got an invoice, INV-292142, for $245 and I'm not sure what it's for.",
   "Hold on, my dog is barking.",
-  "Sure, it's Nadia Clark, 512-582-6434.",
+  "Sure, it's Derek Okafor, 512-460-5987.",
   "Oh okay. Can you email me an itemized copy?",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-95520",
-  "name": "Nadia Clark",
-  "phone": "512-582-6434",
-  "email": "nadia.clark@example.com",
-  "service_address": "7348 Maple St",
-  "city": "Buda",
-  "zip": "78610",
+  "customer_id": "MHC-92941",
+  "name": "Derek Okafor",
+  "phone": "512-460-5987",
+  "email": "derek.okafor@example.com",
+  "service_address": "9402 Maple St",
+  "city": "Cedar Park",
+  "zip": "78613",
   "membership_tier": "none",
   "membership_renewal_date": null,
   "system_brand": "Trane",
-  "system_install_date": "2018-02-19",
-  "zone": "south",
+  "system_install_date": "2019-03-10",
+  "zone": "north",
   "synthetic": false,
   "zone_source": "drawn"
  },
@@ -35,7 +35,7 @@
    "table": "invoices",
    "row": {
     "invoice_id": "INV-292142",
-    "customer_id": "MHC-95520",
+    "customer_id": "MHC-92941",
     "appointment_id": null,
     "issued_date": "2026-10-02",
     "due_date": "2026-11-01",
@@ -48,13 +48,17 @@
  "requests": [
   {
    "request": "what an invoice is for",
+   "kind": "sub-reason",
    "expected_outcome": "contained",
    "handoff_reason": null
   },
   {
    "request": "email an itemized copy of the invoice",
+   "kind": "action",
    "expected_outcome": "handed_off",
-   "handoff_reason": "action gap"
+   "handoff_reason": "action gap",
+   "caller_words": "Can you email me an itemized copy?",
+   "reference": null
   }
  ],
  "expected_outcome": "handed_off",

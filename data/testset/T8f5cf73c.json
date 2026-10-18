@@ -37,6 +37,7 @@
  "requests": [
   {
    "request": "plumbing",
+   "kind": "sub-reason",
    "expected_outcome": "clean_decline",
    "handoff_reason": "no plumbing capacity in north zone"
   }

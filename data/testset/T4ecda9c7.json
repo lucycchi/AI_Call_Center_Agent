@@ -8,24 +8,24 @@
  "sample_call_id": "CALL-20260714-0246",
  "caller_script": [
   "The tech quoted me $89 and the invoice says $149. That's not what I agreed to.",
-  "Um, sure, it's Kim Murphy, 512-494-3705.",
+  "Um, sure, it's Robert Chen, 512-311-4666.",
   "Nobody told me about that.",
   "Fine.",
   "Nope, that covers it."
  ],
  "caller_card": {
-  "customer_id": "MHC-18700",
-  "name": "Kim Murphy",
-  "phone": "512-494-3705",
-  "email": "kim.murphy@example.com",
-  "service_address": "3722 Cedar Ridge Ln",
-  "city": "Cedar Park",
-  "zip": "78613",
-  "membership_tier": "none",
-  "membership_renewal_date": null,
-  "system_brand": "Lennox",
-  "system_install_date": "2015-08-06",
-  "zone": "north",
+  "customer_id": "MHC-10023",
+  "name": "Robert Chen",
+  "phone": "512-311-4666",
+  "email": "robert.chen@example.com",
+  "service_address": "2629 Maple St",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-06-07",
+  "system_brand": "Rheem",
+  "system_install_date": "2021-01-20",
+  "zone": "central",
   "synthetic": false,
   "zone_source": "drawn"
  },
@@ -35,7 +35,7 @@
    "table": "invoices",
    "row": {
     "invoice_id": "INV-900015",
-    "customer_id": "MHC-18700",
+    "customer_id": "MHC-10023",
     "appointment_id": null,
     "issued_date": "2026-10-02",
     "due_date": "2026-11-01",
@@ -48,6 +48,7 @@
  "requests": [
   {
    "request": "quote dispute",
+   "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "dispute"
   }
