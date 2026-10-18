@@ -13,19 +13,19 @@ rootdir: /home/lucyc/gauntlet/AI_Call_Center_Agent
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.15.1, langsmith-0.14.11
-collected 130 items
+collected 140 items
 
-tests/eval/test_cases.py ...................................             [ 26%]
-tests/eval/test_retrieval_metrics.py ................                    [ 39%]
-tests/knowledge/test_search.py ..............                            [ 50%]
-tests/pipeline/test_documents.py .......                                 [ 55%]
-tests/pipeline/test_findings.py .....................                    [ 71%]
-tests/pipeline/test_labels.py ..............                             [ 82%]
-tests/pipeline/test_templates.py .........                               [ 89%]
-tests/test_config.py ..........                                          [ 96%]
+tests/eval/test_cases.py ...........................................     [ 30%]
+tests/eval/test_retrieval_metrics.py ..................                  [ 43%]
+tests/knowledge/test_search.py ..............                            [ 53%]
+tests/pipeline/test_documents.py .......                                 [ 58%]
+tests/pipeline/test_findings.py .....................                    [ 73%]
+tests/pipeline/test_labels.py ..............                             [ 83%]
+tests/pipeline/test_templates.py .........                               [ 90%]
+tests/test_config.py ..........                                          [ 97%]
 tests/test_engine_interface.py ....                                      [100%]
 
-============================= 130 passed in 3.62s ==============================
+============================= 140 passed in 5.52s ==============================
 ```
 
 ## Requirement coverage

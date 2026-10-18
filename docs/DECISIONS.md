@@ -549,7 +549,7 @@ can only propose a decision; only the author settles one.
 
 ## D41: How does combined search merge the keyword and meaning-based lists?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
 - **Options:**
   - Keep each list's top result (keyword only when some word matches), then fill by reciprocal-rank fusion over the top 10 of each list
@@ -562,7 +562,7 @@ can only propose a decision; only the author settles one.
 
 ## D42: The review of the milestone 2 fixes found more errors in the rebuilt test cases (requests still unlisted, the cancel case on the wrong appointment, a Plus member asking to join, paid invoices shown as owed, evidence spans missing facts). Fix them and refreeze the held-out set again?
 
-- **Status:** proposed
+- **Status:** settled
 - **Replaces:** "The milestone 2 reviews found errors in the frozen test cases (caller scripts kept the transcript's identity, wrong planted invoices, two-request calls expecting only a handoff, evidence spans tied to the chunker). Fix them and refreeze the held-out set, or leave the frozen set alone?" (D40)
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
 - **Options:**
