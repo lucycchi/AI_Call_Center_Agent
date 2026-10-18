@@ -148,7 +148,7 @@ The author can open the draft findings document (the top call reasons, the human
 
 The author can see the retrieval numbers (keyword-only against combined, and both against the whole knowledge base in the prompt) and inspect the frozen test cases.
 
-- [ ] Task 6: chunk documents, build the index and search. Requirements: R27, R28
+- [x] Task 6: chunk documents, build the index and search. Requirements: R27, R28
 - [x] Task 7: split by template and build frozen test cases. Requirements: R9, R10, R11, R29, R81
 - [ ] Task 8: measure retrieval on its own. Requirements: R30
 
