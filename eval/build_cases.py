@@ -86,10 +86,12 @@ REFERENCES = {
                              "price.",
                              [("services__service_catalog.md", "System replacement")]),
 }
-COMPRESSOR = ("If the unit is registered, the manufacturer covers the compressor part for 10 years. The 2-year Meridian "
-              "installation labor warranty has ended for a 3-year-old system, so labor is billable; compressor replacement "
-              "labor typically runs $600 to $900, confirmed by the technician on site.",
+COMPRESSOR = ("If the unit is registered, the manufacturer covers the compressor part for 10 years. The standard 2-year "
+              "Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable unless the customer "
+              "was a Comfort Club member when it was installed (members get a 5-year labor warranty, which staff confirm); "
+              "compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",
               [("warranty__warranty_policy.md", "Manufacturer parts warranty (residential, when registered)"),
+               ("warranty__warranty_policy.md", "New system installation warranty"),
                ("pricing__repair_price_book_2026.md", "HVAC repair")])
 
 

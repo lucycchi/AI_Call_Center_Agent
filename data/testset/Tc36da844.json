@@ -50,13 +50,19 @@
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": true,
- "reference_answer": "If the unit is registered, the manufacturer covers the compressor part for 10 years. The 2-year Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable; compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",
+ "reference_answer": "If the unit is registered, the manufacturer covers the compressor part for 10 years. The standard 2-year Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable unless the customer was a Comfort Club member when it was installed (members get a 5-year labor warranty, which staff confirm); compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",
  "evidence_spans": [
   {
    "file": "warranty__warranty_policy.md",
    "heading": "Manufacturer parts warranty (residential, when registered)",
    "start_line": 14,
    "end_line": 26
+  },
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "New system installation warranty",
+   "start_line": 9,
+   "end_line": 13
   },
   {
    "file": "pricing__repair_price_book_2026.md",
