@@ -50,6 +50,7 @@ def test_stale_trap_passes_only_when_the_current_fact_is_found_and_nothing_exclu
 class FakeSearcher:
     def __init__(self, results_by_mode):
         self.results_by_mode = results_by_mode
+        self.chunks = []
 
     def search(self, question, mode="combined", k=5):
         class Scored:
@@ -71,7 +72,7 @@ def test_compare_modes_reports_keyword_and_combined_side_by_side():
 
 
 def test_answers_are_produced_from_combined_search_and_from_the_whole_knowledge_base(tmp_path):
-    searcher = FakeSearcher({"combined": [chunk(1, "faq__customer_faq", 14, 19)]})
+    searcher = FakeSearcher({"combined": [chunk(1, "faq__customer_faq", 14, 19)], "keyword": []})
     seen = []
 
     def writer(question, context):
@@ -82,7 +83,7 @@ def test_answers_are_produced_from_combined_search_and_from_the_whole_knowledge_
     answer_both_ways([{"qid": "q1", "question": "fee?", "kind": "answerable", "reference_answer": "$89", "evidence_spans": [A]}],
                      searcher, writer, whole_kb="WHOLE KNOWLEDGE BASE TEXT", out=out)
     rows = [json.loads(line) for line in out.read_text().splitlines()]
-    assert {r["mode"] for r in rows} == {"combined", "whole_kb"}
+    assert {r["mode"] for r in rows} == {"keyword", "combined", "whole_kb"}
     assert any("WHOLE KNOWLEDGE BASE TEXT" in c for c in seen)
     assert all(r["reference_answer"] == "$89" for r in rows)
 
@@ -93,7 +94,7 @@ def test_question_set_has_the_case_questions_stale_traps_and_unanswerable_ones()
     assert kinds == {"answerable", "stale_trap", "unanswerable"}
     assert sum(q["kind"] == "stale_trap" for q in questions) >= 6
     assert sum(q["kind"] == "unanswerable" for q in questions) >= 4
-    assert sum(q.get("case_id") is not None for q in questions) == 10
+    assert sum(q.get("case_id") is not None for q in questions) == 11
     for q in questions:
         assert q["set"] in {"working", "held_out"}
         if q["kind"] != "unanswerable":
@@ -108,3 +109,84 @@ def test_every_kind_of_question_has_both_working_and_held_out_examples():
     for kind in ("answerable", "stale_trap", "unanswerable"):
         sets = {q["set"] for q in questions if q["kind"] == kind}
         assert sets == {"working", "held_out"}, kind
+
+
+# Milestone 2 gate fixes.
+
+def test_coverage_counts_only_handled_reason_questions():
+    questions = [{"evidence_spans": [A], "handled_reason": True}, {"evidence_spans": [], "handled_reason": True},
+                 {"evidence_spans": [], "handled_reason": False}]
+    assert coverage(questions) == 0.5
+
+
+def test_unanswerable_questions_outside_the_handled_reasons_are_marked():
+    marked = {q["question"]: q["handled_reason"] for q in build_questions() if q["kind"] == "unanswerable"}
+    assert marked["Can I set up autopay for my membership?"] is False
+    assert marked["How much would you charge to replace four rooftop units at my strip mall?"] is False
+    assert marked["Do you give a discount for veterans?"] is True
+
+
+def test_excluded_documents_come_from_the_document_list():
+    from eval.retrieval_eval import excluded_documents
+    excluded = excluded_documents()
+    assert "faq/faq_old_copy.md" in excluded and "internal/agent_discretion_notes.md" in excluded
+    assert "faq/customer_faq.md" not in excluded
+
+
+def test_report_checks_the_index_holds_no_excluded_document_and_names_the_set():
+    searcher = FakeSearcher({m: [chunk(1, "faq__customer_faq", 14, 19)] for m in ("keyword", "meaning", "combined")})
+    searcher.chunks = [chunk(1, "faq__customer_faq", 14, 19)]
+    report = compare_modes([{"qid": "q1", "question": "fee?", "kind": "stale_trap", "evidence_spans": [A]}], searcher, "working")
+    assert report["set"] == "working"
+    assert report["index_has_excluded_documents"] is False
+    assert report["combined"]["stale_trap_hit_at_5"] == 1.0
+
+
+def test_answers_come_from_keyword_and_combined_search_and_the_whole_knowledge_base(tmp_path):
+    searcher = FakeSearcher({"combined": [chunk(1, "faq__customer_faq", 14, 19)], "keyword": [chunk(0, "faq__customer_faq", 1, 3)]})
+    out = tmp_path / "answers.jsonl"
+    answer_both_ways([{"qid": "q1", "question": "fee?", "kind": "answerable", "reference_answer": "$89", "evidence_spans": [A]}],
+                     searcher, lambda q, c: "a", whole_kb="KB", out=out)
+    assert {json.loads(l)["mode"] for l in out.read_text().splitlines()} == {"keyword", "combined", "whole_kb"}
+
+
+class FakeUsage:
+    input_tokens, output_tokens = 1_000_000, 100_000
+
+
+def test_the_writer_uses_the_test_key_one_retry_and_stops_at_the_run_cap(monkeypatch):
+    import eval.retrieval_eval as retrieval
+    made = {}
+
+    class Messages:
+        def create(self, **kwargs):
+            class Block:
+                type, text = "text", "answer"
+
+            class Response:
+                content, usage = [Block()], FakeUsage()
+            return Response()
+
+    class Client:
+        def __init__(self, **kwargs):
+            made.update(kwargs)
+            self.messages = Messages()
+
+    monkeypatch.setenv("EVAL_ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr("anthropic.Anthropic", Client)
+    write = retrieval.sonnet_writer(cap_usd=6.0)
+    assert made["api_key"] == "test-key" and made["max_retries"] == 1
+    write("q", "c")  # $2 input + $1 output at Sonnet 5.5 prices
+    write("q", "c")
+    import pytest
+    with pytest.raises(retrieval.BudgetExceeded):
+        write("q", "c")
+
+
+def test_the_writer_refuses_to_fall_back_to_the_live_key(monkeypatch):
+    import pytest
+
+    import eval.retrieval_eval as retrieval
+    monkeypatch.delenv("EVAL_ANTHROPIC_API_KEY", raising=False)
+    with pytest.raises(RuntimeError):
+        retrieval.sonnet_writer()

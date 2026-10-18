@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260825-0370",
  "caller_script": [
   "I'm calling to book a repair, the furnace won't kick on.",
-  "Tom Murphy, 1077 Maple St, Pflugerville.",
+  "Nate Okafor, 5794 Oak Hollow Dr, Georgetown.",
   "Um, thursday if possible, 8 to 12.",
   "Sorry, you cut out for a second.",
   "Um, can you do anything earlier?",
@@ -30,9 +30,18 @@
   "system_brand": "Carrier",
   "system_install_date": "2012-05-13",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "transcript"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "hvac repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": false,

@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260721-0110",
  "caller_script": [
   "Hi, I need my annual tune-up and I'd like to get someone out to look at it.",
-  "Sure, it's Wei Smith, 512-933-8006.",
+  "Sure, it's Wei Nguyen, 512-897-8385.",
   "Um, this Saturday if possible, first thing in the morning.",
   "Um, can you do anything earlier?",
   "Okay, do that. And book the slot.",
@@ -16,21 +16,30 @@
   "Nope, that covers it."
  ],
  "caller_card": {
-  "customer_id": "MHC-51416",
-  "name": "Robert Foster",
-  "phone": "512-885-5960",
-  "email": "robert.foster@example.com",
-  "service_address": "2104 Maple St",
-  "city": "Georgetown",
-  "zip": "78626",
+  "customer_id": "MHC-73719",
+  "name": "Wei Nguyen",
+  "phone": "512-897-8385",
+  "email": "wei.nguyen@example.com",
+  "service_address": "6742 Windcrest Ave",
+  "city": "Pflugerville",
+  "zip": "78660",
   "membership_tier": "none",
   "membership_renewal_date": null,
   "system_brand": "American Standard",
-  "system_install_date": "2021-11-09",
+  "system_install_date": "2015-08-08",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "tune-up",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": false,

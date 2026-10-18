@@ -8,50 +8,42 @@
  "sample_call_id": "CALL-20260707-0002",
  "caller_script": [
   "Um, i need to cancel my appointment. My brother-in-law ended up fixing it.",
-  "Yeah, it's MHC-93886.",
-  "Elena Murphy.",
+  "Yeah, it's MHC-55482.",
+  "Grace Nguyen.",
   "Great.",
   "That's all, thank you so much."
  ],
  "caller_card": {
-  "customer_id": "MHC-72198",
-  "name": "James Reyes",
-  "phone": "512-985-7631",
-  "email": "james.reyes@example.com",
-  "service_address": "766 Pecan Grove Rd",
-  "city": "Kyle",
-  "zip": "78640",
+  "customer_id": "MHC-55482",
+  "name": "Grace Nguyen",
+  "phone": "512-950-9284",
+  "email": "grace.nguyen@example.com",
+  "service_address": "9128 Brookside Ct",
+  "city": "Leander",
+  "zip": "78641",
   "membership_tier": "none",
   "membership_renewal_date": null,
-  "system_brand": "Trane",
-  "system_install_date": "2012-08-07",
-  "zone": "south",
-  "synthetic": false
+  "system_brand": "Rheem",
+  "system_install_date": "2026-03-19",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
  },
- "fixtures": [
+ "appointment": {
+  "appointment_id": 59,
+  "slot_id": 111,
+  "slot_date": "2026-10-21",
+  "window": "13:00-17:00",
+  "tech_id": 1,
+  "zone": "north",
+  "source": "seed"
+ },
+ "fixtures": [],
+ "requests": [
   {
-   "table": "appointment_slots",
-   "row": {
-    "slot_id": 9030,
-    "slot_date": "2026-10-21",
-    "window": "08:00-12:00",
-    "tech_id": 3,
-    "zone": "south",
-    "service_type": "hvac_repair",
-    "status": "booked"
-   }
-  },
-  {
-   "table": "appointments",
-   "row": {
-    "appointment_id": 5030,
-    "slot_id": 9030,
-    "customer_id": "MHC-72198",
-    "issue_description": "test appointment",
-    "created_at": "2026-10-10",
-    "status": "scheduled",
-    "is_warranty_visit": 0
-   }
+   "request": "cancel appointment",
+   "expected_outcome": "contained",
+   "handoff_reason": null
   }
  ],
  "expected_outcome": "contained",

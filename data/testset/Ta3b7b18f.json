@@ -8,27 +8,36 @@
  "sample_call_id": "CALL-20260710-0335",
  "caller_script": [
   "Your technician told my wife the system needed a $4,000 replacement and I got a second opinion and it was a $200 capacitor. I want to speak to someone in charge.",
-  "Yeah, it's MHC-23315.",
-  "Victor Rivera.",
+  "Yeah, it's MHC-47959.",
+  "Priya Smith.",
   "Today. Not next week.",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-30349",
-  "name": "Sofia Diaz",
-  "phone": "512-490-3371",
-  "email": "sofia.diaz@example.com",
-  "service_address": "817 Sunset Terrace",
-  "city": "Kyle",
-  "zip": "78640",
-  "membership_tier": "standard",
-  "membership_renewal_date": "2027-07-01",
-  "system_brand": "American Standard",
-  "system_install_date": "2023-04-11",
-  "zone": "south",
-  "synthetic": false
+  "customer_id": "MHC-47959",
+  "name": "Priya Smith",
+  "phone": "512-773-3961",
+  "email": "priya.smith@example.com",
+  "service_address": "1788 Ridgeline Pass",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Rheem",
+  "system_install_date": "2019-09-16",
+  "zone": "central",
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "complaint or manager",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "complaint"
+  }
+ ],
  "expected_outcome": "handed_off",
  "expected_handoff_reason": "complaint",
  "needs_documents": false,

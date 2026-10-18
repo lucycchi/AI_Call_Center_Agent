@@ -129,3 +129,22 @@ def test_combined_search_always_keeps_the_top_result_of_each_list():
 def test_meaning_only_mode_is_available_for_the_comparison():
     searcher = Searcher(all_chunks(), FakeEmbedder())
     assert searcher.search("holiday hours", mode="meaning")
+
+
+def test_keyword_only_search_does_not_call_the_embedder():
+    class Refuses:
+        def embed(self, texts):
+            raise AssertionError("keyword-only search must not call Voyage")
+    chunks = [Chunk(f"d#{i}", "d.md", "H", "", text, 1, 1) for i, text in enumerate(["diagnostic fee $89", "hours", "windows", "payment"])]
+    searcher = Searcher(chunks, Refuses(), np.eye(4))
+    assert searcher.search("diagnostic fee", mode="keyword")[0].chunk.chunk_id == "d#0"
+
+
+def test_combined_search_keeps_the_keyword_top_only_when_some_word_matches():
+    class Fixed:
+        def embed(self, texts):
+            return np.array([[0.0, 1.0, 0.5]])
+    chunks = [Chunk(f"d#{i}", "d.md", "H", "", text, 1, 1) for i, text in enumerate(["alpha", "beta", "gamma"])]
+    searcher = Searcher(chunks, Fixed(), np.eye(3))
+    # Meaning order is d#1, d#2, d#0; no word matches, so keyword search's arbitrary first result is not forced in.
+    assert [s.chunk.chunk_id for s in searcher.search("zzz unmatched", mode="combined", k=2)] == ["d#1", "d#2"]

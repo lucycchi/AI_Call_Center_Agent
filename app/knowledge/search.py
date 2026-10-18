@@ -46,6 +46,10 @@ class Searcher:
         self._vectors = embeddings if embeddings is not None else embedder.embed([c.text for c in chunks])
         self._bm25 = BM25Okapi([tokens(c.text) for c in chunks])
 
+    @property
+    def chunks(self) -> list[Chunk]:
+        return self._chunks
+
     def _meaning(self, question: str) -> np.ndarray:
         query = self._embedder.embed([question])[0]
         return self._vectors @ query
@@ -54,19 +58,23 @@ class Searcher:
         return np.asarray(self._bm25.get_scores(tokens(question)))
 
     def search(self, question: str, mode: str = "combined", k: int = TOP_K) -> list[ScoredChunk]:
-        meaning, keyword = self._meaning(question), self._keyword(question)
-        by_meaning = [self._chunks[i].chunk_id for i in np.argsort(-meaning)]
-        by_keyword = [self._chunks[i].chunk_id for i in np.argsort(-keyword)]
+        if mode not in ("meaning", "keyword", "combined"):
+            raise ValueError(f"unknown search mode {mode!r}")
+        keyword = self._keyword(question)
+        # Keyword-only search never calls Voyage; its meaning scores are reported as zero.
+        meaning = self._meaning(question) if mode != "keyword" else np.zeros(len(self._chunks))
+        by_meaning = [self._chunks[i].chunk_id for i in np.argsort(-meaning, kind="stable")]
+        # Only chunks sharing a word with the question are ranked by keyword search.
+        by_keyword = [self._chunks[i].chunk_id for i in np.argsort(-keyword, kind="stable") if keyword[i] > 0]
         if mode == "meaning":
             order = by_meaning
         elif mode == "keyword":
             order = by_keyword
-        elif mode == "combined":
-            # Reciprocal-rank fusion, but the best result of each list is always kept: chosen on the working
-            # set, where plain fusion dropped meaning search's correct top answer when keyword search missed it.
-            order = list(dict.fromkeys([by_meaning[0], by_keyword[0]] + fuse([by_meaning[:CANDIDATES], by_keyword[:CANDIDATES]])))
         else:
-            raise ValueError(f"unknown search mode {mode!r}")
+            # Reciprocal-rank fusion, but the best result of each list is always kept: chosen on the working
+            # set, where plain fusion dropped meaning search's correct top answer when keyword search missed it
+            # (combined search keeps each list's top result (D41)).
+            order = list(dict.fromkeys(by_meaning[:1] + by_keyword[:1] + fuse([by_meaning[:CANDIDATES], by_keyword[:CANDIDATES]])))
         index = {c.chunk_id: i for i, c in enumerate(self._chunks)}
         return [ScoredChunk(self._by_id[cid], float(meaning[index[cid]]), float(keyword[index[cid]])) for cid in order[:k]]
 

@@ -8,31 +8,33 @@
  "sample_call_id": "CALL-20260710-0136",
  "caller_script": [
   "I want a full refund on the repair. It didn't fix anything and I had to call another company.",
-  "Um, sure, it's Michael Lee, 512-798-8140.",
+  "Um, sure, it's Jennifer Murphy, 512-278-8848.",
   "I'd better.",
   "Nope, that covers it."
  ],
  "caller_card": {
-  "customer_id": "MHC-52727",
-  "name": "Sofia Clark",
-  "phone": "512-773-1930",
-  "email": "sofia.clark@example.com",
-  "service_address": "4171 Brookside Ct",
-  "city": "Austin",
-  "zip": "78745",
+  "customer_id": "MHC-36898",
+  "name": "Jennifer Murphy",
+  "phone": "512-278-8848",
+  "email": "jennifer.murphy@example.com",
+  "service_address": "4807 Oak Hollow Dr",
+  "city": "Buda",
+  "zip": "78610",
   "membership_tier": "none",
   "membership_renewal_date": null,
-  "system_brand": "Lennox",
-  "system_install_date": "2024-03-31",
-  "zone": "central",
-  "synthetic": false
+  "system_brand": "Rheem",
+  "system_install_date": "2018-01-18",
+  "zone": "south",
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [
   {
    "table": "invoices",
    "row": {
     "invoice_id": "INV-900014",
-    "customer_id": "MHC-52727",
+    "customer_id": "MHC-36898",
     "appointment_id": null,
     "issued_date": "2026-10-02",
     "due_date": "2026-11-01",
@@ -40,6 +42,13 @@
     "balance_cents": 24500,
     "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 15600}]"
    }
+  }
+ ],
+ "requests": [
+  {
+   "request": "refund",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "dispute"
   }
  ],
  "expected_outcome": "handed_off",

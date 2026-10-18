@@ -8,28 +8,37 @@
  "sample_call_id": "CALL-20260711-0109",
  "caller_script": [
   "Hey, so I need my annual tune-up. What's the soonest you can get a tech out?",
-  "Nate Lopez, 2973 Maple St, Pflugerville.",
+  "Sofia Brown, 3307 Lakeshore Blvd, Pflugerville.",
   "Friday if possible, first thing in the morning.",
   "That's fine.",
   "Um, yep, same one.",
   "Nope, that covers it."
  ],
  "caller_card": {
-  "customer_id": "MHC-21608",
-  "name": "Grace Martinez",
-  "phone": "512-470-2993",
-  "email": "grace.martinez@example.com",
-  "service_address": "7534 Oak Hollow Dr",
-  "city": "Cedar Park",
-  "zip": "78613",
+  "customer_id": "MHC-31337",
+  "name": "Sofia Brown",
+  "phone": "512-547-7902",
+  "email": "sofia.brown@example.com",
+  "service_address": "3307 Lakeshore Blvd",
+  "city": "Pflugerville",
+  "zip": "78660",
   "membership_tier": "standard",
-  "membership_renewal_date": "2027-02-11",
+  "membership_renewal_date": "2027-07-11",
   "system_brand": "Lennox",
-  "system_install_date": "2025-02-18",
+  "system_install_date": "2017-07-27",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "transcript"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "tune-up",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": false,

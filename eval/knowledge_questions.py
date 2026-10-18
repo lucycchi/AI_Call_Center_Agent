@@ -20,52 +20,54 @@ WARRANTY, FEES = "warranty__warranty_policy.md", "pricing__2026_fee_schedule.md"
 
 ANSWERABLE = [
     ("Are you open on Thanksgiving?", "Closed on Thanksgiving (November 26 and 27); the emergency line is open, and holiday "
-     "emergency dispatch is $199.", [("policies__holiday_hours_2026.md", "Holidays"), ("policies__holiday_hours_2026.md", "Holiday dispatch fee")]),
+     "emergency dispatch is $199.", [("policies__holiday_hours_2026.md", "Holidays", ("Thanksgiving",)), ("policies__holiday_hours_2026.md", "Holiday dispatch fee", ("$199",))]),
     ("Do you service Manor?", "Yes. Manor (78653) was added to the service area in April 2026.",
-     [("policies__service_area.md", "Service Area")]),
+     [("policies__service_area.md", "Service Area", ("Manor",))]),
     ("Do you come out to San Marcos?", "No. San Marcos is not in the service area.",
-     [("policies__service_area.md", "Service Area")]),
+     [("policies__service_area.md", "Service Area", ("San Marcos",))]),
     ("How much is a tune-up?", "A seasonal tune-up is $129 for non-members and included for Comfort Club members.",
-     [(CATALOG, "Maintenance tune-up")]),
+     [(CATALOG, "Maintenance tune-up", ("$129 for non-members",))]),
     ("Do you offer financing?", "Yes, on repairs over $1,000 and all system replacements, through a financing partner; "
-     "approval takes about 5 minutes.", [(FAQ, "Payment")]),
+     "approval takes about 5 minutes.", [(FAQ, "Payment", ("Financing",))]),
     ("Can I pay by card over the phone?", "Card numbers are never taken over the phone; Meridian sends a secure payment "
-     "link by text or email, valid for 24 hours.", [(FAQ, "Payment")]),
+     "link by text or email, valid for 24 hours.", [(FAQ, "Payment", ("Card numbers",))]),
     ("How much does it cost to clear a clogged drain?", "Drain clearing typically costs $149 to $290 depending on access; "
-     "the technician confirms the final price on site.", [(CATALOG, "Plumbing (residential)")]),
+     "the technician confirms the final price on site.", [(CATALOG, "Plumbing (residential)", ("Drain clearing",))]),
     ("What appointment windows do you have?", "8am to 12pm, 12pm to 4pm and 1pm to 5pm, plus 4pm to 7pm on Tuesdays and "
-     "Thursdays.", [(FAQ, "Scheduling")]),
+     "Thursdays.", [(FAQ, "Scheduling", ("Standard appointment windows",))]),
     ("Do you do duct cleaning?", "Meridian does not do duct cleaning itself; it partners with a third party and can give "
-     "a referral.", [(CATALOG, "Not offered")]),
+     "a referral.", [(CATALOG, "Not offered", ("Duct cleaning",))]),
     ("Is there a fee to cancel my appointment?", "Cancelling or rescheduling more than 24 hours before the window is free; "
-     "inside 24 hours there is a $49 late-cancellation fee.", [(FAQ, "Scheduling")]),
+     "inside 24 hours there is a $49 late-cancellation fee.", [(FAQ, "Scheduling", ("Cancellations or reschedules",))]),
 ]
 
 STALE_TRAPS = [
     ("Is the diagnostic fee still $79?", "No, the diagnostic visit is $89, credited toward a repair approved on the same "
-     "visit, and waived for Comfort Club members.", [(FAQ, "Fees"), (FEES, "Fees by membership level")]),
+     "visit, and waived for Comfort Club members.", [(FAQ, "Fees", ("Diagnostic fee: $89", "diagnostic fee waived")), (FEES, "Fees by membership level", ("Diagnostic visit, Non-member", "Diagnostic visit, Comfort Club Plus"))]),
     ("I heard cancellations need 48 hours notice, is that right?", "No. Cancelling more than 24 hours before the window is "
-     "free; inside 24 hours there is a $49 fee.", [(FAQ, "Scheduling")]),
+     "free; inside 24 hours there is a $49 fee.", [(FAQ, "Scheduling", ("Cancellations or reschedules",))]),
     ("Isn't the repair warranty only 90 days?", "No. Meridian repairs carry a 1-year labor warranty on the part repaired.",
-     [(WARRANTY, "Repair warranty (Meridian labor warranty)")]),
+     [(WARRANTY, "Repair warranty (Meridian labor warranty)", ("1-year labor warranty",))]),
     ("Is the Comfort Club still $149 a year?", "No. It is $189 a year per system, or $16.99 a month with a 12-month minimum.",
-     [(MEMBERSHIP, "Plans")]),
+     [(MEMBERSHIP, "Plans", ("$189 per year",))]),
     ("Is the after-hours emergency fee $129?", "No. After-hours emergency dispatch is $149, waived for Comfort Club members.",
-     [(FAQ, "Hours & Contact"), (FEES, "Fees by membership level")]),
+     [(FAQ, "Hours & Contact", ("After-hours emergency line",)), (FEES, "Fees by membership level", ("After-hours emergency dispatch, Non-member", "After-hours emergency dispatch, Comfort Club Plus"))]),
     ("Are you only open until 6 on weekdays?", "No. Phone support is Monday to Friday 7am to 7pm and Saturday 8am to 4pm.",
-     [(FAQ, "Hours & Contact")]),
+     [(FAQ, "Hours & Contact", ("Phone support",))]),
     ("Does my membership move with me to my new house?", "No. A membership stays with the service address and transfers to "
-     "the next homeowner there; it does not move to a new address.", [(MEMBERSHIP, "Transfer")]),
+     "the next homeowner there; it does not move to a new address.", [(MEMBERSHIP, "Transfer", ("Memberships are tied",))]),
     ("Can I pay the technician with a check?", "No. Technicians do not accept checks or cash; payment is by card or ACH "
-     "through a secure link.", [(FAQ, "Payment")]),
+     "through a secure link.", [(FAQ, "Payment", ("We accept", "secure payment link"))]),
 ]
 
+# Each unanswerable question says whether it falls under a handled reason: coverage counts only those (R30).
+# Autopay is an account action the agent cannot take, and the strip mall is commercial work; both hand off.
 UNANSWERABLE = [
-    "Can I set up autopay for my membership?",
-    "How much would you charge to replace four rooftop units at my strip mall?",
-    "What's the exact price of a new Trane XR16 heat pump?",
-    "Do you give a discount for veterans?",
-    "What is my technician's license number?",
+    ("Can I set up autopay for my membership?", False),
+    ("How much would you charge to replace four rooftop units at my strip mall?", False),
+    ("What's the exact price of a new Trane XR16 heat pump?", True),
+    ("Do you give a discount for veterans?", True),
+    ("What is my technician's license number?", True),
 ]
 
 
@@ -79,10 +81,12 @@ def build_questions(seed: int = 20261016) -> list[dict]:
             asked = next(l for l in case["caller_script"] if not any(x in l.lower() for x in ("cut out", "driving", "hear me")))
             questions.append({"qid": f"case-{case['case_id']}", "case_id": case["case_id"], "question": asked,
                               "kind": "answerable", "set": "held_out" if case["case_id"] in held else "working",
-                              "reference_answer": case["reference_answer"], "evidence_spans": case["evidence_spans"]})
+                              "reference_answer": case["reference_answer"], "evidence_spans": case["evidence_spans"],
+                              "handled_reason": True})
     rng = random.Random(seed)
     groups = {"answerable": [(q, a, s) for q, a, s in ANSWERABLE], "stale_trap": [(q, a, s) for q, a, s in STALE_TRAPS],
-              "unanswerable": [(q, None, []) for q in UNANSWERABLE]}
+              "unanswerable": [(q, None, []) for q, _ in UNANSWERABLE]}
+    handled = dict(UNANSWERABLE)
     for kind, items in groups.items():
         # About 30 percent of each kind is held out, and at least one, so every measure has held-out questions.
         order = list(range(len(items)))
@@ -92,7 +96,8 @@ def build_questions(seed: int = 20261016) -> list[dict]:
             question, answer, sections = items[n]
             questions.append({"qid": f"{kind}-{n}", "case_id": None, "question": question, "kind": kind,
                               "set": "held_out" if position < held_count else "working",
-                              "reference_answer": answer, "evidence_spans": _spans(sections)})
+                              "reference_answer": answer, "evidence_spans": _spans(sections),
+                              "handled_reason": handled.get(question, True)})
     return questions
 
 

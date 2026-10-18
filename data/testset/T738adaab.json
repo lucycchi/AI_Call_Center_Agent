@@ -8,26 +8,35 @@
  "sample_call_id": "CALL-20260707-0096",
  "caller_script": [
   "I got an email saying my membership is renewing. When does it actually charge?",
-  "Elena Diaz, 1376 Ridgeline Pass, Buda.",
+  "Raj Rivera, 6599 Cedar Ridge Ln, Buda.",
   "And I can still cancel before then?",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-96313",
-  "name": "Jennifer Nguyen",
-  "phone": "512-488-1067",
-  "email": "jennifer.nguyen@example.com",
-  "service_address": "2486 Pecan Grove Rd",
+  "customer_id": "MHC-63243",
+  "name": "Raj Rivera",
+  "phone": "512-252-3334",
+  "email": "raj.rivera@example.com",
+  "service_address": "6599 Cedar Ridge Ln",
   "city": "Buda",
   "zip": "78610",
   "membership_tier": "standard",
-  "membership_renewal_date": "2027-01-22",
+  "membership_renewal_date": "2026-12-26",
   "system_brand": "Rheem",
-  "system_install_date": "2020-09-25",
+  "system_install_date": "2026-04-18",
   "zone": "south",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "transcript"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "renewal date",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": false,

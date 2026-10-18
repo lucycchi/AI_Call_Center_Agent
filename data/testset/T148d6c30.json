@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260709-0129",
  "caller_script": [
   "I think I got charged twice. There are two $1240 charges on my card from you guys.",
-  "Hannah Brown, 8561 Ridgeline Pass, Georgetown.",
+  "Maria Ali, 4865 Sunset Terrace, Leander.",
   "So I'm not actually paying twice?",
   "No, that's it. Thanks."
  ],
@@ -25,8 +25,10 @@
   "system_brand": "Lennox",
   "system_install_date": "2021-09-29",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "transcript"
  },
+ "appointment": null,
  "fixtures": [
   {
    "table": "invoices",
@@ -42,6 +44,13 @@
    }
   }
  ],
+ "requests": [
+  {
+   "request": "charged twice",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": true,
@@ -50,7 +59,7 @@
   {
    "file": "faq__customer_faq.md",
    "heading": "Duplicate charges",
-   "start_line": 26,
+   "start_line": 27,
    "end_line": 27
   }
  ],

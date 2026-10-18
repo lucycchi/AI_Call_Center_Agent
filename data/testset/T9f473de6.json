@@ -8,25 +8,34 @@
  "sample_call_id": "CALL-20260722-0161",
  "caller_script": [
   "We just bought a house and the previous owner had a system installed by you. Does the warranty transfer?",
-  "It's 4682 Maple St, Leander.",
+  "It's 6198 Sunset Terrace, Round Rock.",
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-65616",
-  "name": "Nadia Rivera",
-  "phone": "512-935-7890",
-  "email": "nadia.rivera@example.com",
-  "service_address": "6036 Pecan Grove Rd",
-  "city": "Georgetown",
-  "zip": "78626",
+  "customer_id": "MHC-48492",
+  "name": "Jennifer Garcia",
+  "phone": "512-398-2230",
+  "email": "jennifer.garcia@example.com",
+  "service_address": "6198 Sunset Terrace",
+  "city": "Round Rock",
+  "zip": "78664",
   "membership_tier": "none",
   "membership_renewal_date": null,
   "system_brand": "Carrier",
-  "system_install_date": "2019-01-17",
+  "system_install_date": "2013-07-19",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "transcript"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "transfer",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": true,
@@ -35,8 +44,8 @@
   {
    "file": "warranty__warranty_policy.md",
    "heading": "Warranty transfer",
-   "start_line": 27,
-   "end_line": 30
+   "start_line": 28,
+   "end_line": 29
   }
  ],
  "must_not": []

@@ -56,6 +56,6 @@
   "Tdbe75aee",
   "Teff9802d"
  ],
- "held_out_hash": "7cdaec4bc6b1c44407e8fe2da8a9415899bf1cf4c759ad586c884cf0c9eec5f0",
- "status": "frozen 2026-10-18 after the author confirmed all ten reference answers (docs/reviews/reference-answers-spotcheck.md); no tuning before this point"
+ "held_out_hash": "9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c",
+ "status": "refrozen 2026-10-18 after the milestone 2 gate fixes, before any agent tuning (refreezing the held-out cases (D40)); previous hash 7cdaec4bc6b1c44407e8fe2da8a9415899bf1cf4c759ad586c884cf0c9eec5f0. Reference answers are unchanged except one new working-set answer (Comfort Club savings, case T9e29febc)"
 }

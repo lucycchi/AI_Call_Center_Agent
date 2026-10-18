@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260710-0081",
  "caller_script": [
   "Two things. My AC is blowing warm and I want to get someone out, and I want to know if joining the maintenance plan would save me money on this.",
-  "Michael Nguyen, 5701 Pecan Grove Rd, Leander.",
+  "Jennifer Hernandez, 3252 Brookside Ct, Hutto.",
   "So it pays for itself basically.",
   "Yeah, add it and book the visit.",
   "Book it.",
@@ -16,25 +16,51 @@
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-82491",
-  "name": "Priya Martinez",
-  "phone": "512-312-3645",
-  "email": "priya.martinez@example.com",
-  "service_address": "4390 Oak Hollow Dr",
-  "city": "Pflugerville",
-  "zip": "78660",
-  "membership_tier": "none",
-  "membership_renewal_date": null,
-  "system_brand": "Carrier",
-  "system_install_date": "2021-04-12",
+  "customer_id": "MHC-82140",
+  "name": "Jennifer Hernandez",
+  "phone": "512-342-9974",
+  "email": "jennifer.hernandez@example.com",
+  "service_address": "3252 Brookside Ct",
+  "city": "Hutto",
+  "zip": "78634",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2027-06-08",
+  "system_brand": "Trane",
+  "system_install_date": "2017-01-15",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "transcript"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "hvac repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "whether joining the Comfort Club would save money",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "join the Comfort Club",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "action gap"
+  }
+ ],
  "expected_outcome": "handed_off",
  "expected_handoff_reason": "action gap",
- "needs_documents": false,
- "reference_answer": null,
- "evidence_spans": [],
+ "needs_documents": true,
+ "reference_answer": "Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee waived and get 15% off repairs, plus two seasonal tune-ups a year, so on a repair visit it saves the diagnostic fee and 15% of the repair; whether it pays for itself depends on the repair cost.",
+ "evidence_spans": [
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Plans",
+   "start_line": 9,
+   "end_line": 15
+  }
+ ],
  "must_not": []
 }

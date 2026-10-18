@@ -8,25 +8,34 @@
  "sample_call_id": "CALL-20260728-0089",
  "caller_script": [
   "I manage a 12-unit strip center and I need a quote on replacing four rooftop units.",
-  "Sure. Angela Smith, 512-367-4166.",
+  "Sure. David Baker, 512-581-1603.",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-33796",
-  "name": "Daniel Cruz",
-  "phone": "512-615-3447",
-  "email": "daniel.cruz@example.com",
-  "service_address": "8891 Sunset Terrace",
-  "city": "Pflugerville",
-  "zip": "78660",
+  "customer_id": "MHC-72928",
+  "name": "David Baker",
+  "phone": "512-581-1603",
+  "email": "david.baker@example.com",
+  "service_address": "3359 Maple St",
+  "city": "Leander",
+  "zip": "78641",
   "membership_tier": "standard",
-  "membership_renewal_date": "2027-10-02",
-  "system_brand": "Rheem",
-  "system_install_date": "2020-10-29",
+  "membership_renewal_date": "2027-02-19",
+  "system_brand": "Goodman",
+  "system_install_date": "2019-06-22",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "commercial",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "commercial"
+  }
+ ],
  "expected_outcome": "handed_off",
  "expected_handoff_reason": "commercial",
  "needs_documents": false,

@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260716-0367",
  "caller_script": [
   "Um, hey, so my AC isn't cooling. What's the soonest you can get a tech out?",
-  "Sure, it's Maria Murphy, 512-318-7661.",
+  "Sure, it's Priya Smith, 512-773-3961.",
   "Monday if possible, 12 to 4.",
   "Yeah, that works.",
   "I think so, it's whatever was there when we moved in.",
@@ -27,9 +27,18 @@
   "system_brand": "Rheem",
   "system_install_date": "2019-09-16",
   "zone": "central",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "hvac repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": false,

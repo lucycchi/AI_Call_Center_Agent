@@ -10,37 +10,63 @@
   "My system is 18 years old and I'm thinking about replacing it. What would that cost?",
   "Ballpark?",
   "Yeah, let's do that.",
-  "Yeah, it's MHC-10256.",
-  "Um, david Foster.",
+  "Yeah, it's MHC-00177.",
+  "Um, Jordan Rivera.",
   "Works.",
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-47959",
-  "name": "Priya Smith",
-  "phone": "512-773-3961",
-  "email": "priya.smith@example.com",
-  "service_address": "1788 Ridgeline Pass",
-  "city": "Austin",
-  "zip": "78745",
+  "customer_id": "MHC-00177",
+  "name": "Jordan Rivera",
+  "phone": "512-555-0199",
+  "email": "jordan.rivera@example.com",
+  "service_address": "100 Test Lane",
+  "city": "Round Rock",
+  "zip": "78600",
   "membership_tier": "none",
   "membership_renewal_date": null,
-  "system_brand": "Rheem",
-  "system_install_date": "2019-09-16",
-  "zone": "central",
-  "synthetic": false
+  "system_brand": "Trane",
+  "system_install_date": "2008-01-01",
+  "zone": "north",
+  "synthetic": true,
+  "zone_source": "drawn"
  },
- "fixtures": [],
- "expected_outcome": "clean_decline",
- "expected_handoff_reason": "no estimate capacity in central zone",
+ "appointment": null,
+ "fixtures": [
+  {
+   "table": "customers",
+   "row": {
+    "customer_id": "MHC-00177",
+    "name": "Jordan Rivera",
+    "phone": "512-555-0199",
+    "email": "jordan.rivera@example.com",
+    "service_address": "100 Test Lane",
+    "city": "Round Rock",
+    "zip": "78600",
+    "membership_tier": "none",
+    "membership_renewal_date": null,
+    "system_brand": "Trane",
+    "system_install_date": "2008-01-01"
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "replacement estimate",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
  "needs_documents": true,
  "reference_answer": "Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, and the technician or advisor confirms the price.",
  "evidence_spans": [
   {
    "file": "services__service_catalog.md",
    "heading": "System replacement",
-   "start_line": 26,
-   "end_line": 30
+   "start_line": 27,
+   "end_line": 28
   }
  ],
  "must_not": []

@@ -8,27 +8,36 @@
  "sample_call_id": "CALL-20260710-0364",
  "caller_script": [
   "I want to cancel my Comfort Club membership.",
-  "Yeah, it's MHC-18489.",
-  "Jennifer Lee.",
+  "Yeah, it's MHC-72227.",
+  "Jennifer Hernandez.",
   "That's fine, just make sure it doesn't renew.",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-67688",
-  "name": "Omar Kim",
-  "phone": "512-344-8757",
-  "email": "omar.kim@example.com",
-  "service_address": "2071 Sunset Terrace",
-  "city": "Round Rock",
-  "zip": "78664",
+  "customer_id": "MHC-72227",
+  "name": "Jennifer Hernandez",
+  "phone": "512-872-9110",
+  "email": "jennifer.hernandez@example.com",
+  "service_address": "9044 Pecan Grove Rd",
+  "city": "Cedar Park",
+  "zip": "78613",
   "membership_tier": "standard",
-  "membership_renewal_date": "2027-01-05",
-  "system_brand": "Trane",
-  "system_install_date": "2022-10-06",
+  "membership_renewal_date": "2027-09-18",
+  "system_brand": "Rheem",
+  "system_install_date": "2016-12-07",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "cancel",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "action gap"
+  }
+ ],
  "expected_outcome": "handed_off",
  "expected_handoff_reason": "action gap",
  "needs_documents": false,

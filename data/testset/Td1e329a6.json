@@ -8,29 +8,38 @@
  "sample_call_id": "CALL-20260707-0170",
  "caller_script": [
   "Yeah, I need to schedule a service call. My thermostat is blank.",
-  "Yeah, it's MHC-14782.",
-  "Marcus Murphy.",
+  "Yeah, it's MHC-41747.",
+  "Nate Lee.",
   "Next Tuesday if possible, 4 to 7, after work.",
   "Yeah, that works.",
   "Um, yep, same one.",
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-36446",
-  "name": "Nadia Lee",
-  "phone": "512-496-8302",
-  "email": "nadia.lee@example.com",
-  "service_address": "8293 Maple St",
-  "city": "Leander",
-  "zip": "78641",
+  "customer_id": "MHC-41747",
+  "name": "Nate Lee",
+  "phone": "512-475-8304",
+  "email": "nate.lee@example.com",
+  "service_address": "159 Windcrest Ave",
+  "city": "Round Rock",
+  "zip": "78664",
   "membership_tier": "none",
   "membership_renewal_date": null,
   "system_brand": "Lennox",
-  "system_install_date": "2022-01-04",
+  "system_install_date": "2023-02-04",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "hvac repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": false,

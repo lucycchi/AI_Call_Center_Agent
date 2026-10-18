@@ -87,6 +87,14 @@ def load_settings() -> Settings:
 
 SETTINGS = load_settings()
 
+# Published prices in US dollars per million input and output tokens (docs/MODEL_RESEARCH.md, 2026-10-06).
+PRICES_PER_MILLION_USD = {"claude-sonnet-5-5": (2.0, 10.0), "claude-haiku-5-5": (0.10, 0.50)}
+
+
+def cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:
+    price_in, price_out = PRICES_PER_MILLION_USD[model]
+    return (input_tokens * price_in + output_tokens * price_out) / 1_000_000
+
 
 def real_now() -> datetime:
     return datetime.now(AUSTIN)

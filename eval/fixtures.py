@@ -7,15 +7,16 @@ from app.config import SETTINGS
 
 
 def apply_fixtures(db_path: Path, fixtures: list[dict]) -> None:
-    if db_path.resolve() == SETTINGS.seed_db_path.resolve():
-        raise ValueError("fixtures may only be applied to a copy of the seed database")
+    if db_path.resolve() in (SETTINGS.seed_db_path.resolve(), SETTINGS.scheduling_db_path.resolve()):
+        raise ValueError("fixtures may only be applied to a test copy, never the seed or the live database")
     db = sqlite3.connect(db_path)
     with db:
         for fixture in fixtures:
             row = fixture["row"]
             columns = ", ".join(row)
             marks = ", ".join("?" for _ in row)
-            db.execute(f"insert or replace into {fixture['table']} ({columns}) values ({marks})", list(row.values()))
+            # A plain insert: a planted row that collides with an existing one fails rather than replacing it.
+            db.execute(f"insert into {fixture['table']} ({columns}) values ({marks})", list(row.values()))
             for slot_id in fixture.get("book_slots", []):
                 db.execute("update appointment_slots set status = 'booked' where slot_id = ?", (slot_id,))
     db.close()

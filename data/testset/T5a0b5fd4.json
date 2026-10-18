@@ -8,27 +8,36 @@
  "sample_call_id": "CALL-20260709-0347",
  "caller_script": [
   "I want to set up autopay for my membership.",
-  "Yeah, it's MHC-98487.",
-  "Derek Lopez.",
+  "Yeah, it's MHC-83707.",
+  "Luis Cruz.",
   "Send the link.",
   "That's all, thank you so much."
  ],
  "caller_card": {
-  "customer_id": "MHC-31132",
-  "name": "Derek Martinez",
-  "phone": "512-317-9695",
-  "email": "derek.martinez@example.com",
-  "service_address": "895 Lakeshore Blvd",
-  "city": "Hutto",
-  "zip": "78634",
+  "customer_id": "MHC-83707",
+  "name": "Luis Cruz",
+  "phone": "512-599-8466",
+  "email": "luis.cruz@example.com",
+  "service_address": "9112 Windcrest Ave",
+  "city": "Round Rock",
+  "zip": "78664",
   "membership_tier": "standard",
-  "membership_renewal_date": "2027-01-15",
-  "system_brand": "Goodman",
-  "system_install_date": "2020-09-12",
+  "membership_renewal_date": "2027-04-04",
+  "system_brand": "American Standard",
+  "system_install_date": "2023-12-27",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "autopay",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "action gap"
+  }
+ ],
  "expected_outcome": "handed_off",
  "expected_handoff_reason": "action gap",
  "needs_documents": false,

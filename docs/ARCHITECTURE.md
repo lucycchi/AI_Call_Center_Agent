@@ -6,7 +6,7 @@
 
 **The approach.** One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.
 
-**Where the project stands.** The intent (`docs/DESIGN.md`), the specification (`docs/SPEC.md`, 86 numbered requirements), this architecture and the plan (`docs/PLAN.md`) are approved, with the decisions recorded in `docs/DECISIONS.md`; the technology stack is its own decision (technology stack (D35)). Milestone 1 of 6 is built: configuration and the agent-core interface, transcript templates and labels, the findings document (`docs/FINDINGS.md`), and the prepared documents. The later milestones are planned.
+**Where the project stands.** The intent (`docs/DESIGN.md`), the specification (`docs/SPEC.md`, 86 numbered requirements), this architecture and the plan (`docs/PLAN.md`) are approved, with the decisions recorded in `docs/DECISIONS.md`; the technology stack is its own decision (technology stack (D35)). Milestones 1 and 2 of 6 are built: configuration and the agent-core interface, transcript templates and labels, the findings document (`docs/FINDINGS.md`) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results. The later milestones are planned.
 
 ## 1. System overview
 
@@ -65,7 +65,7 @@ The engine guarantees exactly one done event, always last: if the pipeline stops
 | Conversation engine | Keeps conversation state, runs the pipeline, keeps a flow active across follow-up messages | Conversation state (R40), conversation lifetime (R82) |
 | Safety check | Matches emergency patterns in code before anything else and returns fixed replies | Safety classes (R34 to R37) |
 | Router | Haiku 5.5 returns a route and "clear" or "unclear" | Router (R38, R39), routing model (D25) |
-| Knowledge search | Combined keyword and meaning-based search over current documents | Document search (R24 to R32) |
+| Knowledge search | Combined keyword and meaning-based search over current documents: the top result of each list is always kept (keyword search's only when some word matches), then the top 10 of each list are merged by reciprocal-rank fusion; five results returned (combined search keeps each list's top result (D41)) | Document search (R24 to R32) |
 | Scheduling and account store | Read-only lookups and booking transactions on the scheduling database | Booking rules (R45 to R56), data rules (D29) |
 | Reply writer | Sonnet 5.5 turns facts chosen by code into wording, as structured reply types | Pricing and internal-text rules (R42, R43) |
 | Reply checks | Checks every sentence for promises, refunds, waivers and internal text before release | Sentence release (R60) |
@@ -84,7 +84,7 @@ The engine guarantees exactly one done event, always last: if the pipeline stops
 | Search index | Built offline, shipped in each release as files (chunks and embeddings); the keyword index is rebuilt from the chunks at startup | The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too. |
 | Scheduler and reset gate | A background task in the app plus an app-wide gate: every message holds it shared, the nightly reset holds it exclusively | One machine and one worker, so an in-process gate is enough to make messages wait during a reset; the job-runs table catches a missed reset at startup. |
 | Alerts | A webhook URL setting (for example a push-notification service), plus a free outside uptime monitor on the health endpoint | One HTTP call per alert; the app cannot alert while it is down, so downtime is detected from outside (booking, reviewer-link and downtime protections (D34)). |
-| AI SDKs and timeouts | Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off | Model IDs `claude-sonnet-5-5` and `claude-haiku-5-5` and settings pinned and logged with every run. |
+| AI SDKs and timeouts | Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off | Model IDs `claude-sonnet-5-5` and `claude-haiku-5-5`, the embedding model `voyage-4`, and settings pinned and logged with every run. |
 | Offline grading | `codex exec` with a JSON output format | Uses the author's subscription, no API cost (grading through Codex (D15)). |
 
 Skipped sections: caching, message queues and scaling do not apply to one small machine with demo traffic; the per-visitor and site-wide limits are the only capacity controls needed.
@@ -224,7 +224,7 @@ erDiagram
         TEXT tried "what the agent did"
         TEXT constraints "emergency, disputed fee, gap"
         TEXT mood "caller's mood"
-        TEXT reason_tag "dispute, emergency, action gap, decline, billing review, warranty review"
+        TEXT reason_tag "dispute, emergency, burning smell, late technician, complaint, commercial, action gap, decline, billing review, warranty review"
         INTEGER priority "2 emergency, 1 normal, 0 low"
         TEXT status "open or closed"
         TEXT created_at "real time created"
@@ -515,7 +515,7 @@ sequenceDiagram
 
 *How the held-out set is measured against a fresh database copy, never the live one.*
 
-1. For each case the harness copies the seed database and adds its fixtures (an invoice, or a synthetic customer if none matches).
+1. For each case the harness copies the seed database and adds its fixtures: the invoice the caller describes, a synthetic customer if no real one matches, and for an existing-appointment call with no matching seeded appointment, that appointment (in an open seed slot, or a new slot for a technician free in that window).
 2. Sonnet 5.5 plays the caller from the caller card and the transcript.
 3. The caller's turns go to the same agent core the web app uses, called directly with no web layer.
 4. The agent does its lookups and booking changes on the copy.
@@ -617,6 +617,7 @@ flowchart LR
     TR["Transcripts"] -->|"one full sample call per template, offline"| CDX
     TR -->|"caller lines for labeling, offline"| ANT
     KB["Current documents"] -->|"section text, offline"| VOY
+    KB -->|"retrieved passages and the whole current customer knowledge base, offline"| ANT
 ```
 
 *What leaves the app: Anthropic sees the conversation and the facts code selected; Voyage sees questions and document sections; Codex sees transcripts and graded answers offline; logs keep only masked text.*
@@ -689,7 +690,7 @@ flowchart TB
 | `app/core/` | Conversation engine, conversation state, the pipeline order |
 | `app/safety/` | Emergency patterns, normalisation, fixed safety replies |
 | `app/routing/` | Haiku router call and its structured result |
-| `app/knowledge/` | Index loading, keyword and meaning search, rank fusion, threshold |
+| `app/knowledge/` | Index loading, keyword and meaning search, rank fusion keeping each list's top result, threshold |
 | `app/accounts/` | Identity checks, invoice, membership and system lookups, fee-mismatch check |
 | `app/scheduling/` | Slot eligibility, alternatives, booking, reschedule and cancel transactions, seed lookups |
 | `app/handoff/` | Tickets, reason tags, appending later messages |
@@ -711,8 +712,12 @@ The test evidence is kept as versioned files in `data/`, so held-out isolation a
 | `data/template_merges.csv` | The reviewed merge list |
 | `data/labels_haiku.csv`, `data/labels_codex.csv`, `data/labels_fable.csv` | Haiku's call reason per call; Codex's per template (the reference) and Claude Fable 5.1's for the blind third (blind third labeled by Claude Fable 5.1 (D38)), each with its model name |
 | `data/label_agreement.json` | Codex against Haiku and Fable against Codex, with any disagreements |
-| `data/split.json` | The random seed, the working and held-out template lists, and a hash of the held-out test cases recorded when they were frozen |
-| `data/testset/<case>.json` | One test case: template, caller card, fixtures, expected outcome, expected handoff reason, reference answer and its document line spans |
+| `data/split.json` | The random seed, the working and held-out template lists, a hash of the held-out test cases recorded when they were frozen, and a status line saying when and why (refreezing the held-out cases (D40)) |
+| `data/split_counts.csv` | Calls and templates per reason in the corpus, the working set and the held-out set |
+| `data/testset/<case>.json` | One test case: template, family, reason and sub-reason, sample call, call weight, the caller script (rewritten with the caller card's identity), caller card (marked synthetic, and whether its zone came from the transcript or was drawn), the caller's existing appointment if any, fixtures, every request in the call with its own expected outcome, the overall expected outcome (contained, handed off, clean decline or redirect) and handoff reason, whether it needs documents, the reference answer and its evidence spans (converted file in `data/kb_text/`, heading, line range of exactly the answering lines), and what the agent must not do |
+| `data/knowledge_questions.jsonl` | The retrieval questions (from the test cases, plus answerable, stale-trap and unanswerable ones written by hand), each with its set, whether it falls under a handled reason, reference answer and evidence spans |
+| `data/results/retrieval/summary.json` | Retrieval measures for keyword-only, meaning-only and combined search on a named question set, the check that no excluded document is in the index, and the models and settings used |
+| `data/results/retrieval/answers_to_grade.jsonl` | Answers from keyword-only search, combined search and the whole knowledge base, with the model, for grading on answer correctness (stale-trap accuracy is judged here) |
 | `data/results/<run>/attempts.jsonl` | One line per attempt: case, attempt number, first-run flag, conversation, database checks, model ids and settings, grader verdict and grader model |
 | `data/results/<run>/summary.json` | The computed numbers and their intervals for that run |
 | `data/grader_check.csv` | The pre-chosen sample, the author's blind grades and the grader's verdicts |

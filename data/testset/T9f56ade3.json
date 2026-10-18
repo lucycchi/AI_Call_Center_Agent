@@ -8,8 +8,8 @@
  "sample_call_id": "CALL-20260713-0320",
  "caller_script": [
   "Yeah, I need to schedule a service call. The AC is making a loud grinding noise.",
-  "Yeah, it's MHC-82246.",
-  "Hannah Cruz.",
+  "Yeah, it's MHC-57204.",
+  "Michael Foster.",
   "Friday if possible, 12 to 4.",
   "Sure, let's do that.",
   "Yep, same one.",
@@ -28,9 +28,18 @@
   "system_brand": "Goodman",
   "system_install_date": "2021-10-13",
   "zone": "central",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "hvac repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": false,

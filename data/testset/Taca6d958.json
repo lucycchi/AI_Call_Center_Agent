@@ -8,32 +8,34 @@
  "sample_call_id": "CALL-20260708-0115",
  "caller_script": [
   "I need to pay invoice INV-263891. Can I do it over the phone?",
-  "Yeah, it's MHC-27627.",
-  "Maria Patel.",
+  "Yeah, it's MHC-83207.",
+  "Maria Reyes.",
   "Got it. Thanks.",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-73972",
-  "name": "Tom Ali",
-  "phone": "512-304-6613",
-  "email": "tom.ali@example.com",
-  "service_address": "4437 Harbor View Way",
-  "city": "Buda",
-  "zip": "78610",
-  "membership_tier": "none",
-  "membership_renewal_date": null,
-  "system_brand": "American Standard",
-  "system_install_date": "2023-05-25",
-  "zone": "south",
-  "synthetic": false
+  "customer_id": "MHC-83207",
+  "name": "Maria Reyes",
+  "phone": "512-701-5321",
+  "email": "maria.reyes@example.com",
+  "service_address": "154 Harbor View Way",
+  "city": "Round Rock",
+  "zip": "78664",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-10-04",
+  "system_brand": "Trane",
+  "system_install_date": "2021-02-21",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [
   {
    "table": "invoices",
    "row": {
-    "invoice_id": "INV-900034",
-    "customer_id": "MHC-73972",
+    "invoice_id": "INV-263891",
+    "customer_id": "MHC-83207",
     "appointment_id": null,
     "issued_date": "2026-10-02",
     "due_date": "2026-11-01",
@@ -41,6 +43,13 @@
     "balance_cents": 24500,
     "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 15600}]"
    }
+  }
+ ],
+ "requests": [
+  {
+   "request": "pay an invoice",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "action gap"
   }
  ],
  "expected_outcome": "handed_off",

@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260721-0242",
  "caller_script": [
   "Yeah, I need to schedule a service call. The AC is making a loud grinding noise.",
-  "Sure, it's Patricia Nguyen, 512-790-1721.",
+  "Sure, it's Elena Foster, 512-730-9305.",
   "Tomorrow if possible, the afternoon.",
   "Can you do anything earlier?",
   "Okay, do that. And book the slot.",
@@ -16,21 +16,30 @@
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-17357",
-  "name": "Derek Lopez",
-  "phone": "512-654-9480",
-  "email": "derek.lopez@example.com",
-  "service_address": "8174 Brookside Ct",
-  "city": "Hutto",
-  "zip": "78634",
+  "customer_id": "MHC-90299",
+  "name": "Elena Foster",
+  "phone": "512-730-9305",
+  "email": "elena.foster@example.com",
+  "service_address": "6903 Ridgeline Pass",
+  "city": "Georgetown",
+  "zip": "78626",
   "membership_tier": "none",
   "membership_renewal_date": null,
   "system_brand": "Carrier",
-  "system_install_date": "2013-08-27",
+  "system_install_date": "2022-02-25",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "hvac repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": false,

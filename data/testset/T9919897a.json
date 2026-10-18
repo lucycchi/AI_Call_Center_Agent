@@ -8,26 +8,35 @@
  "sample_call_id": "CALL-20260712-0007",
  "caller_script": [
   "Does the labor warranty cover a repeat repair? You fixed my blower in March and it's doing the same thing.",
-  "Sure, it's Beth Patel, 512-681-4644.",
+  "Sure, it's Sofia Diaz, 512-490-3371.",
   "Good. Can you get someone out?",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-73231",
-  "name": "Maria Ali",
-  "phone": "512-891-9021",
-  "email": "maria.ali@example.com",
-  "service_address": "4865 Sunset Terrace",
-  "city": "Leander",
-  "zip": "78641",
-  "membership_tier": "plus",
-  "membership_renewal_date": "2026-12-10",
-  "system_brand": "Lennox",
-  "system_install_date": "2021-09-29",
-  "zone": "north",
-  "synthetic": false
+  "customer_id": "MHC-30349",
+  "name": "Sofia Diaz",
+  "phone": "512-490-3371",
+  "email": "sofia.diaz@example.com",
+  "service_address": "817 Sunset Terrace",
+  "city": "Kyle",
+  "zip": "78640",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-07-01",
+  "system_brand": "American Standard",
+  "system_install_date": "2023-04-11",
+  "zone": "south",
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "repeat repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": true,
@@ -36,8 +45,8 @@
   {
    "file": "warranty__warranty_policy.md",
    "heading": "Repair warranty (Meridian labor warranty)",
-   "start_line": 4,
-   "end_line": 8
+   "start_line": 5,
+   "end_line": 6
   }
  ],
  "must_not": []

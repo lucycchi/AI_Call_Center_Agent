@@ -8,8 +8,8 @@
  "sample_call_id": "CALL-20260709-0365",
  "caller_script": [
   "I'm calling to book a repair, my kitchen sink is backing up.",
-  "Yeah, it's MHC-25306.",
-  "Robert Martinez.",
+  "Yeah, it's MHC-70158.",
+  "Robert Clark.",
   "Thursday if possible, 4 to 7, after work.",
   "Can you do anything earlier?",
   "Okay, do that. And book the slot.",
@@ -29,9 +29,18 @@
   "system_brand": "Carrier",
   "system_install_date": "2021-12-03",
   "zone": "south",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "plumbing",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": false,

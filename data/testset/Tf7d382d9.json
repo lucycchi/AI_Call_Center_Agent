@@ -8,26 +8,35 @@
  "sample_call_id": "CALL-20260707-0053",
  "caller_script": [
   "Did you guys register my new unit with the, uh, manufacturer? I never got anything.",
-  "Raj Garcia, 5385 Maple St, Pflugerville.",
+  "Grace Nguyen, 9128 Brookside Ct, Leander.",
   "Thanks.",
   "That's all, thank you so much."
  ],
  "caller_card": {
-  "customer_id": "MHC-67178",
-  "name": "Marcus Thompson",
-  "phone": "512-979-7554",
-  "email": "marcus.thompson@example.com",
-  "service_address": "9179 Sunset Terrace",
-  "city": "Georgetown",
-  "zip": "78626",
-  "membership_tier": "standard",
-  "membership_renewal_date": "2027-05-28",
-  "system_brand": "Carrier",
-  "system_install_date": "2025-12-23",
+  "customer_id": "MHC-55482",
+  "name": "Grace Nguyen",
+  "phone": "512-950-9284",
+  "email": "grace.nguyen@example.com",
+  "service_address": "9128 Brookside Ct",
+  "city": "Leander",
+  "zip": "78641",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Rheem",
+  "system_install_date": "2026-03-19",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "transcript"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "registration",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": true,
@@ -36,8 +45,8 @@
   {
    "file": "warranty__warranty_policy.md",
    "heading": "New system installation warranty",
-   "start_line": 9,
-   "end_line": 13
+   "start_line": 12,
+   "end_line": 12
   }
  ],
  "must_not": []

@@ -534,6 +534,32 @@ can only propose a decision; only the author settles one.
 - **Choice:** Keep the 52 templates. data/templates.csv gains a family column: each waitlist template's family is its booking twin's template id, every other template is its own family. The test split (Task 7) assigns whole families, so twins are never on opposite sides. The plan's 70 to 120 template estimate is corrected.
 - **Reason:** Keeps the waitlist variant as its own test scenario (the agent must not promise a waitlist, one of the seven staff error patterns) while preventing near-duplicate leakage between the tuning and held-out sets. About one column and a few lines plus a test.
 
+## D40: The milestone 2 reviews found errors in the frozen test cases (caller scripts kept the transcript's identity, wrong planted invoices, two-request calls expecting only a handoff, evidence spans tied to the chunker). Fix them and refreeze the held-out set, or leave the frozen set alone?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
+- **Options:**
+  - Fix the case builder, rebuild all 52 cases and refreeze the held-out set with a new hash, recording the old hash
+  - Leave the frozen held-out set as it is and fix only the working set
+  - Leave both sets and note the errors in the results
+- **Research:**
+  - [docs/gates/milestone-2.md](docs/gates/milestone-2.md): Codex and a fresh Claude agent reviewed the milestone; 32 of 52 scripts (9 held out) carried a different account, name or phone than the caller card, and the quote-dispute invoice was planted at the quoted amount.
+- **Choice:** Fix the builder and refreeze. The split itself is unchanged (37 working and 15 held-out templates); the held-out hash moves from 7cdaec4bc6b1c44407e8fe2da8a9415899bf1cf4c759ad586c884cf0c9eec5f0 to 9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c. Each case now lists every request the caller makes, each with its own expected outcome. Existing-appointment cases use a real customer's seeded appointment where one matches, so the freed-slot rule (R55, D33) already covers them; a slot planted only for a test (none at present) is freed to open.
+- **Reason:** The spec forbids changes after the agent has been tuned on held-out results (R10); no agent exists yet, so refreezing now is allowed, and a held-out set with wrong identities or invoices would make every final measurement wrong.
+
+## D41: How does combined search merge the keyword and meaning-based lists?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
+- **Options:**
+  - Keep each list's top result (keyword only when some word matches), then fill by reciprocal-rank fusion over the top 10 of each list
+  - Plain reciprocal-rank fusion
+  - Meaning-based search only
+- **Research:**
+  - [data/results/retrieval/summary.json](data/results/retrieval/summary.json): On the working-set questions: plain fusion missed answers meaning search had first; keep-top fusion found every answer; meaning-only had the best recall at five; keyword-only was weakest.
+- **Choice:** Keep each list's top result, then reciprocal-rank fusion. The spec leaves the fusion method to the builder (R28). The results report meaning-only beside it honestly, and the rule was chosen on the working set only.
+- **Reason:** Plain fusion dropped meaning search's correct first answer whenever keyword search missed; keeping keyword search's top result protects exact-term questions (prices, place names) that meaning search can rank lower.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
@@ -571,6 +597,7 @@ can only propose a decision; only the author settles one.
 - **Per-visitor budget:** a daily spending limit for one visitor, so others still have budget left
 - **Priority handoff:** a handoff ticket marked to be picked up first
 - **Read-only lookup:** reading a caller's record without changing it
+- **Reciprocal-rank fusion:** merging ranked lists by adding up one over (60 plus rank) for each item across the lists
 - **Reference answer:** the correct answer to a test question, written in advance to compare the agent against
 - **Reply-speed budget:** the planned time each step may take so the whole reply arrives quickly
 - **Retention:** how long stored data is kept before it is deleted

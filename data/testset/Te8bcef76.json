@@ -8,51 +8,43 @@
  "sample_call_id": "CALL-20260711-0063",
  "caller_script": [
   "I have a tech coming tomorrow but something came up. Can I move it?",
-  "Yeah, it's MHC-44290.",
-  "Nadia Ali.",
+  "Yeah, it's MHC-29577.",
+  "Susan Singh.",
   "Any afternoon this week.",
   "Perfect.",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-92941",
-  "name": "Derek Okafor",
-  "phone": "512-460-5987",
-  "email": "derek.okafor@example.com",
-  "service_address": "9402 Maple St",
-  "city": "Cedar Park",
-  "zip": "78613",
+  "customer_id": "MHC-29577",
+  "name": "Susan Singh",
+  "phone": "512-248-3163",
+  "email": "susan.singh@example.com",
+  "service_address": "8101 Brookside Ct",
+  "city": "Kyle",
+  "zip": "78640",
   "membership_tier": "none",
   "membership_renewal_date": null,
-  "system_brand": "Trane",
-  "system_install_date": "2019-03-10",
-  "zone": "north",
-  "synthetic": false
+  "system_brand": "Rheem",
+  "system_install_date": "2018-06-18",
+  "zone": "south",
+  "synthetic": false,
+  "zone_source": "drawn"
  },
- "fixtures": [
+ "appointment": {
+  "appointment_id": 25,
+  "slot_id": 33,
+  "slot_date": "2026-10-17",
+  "window": "08:00-12:00",
+  "tech_id": 3,
+  "zone": "south",
+  "source": "seed"
+ },
+ "fixtures": [],
+ "requests": [
   {
-   "table": "appointment_slots",
-   "row": {
-    "slot_id": 9044,
-    "slot_date": "2026-10-17",
-    "window": "08:00-12:00",
-    "tech_id": 1,
-    "zone": "north",
-    "service_type": "hvac_repair",
-    "status": "booked"
-   }
-  },
-  {
-   "table": "appointments",
-   "row": {
-    "appointment_id": 5044,
-    "slot_id": 9044,
-    "customer_id": "MHC-92941",
-    "issue_description": "test appointment",
-    "created_at": "2026-10-10",
-    "status": "scheduled",
-    "is_warranty_visit": 0
-   }
+   "request": "reschedule",
+   "expected_outcome": "contained",
+   "handoff_reason": null
   }
  ],
  "expected_outcome": "contained",

@@ -8,29 +8,38 @@
  "sample_call_id": "CALL-20260709-0103",
  "caller_script": [
   "I'm calling to book a repair, the furnace won't kick on.",
-  "Yeah, it's MHC-85936.",
-  "Wei Garcia.",
+  "Yeah, it's MHC-38140.",
+  "Maria Johnson.",
   "Tomorrow if possible, 12 to 4.",
   "That's fine.",
   "Um, yes.",
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-41927",
-  "name": "Nate Smith",
-  "phone": "512-348-5419",
-  "email": "nate.smith@example.com",
-  "service_address": "6685 Windcrest Ave",
-  "city": "Buda",
-  "zip": "78610",
+  "customer_id": "MHC-38140",
+  "name": "Maria Johnson",
+  "phone": "512-292-7955",
+  "email": "maria.johnson@example.com",
+  "service_address": "1068 Ridgeline Pass",
+  "city": "Kyle",
+  "zip": "78640",
   "membership_tier": "none",
   "membership_renewal_date": null,
   "system_brand": "Trane",
-  "system_install_date": "2012-04-24",
+  "system_install_date": "2021-03-25",
   "zone": "south",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "hvac repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": false,

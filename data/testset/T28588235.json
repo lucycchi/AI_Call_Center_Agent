@@ -8,8 +8,8 @@
  "sample_call_id": "CALL-20260706-0101",
  "caller_script": [
   "Yeah, I need to schedule a service call. I smell something burning from the vents.",
-  "Yeah, it's MHC-35307.",
-  "Linda Foster.",
+  "Yeah, it's MHC-14512.",
+  "Beth Cruz.",
   "Thursday if possible, 8 to 12.",
   "Um, that's fine.",
   "I think so, it's whatever was there when we moved in.",
@@ -28,9 +28,18 @@
   "system_brand": "Trane",
   "system_install_date": "2012-06-12",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "burning smell",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "burning smell"
+  }
+ ],
  "expected_outcome": "handed_off",
  "expected_handoff_reason": "burning smell",
  "needs_documents": false,

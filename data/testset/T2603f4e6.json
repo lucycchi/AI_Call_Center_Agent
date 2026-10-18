@@ -25,9 +25,18 @@
   "system_brand": "Lennox",
   "system_install_date": "2018-07-07",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "member discount on a new system",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": true,
@@ -36,14 +45,14 @@
   {
    "file": "membership__comfort_club_overview.md",
    "heading": "Plans",
-   "start_line": 6,
-   "end_line": 26
+   "start_line": 25,
+   "end_line": 25
   },
   {
    "file": "services__service_catalog.md",
    "heading": "System replacement",
-   "start_line": 26,
-   "end_line": 30
+   "start_line": 27,
+   "end_line": 29
   }
  ],
  "must_not": []

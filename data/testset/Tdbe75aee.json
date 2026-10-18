@@ -8,31 +8,33 @@
  "sample_call_id": "CALL-20260708-0255",
  "caller_script": [
   "What's my current balance?",
-  "Sure, it's James Smith, 512-399-7854.",
+  "Sure, it's Beth Johnson, 512-564-4650.",
   "Okay, I'll pay it through the portal.",
   "No, that's it. Thanks."
  ],
  "caller_card": {
-  "customer_id": "MHC-95520",
-  "name": "Nadia Clark",
-  "phone": "512-582-6434",
-  "email": "nadia.clark@example.com",
-  "service_address": "7348 Maple St",
-  "city": "Buda",
-  "zip": "78610",
+  "customer_id": "MHC-94268",
+  "name": "Beth Johnson",
+  "phone": "512-564-4650",
+  "email": "beth.johnson@example.com",
+  "service_address": "8825 Sunset Terrace",
+  "city": "Leander",
+  "zip": "78641",
   "membership_tier": "none",
   "membership_renewal_date": null,
-  "system_brand": "Trane",
-  "system_install_date": "2018-02-19",
-  "zone": "south",
-  "synthetic": false
+  "system_brand": "Rheem",
+  "system_install_date": "2022-11-18",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [
   {
    "table": "invoices",
    "row": {
     "invoice_id": "INV-900043",
-    "customer_id": "MHC-95520",
+    "customer_id": "MHC-94268",
     "appointment_id": null,
     "issued_date": "2026-10-02",
     "due_date": "2026-11-01",
@@ -40,6 +42,13 @@
     "balance_cents": 24500,
     "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 15600}]"
    }
+  }
+ ],
+ "requests": [
+  {
+   "request": "current balance",
+   "expected_outcome": "contained",
+   "handoff_reason": null
   }
  ],
  "expected_outcome": "contained",

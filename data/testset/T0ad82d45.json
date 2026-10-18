@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260713-0314",
  "caller_script": [
   "Can I upgrade from the regular plan to the Plus plan mid-year?",
-  "Aisha Johnson, 2712 Brookside Ct, Pflugerville.",
+  "Luis Cruz, 9112 Windcrest Ave, Round Rock.",
   "Let's do it.",
   "No, that's it. Thanks."
  ],
@@ -25,9 +25,18 @@
   "system_brand": "American Standard",
   "system_install_date": "2023-12-27",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "transcript"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "upgrade",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "action gap"
+  }
+ ],
  "expected_outcome": "handed_off",
  "expected_handoff_reason": "action gap",
  "needs_documents": false,

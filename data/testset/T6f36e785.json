@@ -8,7 +8,7 @@
  "sample_call_id": "CALL-20260802-0015",
  "caller_script": [
   "Hey, so the water heater pilot light keeps going out. What's the soonest you can get a tech out?",
-  "Sure, it's Jennifer Hernandez, 512-764-3369.",
+  "Sure, it's Robert Martinez, 512-774-4398.",
   "As soon as possible if possible, 4 to 7, after work.",
   "Can you do anything earlier?",
   "Okay, do that. And book the slot.",
@@ -16,21 +16,30 @@
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-77976",
-  "name": "Omar Garcia",
-  "phone": "512-750-4548",
-  "email": "omar.garcia@example.com",
-  "service_address": "1589 Ridgeline Pass",
-  "city": "Hutto",
-  "zip": "78634",
+  "customer_id": "MHC-10376",
+  "name": "Robert Martinez",
+  "phone": "512-774-4398",
+  "email": "robert.martinez@example.com",
+  "service_address": "6328 Lakeshore Blvd",
+  "city": "Cedar Park",
+  "zip": "78613",
   "membership_tier": "none",
   "membership_renewal_date": null,
   "system_brand": "Lennox",
-  "system_install_date": "2025-07-19",
+  "system_install_date": "2023-11-08",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "plumbing",
+   "expected_outcome": "clean_decline",
+   "handoff_reason": "no plumbing capacity in north zone"
+  }
+ ],
  "expected_outcome": "clean_decline",
  "expected_handoff_reason": "no plumbing capacity in north zone",
  "needs_documents": false,

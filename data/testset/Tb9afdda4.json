@@ -9,31 +9,33 @@
  "caller_script": [
   "I got an invoice, INV-292142, for $245 and I'm not sure what it's for.",
   "Hold on, my dog is barking.",
-  "Sure, it's Raj Okafor, 512-658-6601.",
+  "Sure, it's Nadia Clark, 512-582-6434.",
   "Oh okay. Can you email me an itemized copy?",
   "No that's everything."
  ],
  "caller_card": {
-  "customer_id": "MHC-18700",
-  "name": "Kim Murphy",
-  "phone": "512-494-3705",
-  "email": "kim.murphy@example.com",
-  "service_address": "3722 Cedar Ridge Ln",
-  "city": "Cedar Park",
-  "zip": "78613",
+  "customer_id": "MHC-95520",
+  "name": "Nadia Clark",
+  "phone": "512-582-6434",
+  "email": "nadia.clark@example.com",
+  "service_address": "7348 Maple St",
+  "city": "Buda",
+  "zip": "78610",
   "membership_tier": "none",
   "membership_renewal_date": null,
-  "system_brand": "Lennox",
-  "system_install_date": "2015-08-06",
-  "zone": "north",
-  "synthetic": false
+  "system_brand": "Trane",
+  "system_install_date": "2018-02-19",
+  "zone": "south",
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [
   {
    "table": "invoices",
    "row": {
-    "invoice_id": "INV-900036",
-    "customer_id": "MHC-18700",
+    "invoice_id": "INV-292142",
+    "customer_id": "MHC-95520",
     "appointment_id": null,
     "issued_date": "2026-10-02",
     "due_date": "2026-11-01",
@@ -41,6 +43,18 @@
     "balance_cents": 24500,
     "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 15600}]"
    }
+  }
+ ],
+ "requests": [
+  {
+   "request": "what an invoice is for",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "email an itemized copy of the invoice",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "action gap"
   }
  ],
  "expected_outcome": "handed_off",

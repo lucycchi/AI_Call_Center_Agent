@@ -8,27 +8,36 @@
  "sample_call_id": "CALL-20260711-0248",
  "caller_script": [
   "I need to file a warranty claim. The unit you installed last year stopped working.",
-  "Um, sure, it's Omar Singh, 512-342-5833.",
+  "Um, sure, it's Grace Garcia, 512-686-4786.",
   "Tomorrow if you can.",
   "Take it.",
   "That's all, thank you so much."
  ],
  "caller_card": {
-  "customer_id": "MHC-15531",
-  "name": "Omar Garcia",
-  "phone": "512-978-2038",
-  "email": "omar.garcia@example.com",
-  "service_address": "7362 Lakeshore Blvd",
-  "city": "Austin",
-  "zip": "78745",
-  "membership_tier": "none",
-  "membership_renewal_date": null,
-  "system_brand": "Rheem",
-  "system_install_date": "2026-01-01",
-  "zone": "central",
-  "synthetic": false
+  "customer_id": "MHC-95149",
+  "name": "Grace Garcia",
+  "phone": "512-686-4786",
+  "email": "grace.garcia@example.com",
+  "service_address": "7444 Lakeshore Blvd",
+  "city": "Buda",
+  "zip": "78610",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2026-12-12",
+  "system_brand": "Trane",
+  "system_install_date": "2026-07-12",
+  "zone": "south",
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "claim",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
  "expected_outcome": "contained",
  "expected_handoff_reason": null,
  "needs_documents": true,
@@ -37,13 +46,13 @@
   {
    "file": "warranty__warranty_policy.md",
    "heading": "New system installation warranty",
-   "start_line": 9,
-   "end_line": 13
+   "start_line": 10,
+   "end_line": 10
   },
   {
    "file": "warranty__warranty_policy.md",
    "heading": "Filing a claim",
-   "start_line": 31,
+   "start_line": 32,
    "end_line": 32
   }
  ],

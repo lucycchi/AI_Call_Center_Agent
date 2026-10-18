@@ -8,8 +8,8 @@
  "sample_call_id": "CALL-20260724-0391",
  "caller_script": [
   "I've called three times about the same problem and nobody has called me back. I'm done.",
-  "Yeah, it's MHC-80890.",
-  "Um, maria Singh.",
+  "Yeah, it's MHC-93419.",
+  "Um, Michael Johnson.",
   "Today. Not next week.",
   "That's all, thank you so much."
  ],
@@ -26,9 +26,18 @@
   "system_brand": "Trane",
   "system_install_date": "2024-10-31",
   "zone": "north",
-  "synthetic": false
+  "synthetic": false,
+  "zone_source": "drawn"
  },
+ "appointment": null,
  "fixtures": [],
+ "requests": [
+  {
+   "request": "complaint or manager",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "complaint"
+  }
+ ],
  "expected_outcome": "handed_off",
  "expected_handoff_reason": "complaint",
  "needs_documents": false,
