@@ -111,3 +111,21 @@ def test_no_chunk_is_only_a_title_and_a_date_line():
         content = [line for line in chunk.text.splitlines()
                    if line.strip() and not line.startswith("#") and not line.startswith("_")]
         assert content, chunk.chunk_id
+
+
+def test_combined_search_always_keeps_the_top_result_of_each_list():
+    chunks = [Chunk("m", "doc/m.md", "M", "", "membership comfort club plan price", 1, 2),
+              Chunk("k", "doc/k.md", "K", "", "zebra zebra zebra zebra", 1, 2)] + \
+             [Chunk(f"x{i}", f"doc/x{i}.md", "X", "", f"zebra membership filler {i}", 1, 2) for i in range(12)]
+    searcher = Searcher(chunks, FakeEmbedder())
+    meaning_top = searcher.search("zebra membership comfort club plan price", mode="meaning")[0].chunk.chunk_id
+    keyword_top = searcher.search("zebra membership comfort club plan price", mode="keyword")[0].chunk.chunk_id
+    combined = [r.chunk.chunk_id for r in searcher.search("zebra membership comfort club plan price", mode="combined")]
+    tops = list(dict.fromkeys([meaning_top, keyword_top]))
+    assert combined[:len(tops)] == tops
+    assert len(combined) == 5
+
+
+def test_meaning_only_mode_is_available_for_the_comparison():
+    searcher = Searcher(all_chunks(), FakeEmbedder())
+    assert searcher.search("holiday hours", mode="meaning")

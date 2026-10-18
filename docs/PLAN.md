@@ -150,7 +150,7 @@ The author can see the retrieval numbers (keyword-only against combined, and bot
 
 - [x] Task 6: chunk documents, build the index and search. Requirements: R27, R28
 - [x] Task 7: split by template and build frozen test cases. Requirements: R9, R10, R11, R29, R81
-- [ ] Task 8: measure retrieval on its own. Requirements: R30
+- [x] Task 8: measure retrieval on its own. Requirements: R30
 
 ### Task 6: Chunk documents, build the index and search
 

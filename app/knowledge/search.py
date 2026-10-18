@@ -62,7 +62,9 @@ class Searcher:
         elif mode == "keyword":
             order = by_keyword
         elif mode == "combined":
-            order = fuse([by_meaning[:CANDIDATES], by_keyword[:CANDIDATES]])
+            # Reciprocal-rank fusion, but the best result of each list is always kept: chosen on the working
+            # set, where plain fusion dropped meaning search's correct top answer when keyword search missed it.
+            order = list(dict.fromkeys([by_meaning[0], by_keyword[0]] + fuse([by_meaning[:CANDIDATES], by_keyword[:CANDIDATES]])))
         else:
             raise ValueError(f"unknown search mode {mode!r}")
         index = {c.chunk_id: i for i, c in enumerate(self._chunks)}

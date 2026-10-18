@@ -59,12 +59,14 @@ class FakeSearcher:
 
 
 def test_compare_modes_reports_keyword_and_combined_side_by_side():
-    searcher = FakeSearcher({"keyword": [chunk(0, "faq__customer_faq", 1, 3)], "combined": [chunk(1, "faq__customer_faq", 14, 19)]})
+    searcher = FakeSearcher({"keyword": [chunk(0, "faq__customer_faq", 1, 3)], "meaning": [chunk(1, "faq__customer_faq", 14, 19)],
+                             "combined": [chunk(1, "faq__customer_faq", 14, 19)]})
     questions = [{"qid": "q1", "question": "fee?", "kind": "answerable", "evidence_spans": [A]}]
     report = compare_modes(questions, searcher)
     assert report["keyword"]["hit_at_5"] == 0.0
     assert report["combined"]["hit_at_5"] == 1.0
     assert report["combined"]["recall_at_5"] == 1.0
+    assert report["meaning"]["hit_at_5"] == 1.0
     assert report["questions"] == 1
 
 

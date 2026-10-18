@@ -1,0 +1,29 @@
+{
+ "questions": 23,
+ "coverage": 0.8695652173913043,
+ "keyword": {
+  "recall_at_5": 0.675,
+  "hit_at_5": 0.7,
+  "stale_trap_accuracy": 0.8333333333333334,
+  "misses": [
+   "case-T0a995037",
+   "case-T2603f4e6",
+   "case-Tbaf67f84",
+   "case-Tbc5df324",
+   "answerable-6",
+   "stale_trap-7"
+  ]
+ },
+ "meaning": {
+  "recall_at_5": 0.9833333333333334,
+  "hit_at_5": 1.0,
+  "stale_trap_accuracy": 1.0,
+  "misses": []
+ },
+ "combined": {
+  "recall_at_5": 0.9333333333333333,
+  "hit_at_5": 1.0,
+  "stale_trap_accuracy": 1.0,
+  "misses": []
+ }
+}

@@ -45,7 +45,7 @@ def stale_trap_passes(results: list[Chunk], needed: list[dict], k: int = TOP) ->
 def compare_modes(questions: list[dict], searcher) -> dict:
     report: dict = {"questions": len(questions), "coverage": coverage(questions)}
     answerable = [q for q in questions if q["evidence_spans"]]
-    for mode in ("keyword", "combined"):
+    for mode in ("keyword", "meaning", "combined"):
         results = {q["qid"]: [s.chunk for s in searcher.search(q["question"], mode=mode, k=TOP)] for q in answerable}
         traps = [q for q in answerable if q["kind"] == "stale_trap"]
         report[mode] = {
@@ -112,7 +112,7 @@ def main() -> None:
     whole_kb = "\n\n".join(p.read_text() for p in sorted((ROOT / "data" / "kb_text").glob("*.md")))
     answer_both_ways(working, searcher, sonnet_writer(), whole_kb, out / "answers_to_grade.jsonl")
     (out / "summary.json").write_text(json.dumps(report, indent=1))
-    print(json.dumps({k: v for k, v in report.items() if k in ("questions", "coverage", "keyword", "combined")}, indent=1))
+    print(json.dumps({k: v for k, v in report.items() if k in ("questions", "coverage", "keyword", "meaning", "combined")}, indent=1))
 
 
 if __name__ == "__main__":
