@@ -297,6 +297,7 @@ def test_an_idle_conversation_mid_flow_is_abandoned_and_the_caller_can_end_a_cha
     store = chat["store"]
     chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
     store._write("update conversations set last_message_at = '2000-01-01T00:00:00' where conversation_id = 'c1'")
+    store._write("update messages set created_at = '2000-01-01T00:00:00' where conversation_id = 'c1'")
     chat["say"]("how much is a tune-up cost", conversation="c2")
     assert store.conversation("c1")["status"] == "abandoned"
     reply, done = chat["say"]("No, that's it. Thanks.", conversation="c2")
@@ -362,3 +363,133 @@ def test_a_goodbye_ends_the_chat_even_mid_flow(chat):
     chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
     reply, done = chat["say"]("No, that's it. Thanks.")
     assert done.outcome == "ended" and chat["store"].conversation("c1")["status"] == "closed"
+
+
+# Review of the milestone 3 fixes.
+
+def test_a_safety_message_after_a_goodbye_still_gets_the_safety_reply(chat):
+    chat["say"]("No, that's it. Thanks.")
+    reply, done = chat["say"]("actually wait, I smell gas now")
+    assert fixed_reply("danger")[0] in reply and done.ticket and done.outcome == "safety"
+
+
+def test_ok_all_set_at_a_read_back_does_not_end_the_chat(chat):
+    book_to_read_back(chat)
+    _, done = chat["say"]("Ok, all set")
+    assert done.outcome != "ended"
+
+
+def test_a_yes_naming_another_day_does_not_confirm(chat):
+    before = count(chat["db"], "select count(*) from appointments")
+    book_to_read_back(chat)
+    chat["say"]("Yes, Tuesday works")
+    assert count(chat["db"], "select count(*) from appointments") == before
+
+
+def test_picking_by_number(chat):
+    from app.flows.scheduling import _pick
+    choices = [{"slot_date": "2026-10-19", "window": "08:00-12:00"}, {"slot_date": "2026-10-19", "window": "12:00-16:00"},
+               {"slot_date": "2026-10-19", "window": "13:00-17:00"}]
+    for text, index in (("2", 1), ("two please", 1), ("I'll take the 2nd one", 1), ("the 1st one please", 0),
+                        ("the 3rd option", 2), ("number 3", 2)):
+        assert _pick(text, choices, SETTINGS.now) == choices[index], text
+    assert _pick("November 2", choices, SETTINGS.now) is None
+
+
+def test_a_booking_is_confirmed_in_code_even_when_the_writer_then_fails(chat, monkeypatch):
+    import app.replies.writer as writer_module
+    book_to_read_back(chat)
+    monkeypatch.setattr(writer_module, "split_sentences", lambda chunks: (_ for _ in ()).throw(RuntimeError("writer down")))
+    reply, done = chat["say"]("yes")
+    assert "Booked" in reply and "Marta Kowalski" in reply
+
+
+def test_a_booking_is_confirmed_even_when_the_warranty_review_ticket_fails(chat, monkeypatch):
+    chat["say"]("I'm Linda Foster, MHC-10001. You fixed my blower and it's doing the same thing again, Monday morning")
+    chat["say"]("yes")
+    original = chat["store"].create_ticket
+
+    def failing(*args, **kwargs):
+        if "warranty review" in args:
+            raise sqlite3.OperationalError("disk full")
+        return original(*args, **kwargs)
+    monkeypatch.setattr(chat["store"], "create_ticket", failing)
+    reply, _ = chat["say"]("yes")
+    assert "Booked" in reply
+
+
+def test_a_failed_billing_review_is_tried_again_next_time(chat, monkeypatch):
+    calls = []
+    original = chat["store"].create_ticket
+
+    def flaky(*args, **kwargs):
+        calls.append(args)
+        if len(calls) == 1:
+            raise sqlite3.OperationalError("locked")
+        return original(*args, **kwargs)
+    monkeypatch.setattr(chat["store"], "create_ticket", flaky)
+    chat["say"]("I'm Omar Patel, MHC-10002, what's my balance?")
+    chat["say"]("what's my balance again")
+    assert [t["reason_tag"] for t in chat["store"].tickets()].count("billing review") == 1
+
+
+def test_a_failed_state_save_gives_the_phone_the_office_message(chat, monkeypatch):
+    def broken(*args):
+        raise sqlite3.OperationalError("disk I/O error")
+    monkeypatch.setattr(chat["store"], "save_state", broken)
+    reply, done = chat["say"]("how much is a tune-up cost")
+    assert "phone our office" in reply and done.outcome == "error"
+
+
+def test_billing_notes_stay_on_billing_tickets_and_one_earlier_slot_ticket_per_conversation(chat):
+    chat["say"]("I'm Omar Patel, MHC-10002, what's my balance?")
+    chat["say"]("I smell gas")
+    emergency = chat["store"].tickets()[-1]
+    assert emergency["reason_tag"] == "emergency" and "fee differs" not in emergency["constraints"]
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair", conversation="c2")
+    chat["say"]("anything earlier?", conversation="c2")
+    chat["say"]("anything earlier?", conversation="c2")
+    assert [t["reason_tag"] for t in chat["store"].tickets()].count("earlier slot") == 1
+
+
+def test_receipts_use_the_plain_labels(chat):
+    chat["say"]("how much is a tune-up cost")
+    chat["say"]("I'm Omar Patel, MHC-10002, what's my balance?", conversation="c2")
+    chat["say"]("I'm Omar Patel, MHC-10002. Send me a payment link", conversation="c3")
+    labels = [r["outcome_label"] for r in chat["store"]._rows("select outcome_label from receipts order by message_id")]
+    assert labels == ["supported by documents", "supported by account records", "handoff required"]
+
+
+@pytest.mark.parametrize("text", ["no, cancel my other appointment instead", "yes, and cancel my other appointment"])
+def test_a_yes_or_no_before_a_new_scheduling_action_still_switches(chat, text):
+    chat["routes_add"]("cancel my other", clear(request("cancel my other appointment", "scheduling", "cancel")))
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    reply, _ = chat["say"](text)
+    assert "cancelling" in reply
+
+
+def test_the_action_backstop_covers_misrouted_knowledge_and_scheduling_requests(chat):
+    chat["routes_add"]("autopay set", clear(request("set up autopay for my membership", "knowledge")))
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. autopay set up please")
+    assert chat["store"].tickets()[-1]["reason_tag"] == "action gap"
+    chat["routes_add"]("pay by card", clear(request("can I pay by card over the phone", "knowledge")))
+    _, done = chat["say"]("can I pay by card over the phone?", conversation="c2")
+    assert done.outcome == "answered"
+
+
+def test_a_complete_reply_is_not_handed_off_for_its_last_sentence_being_slow(tmp_path):
+    import time
+
+    from app.core.types import Turn as T
+    db = tmp_path / "s.sqlite"
+    shutil.copy(SEED, db)
+
+    def slow_writer(reply_type, facts, history):
+        yield "A tune-up is $129 for non-members."
+        time.sleep(0.15)
+        yield "The technician confirms the final price on site."
+    pipeline = AgentPipeline(store=OpsStore(tmp_path / "ops.sqlite"), scheduling_db=db, seed_db=SEED, searcher=FakeSearcher(),
+                             route_fn=lambda text, history: route(text, history, RecordingClient(ScriptedClient(dict(ROUTES)), "x")),
+                             writer=slow_writer, threshold=0.4, deadline_s=0.1)
+    events = list(Engine(pipeline).handle(T("c1", "v1", "m1", "how much is a tune-up cost")))
+    assert events[-1].outcome == "answered" and events[-1].ticket is None

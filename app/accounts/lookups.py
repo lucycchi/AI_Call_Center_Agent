@@ -54,12 +54,15 @@ def system(db: sqlite3.Connection, customer_id: str) -> System:
                               (customer_id,)).fetchone())
 
 
-ACTIONS = [r"\bpayment link\b", r"\b(can i|could i|i want to|i need to|i'd like to|let me|help me)\b.{0,12}\bpay\b", r"\bauto-?pay\b",
+PAY = r"\b(can i|could i|i want to|i need to|i'd like to|let me|help me)\b.{0,12}\bpay\b"
+ACTIONS = [r"\bpayment link\b", PAY, r"\bauto-?pay\b",
            r"\bcancel\b.*\b(auto-?renew\w*|membership|comfort club|plan|renewal)\b", r"\bupgrade\b",
            r"\b(sign me up|enrol+|join)\b", r"\brefund\b", r"\bwaive\b", r"\bdowngrade\b"]
 
 
-def is_action_request(text: str) -> bool:
+def is_action_request(text: str, strict: bool = False) -> bool:
     """Taking an action on money or membership: payment links, autopay, cancelling auto-renew or the membership,
-    upgrades, enrolment, refunds, fee waivers. These are handed off as the action gap (R48)."""
-    return any(re.search(pattern, text, re.I) for pattern in ACTIONS)
+    upgrades, enrolment, refunds, fee waivers. These are handed off as the action gap (R48). Strict leaves out
+    "can I pay ..." questions, which the FAQ answers."""
+    patterns = [p for p in ACTIONS if not (strict and p == PAY)]
+    return any(re.search(pattern, text, re.I) for pattern in patterns)

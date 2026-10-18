@@ -65,7 +65,9 @@ def safe(step, on_error=None) -> FlowResult:
 
 def confirm_booking(state: dict, booked, slot_date: str, window: str, service_type: str) -> FlowResult:
     """The booking has committed, so the caller is told even if logging it fails."""
-    facts = [f"Booked: {service_type.replace('_', ' ')} on {slot_date}, {window}, with {booked.technician}."]
+    from datetime import date
+    facts = [f"Booked: your {service_type.replace('_', ' ').replace('hvac', 'HVAC')} visit on {date.fromisoformat(slot_date):%A} {slot_date}, "
+             f"{window}, with {booked.technician}."]
     for attempt in (1, 2):  # the booking has committed; retry the log write once
         try:
             state["store"].log_event("booking", f"appointment {booked.appointment_id} booked", state.get("conversation_id"))

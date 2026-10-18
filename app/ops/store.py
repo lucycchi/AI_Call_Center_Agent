@@ -54,7 +54,12 @@ class OpsStore:
         in progress (R82). One statement, so a message arriving during the sweep keeps its conversation open."""
         cutoff = (self._clock() - timedelta(minutes=minutes)).isoformat(timespec="seconds")
         self._write("update conversations set status = case when active_flow is null then 'closed' else 'abandoned' end, "
-                    "closed_at = ? where status = 'open' and last_message_at < ?", (self._now(), cutoff))
+                    "closed_at = ? where status = 'open' and last_message_at < ? and not exists (select 1 from messages m "
+                    "where m.conversation_id = conversations.conversation_id and m.created_at >= ?)",
+                    (self._now(), cutoff, cutoff))
+
+    def reopen(self, conversation_id: str) -> None:
+        self._write("update conversations set status = 'open', closed_at = null where conversation_id = ?", (conversation_id,))
 
     def end_conversation(self, conversation_id: str) -> None:
         self._write("update conversations set status = 'closed', closed_at = ? where conversation_id = ?",
@@ -75,9 +80,18 @@ class OpsStore:
 
     def log_message(self, conversation_id: str, role: str, text: str, request_id: str | None = None) -> int:
         now = self._now()
-        message_id = self._write("insert into messages (conversation_id, role, text_masked, created_at, request_id) "
-                                 "values (?, ?, ?, ?, ?)", (conversation_id, role, mask(text), now, request_id))
-        self._write("update conversations set last_message_at = ? where conversation_id = ?", (now, conversation_id))
+        with self._lock:  # the message and the conversation's last-message time are written together
+            self._db.execute("begin immediate")
+            try:
+                message_id = self._db.execute("insert into messages (conversation_id, role, text_masked, created_at, "
+                                              "request_id) values (?, ?, ?, ?, ?)",
+                                              (conversation_id, role, mask(text), now, request_id)).lastrowid
+                self._db.execute("update conversations set last_message_at = ? where conversation_id = ?",
+                                 (now, conversation_id))
+                self._db.execute("commit")
+            except BaseException:
+                self._db.execute("rollback")
+                raise
         return message_id
 
     def message_text(self, message_id: int) -> str:

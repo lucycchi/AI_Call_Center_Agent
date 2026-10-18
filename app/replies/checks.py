@@ -11,16 +11,20 @@ ROOT = Path(__file__).resolve().parents[2]
 RUN = 8  # consecutive words shared with an internal document
 
 FIRST_PERSON = r"\b(?:i|we)(?:'ll|’ll|'ve|’ve| will| can| could| have| am going to| are going to| would)?"
+MONEY = r"(?:fee|charge|charges|bill|account|invoice|\$\d)"
+# A passive "is waived" or "is credited" is a published rule only when the sentence ties it to one.
+PUBLISHED = re.compile(r"\b(?:members?|comfort club|plus|toward the repair|if you approve|automatically|pending authori[sz]ation|"
+                       r"drops? off|within \d+|business days|prorated)\b", re.I)
+PASSIVE_WAIVER = re.compile(r"\b(?:is|are|will be|has been|have been|is being|gets|get|was|'ll be|’ll be)\s+"
+                            r"(?:waived|removed|dropped|taken off|credited|reversed|refunded)\b", re.I)
 RULES = [
-    ("waiver", [rf"{FIRST_PERSON}\s+(?:waive|comp)\b", r"\bwaiv\w* (?:it|that|this|the [\w-]+ fee) for you\b",
-                r"\b(?:fee|charge|it|that|this)\b[^.]{0,30}\b(?:will be|has been|is being|gets|was|'ll be)\s+"
-                r"(?:waived|removed|dropped|taken off|credited|reversed)",
-                r"\b(?:removed|dropped|waived|credited|reversed|took off)\b[^.]{0,20}\b(?:fee|charge)"]),
-    ("refund", [rf"{FIRST_PERSON}\s+(?:issued|issue|processed|process|refunded|give you)\b[^.]*\brefund",
-                rf"{FIRST_PERSON}\s+refunded\b", r"\byou(?:'ll|’ll| will) (?:get|receive) (?:a |your )?(?:full )?refund\b",
-                r"\byour refund (?:has been|is|was) (?:issued|processed|on its way)",
-                r"\brefund\b[^.]{0,20}\b(?:has been|was|will be|is being)\s+(?:issued|processed|sent|approved)",
-                r"\b(?:issue|process|approve|send)\w* (?:you )?(?:a |your )?(?:full |partial )?refund"]),
+    ("waiver", [rf"{FIRST_PERSON}\s+(?:waive|comp|drop|remove|credit|reverse|knock|take)\w*\b[^.]*{MONEY}",
+                rf"{FIRST_PERSON}\s+(?:waive|comp)\b",
+                r"\bwaiv\w* (?:it|that|this|the [\w-]+ fee) for you\b",
+                r"\b(?:i|we)(?:'ve|’ve| have)\s+(?:removed|dropped|waived|credited|reversed|taken off)\b"]),
+    ("refund", [rf"{FIRST_PERSON}\s+refund\w*\b", rf"{FIRST_PERSON}\s+(?:issued|issue|processed|process|give you|send|sent)\b[^.]*\brefund",
+                r"\byou(?:'ll|’ll| will) (?:get|receive) (?:a |your )?(?:full )?refund\b",
+                r"\b(?:your |a |the )?refund (?:has been|is|was|will be|is being) (?:issued|processed|sent|approved|on its way)"]),
     ("firm_total", [r"\bexactly \$\d", r"\b(?:the|your) total (?:will|would) (?:be|come to)\b",
                     r"\b(?:your|the) (?:repair|job|fix|bill)\b[^.]{0,30}\bwill (?:cost|be|come to)\b[^.]{0,10}\$[\d,]+(?:\.\d\d)?(?! ?(?:to|-|–))"]),
     ("discount", [rf"{FIRST_PERSON}\s+(?:give|offer|get) you (?:a |an extra )?discount",
@@ -64,6 +68,8 @@ def check_sentence(sentence: str, reply_so_far: str, burning_mentioned: bool = F
     for rule, patterns in RULES:
         if any(re.search(p, said) for p in patterns):
             return CheckResult(False, rule)
+    if PASSIVE_WAIVER.search(said) and re.search(MONEY, said) and not PUBLISHED.search(said):
+        return CheckResult(False, "refund" if "refunded" in said else "waiver")
     # Across the whole reply so far, so a quote split over two sentences is still caught.
     words = _words(f"{reply_so_far} {sentence}")
     if any(tuple(words[i:i + RUN]) in INTERNAL_RUNS for i in range(len(words) - RUN + 1)):

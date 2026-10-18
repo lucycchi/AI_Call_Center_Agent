@@ -45,11 +45,28 @@ NEW_CUSTOMER = re.compile(r"\b(i'?m new|i am new|new customer|first time (callin
 # A bare acknowledgement with nothing in progress needs no routing; a goodbye ends the chat (R82).
 ACKNOWLEDGEMENT = re.compile(r"^\W*(yes|yeah|yep|ok|okay|thanks|thank you|great|perfect|got it|cool)\W*$", re.I)
 ENDING = re.compile(r"^\W*(?:(?:no|nope|um|uh|ok|okay|thanks|thank you|great)\W+)*(that'?s (it|all|everything)|that covers it|"
-                    r"bye|goodbye|all set|i'?m good|nothing else)(\W+(thanks|thank you( so much)?|bye))*\W*$", re.I)
+                    r"bye|goodbye|nothing else)(\W+(thanks|thank you( so much)?|bye))*\W*$", re.I)
 ANYTHING_ELSE = "Is there anything else I can help you with?"
 GOODBYE = "Thanks for contacting Meridian Home Comfort. Have a great day."
 NOT_YOURS = "I can't open that conversation. Please start a new one."
 SCHEDULING_ACTIONS = ("book", "reschedule", "cancel", "confirm")
+BILLING_TAGS = ("dispute", "action gap", "billing review")  # tickets that carry the billing notes
+BARE_REPLY = re.compile(r"^\W*(?:(?:um|uh|oh)\W+)?(yes|yeah|yep|yup|no|nope|sure|ok|okay|correct)\W*(?:please|thanks)?\W*$", re.I)
+
+
+def _plain_label(outcome: str, tags: list[str], passages: list, db_actions: list) -> str:
+    """The reply receipt's plain outcome label (R71)."""
+    if "not enough evidence" in tags:
+        return "not enough evidence"
+    if outcome in ("handed_off", "declined", "safety", "limit", "error"):
+        return "handoff required"
+    if outcome == "redirect":
+        return "redirected"
+    if outcome == "ended":
+        return "conversation ended"
+    if passages:
+        return "supported by documents"
+    return "supported by account records" if db_actions else "answered"
 
 
 def _decline_sentence(reason: str, city: str, service: str) -> str:
@@ -111,9 +128,13 @@ class AgentPipeline:
             yield DoneEvent(route="none", ticket=None, outcome="forbidden")
             return
         if row and row["status"] != "open":
-            yield SentenceEvent(CLOSED)
-            yield DoneEvent(route="none", ticket=None, outcome="closed")
-            return
+            # Safety still runs: a gas report after a goodbye reopens the conversation for the safety reply.
+            history_texts = [m["content"] for m in self.store.history(turn.conversation_id, 200) if m["role"] == "caller"]
+            if check(turn.text, history_texts).kind == "clear":
+                yield SentenceEvent(CLOSED)
+                yield DoneEvent(route="none", ticket=None, outcome="closed")
+                return
+            self.store.reopen(turn.conversation_id)
         state = ConversationState.load(self.store, turn.conversation_id, turn.visitor_id)
         earlier = [m["content"] for m in self.store.history(turn.conversation_id, 20) if m["role"] == "caller"]
         caller_message = self.store.log_message(turn.conversation_id, "caller", turn.text, turn.message_id)
@@ -137,21 +158,27 @@ class AgentPipeline:
         def ticket(reason_tag: str, constraints: str, wants: str) -> list[str]:
             context = {"store": self.store, "conversation_id": turn.conversation_id, "who": state.who, "wants": wants,
                        "tried": "; ".join(state.tried), "mood": _mood(turn.text)}
-            result = hand_off(context, reason_tag, "; ".join(c for c in [constraints, *state.notes] if c))
+            notes = state.notes if reason_tag in BILLING_TAGS else []
+            result = hand_off(context, reason_tag, "; ".join(c for c in [constraints, *notes] if c))
             if context.get("ticket_id"):
                 state.ticket_id = context["ticket_id"]
                 turn_tickets.append(context["ticket_id"])
+                state.tags_opened.append(reason_tag)
             return result.facts
 
-        def finish(route: str, outcome: str, receipt: dict, db_actions: list[str], label: str | None = None) -> DoneEvent:
-            self._quietly(state.save, self.store)
+        def finish(route: str, outcome: str, receipt: dict, db_actions: list[str], label: str | None = None,
+                   tags: list[str] = ()) -> DoneEvent:
+            state.save(self.store)  # not quiet: without the state the conversation cannot continue (R59)
             self._quietly(self.store.log_agent_message, agent_message, " ".join(released))
             self._quietly(self.store.log_receipt, agent_message, receipt.get("safety", "clear"), label or route,
-                          receipt.get("passages", []), receipt.get("excluded", []), "; ".join(db_actions) or None, outcome)
+                          receipt.get("passages", []), receipt.get("excluded", []), "; ".join(db_actions) or None,
+                          _plain_label(outcome, list(tags), receipt.get("passages", []), db_actions))
             return DoneEvent(route=route, ticket=turn_tickets[-1] if turn_tickets else None, receipt=receipt,
                              outcome=outcome, db_actions=db_actions)
 
         # 1. Safety, before anything else, even mid-flow or over a limit (R34 to R37). The advice goes out first.
+        if not breaker_advice_allowed([turn.text]):
+            state.burning_mentioned = True  # kept for the whole conversation
         safety = check(turn.text, earlier)
         if safety.kind != "clear":
             state.flow, state.active_flow, state.pending = {}, None, []  # emergencies are never booked
@@ -189,7 +216,7 @@ class AgentPipeline:
         results: list[FlowResult] = []
         queued = False
         for request in requests:
-            if request.route in ("account", "scheduling") and not self._action(request) or request.route == "continue":
+            if request.route in ("account", "scheduling") and not self._action(request) or request.route == "continue":  # noqa: E501
                 if request.route != "continue":
                     state.pending.append({"route": request.route, "detail": request.detail,
                                           "service_type": request.service_type, "text": request.text})
@@ -214,7 +241,13 @@ class AgentPipeline:
                 fixed.append(_decline_sentence(*result.facts))
                 handoffs.append(("decline", result.facts[0], turn.text))
                 continue
-            if result.handoff_reason:
+            if result.reply_type == "confirmation":
+                # A committed change is confirmed in code, so nothing after it (the writer, the deadline, a ticket
+                # write) can hide it from the caller.
+                for sentence in result.facts:
+                    yield emit(sentence)
+                continue
+            if result.handoff_reason and not (result.handoff_reason == "earlier slot" and "earlier slot" in state.tags_opened):
                 handoffs.append((result.handoff_reason, "", turn.text))
             if result.facts and result.reply_type != "handoff":
                 written.append(result)
@@ -225,13 +258,11 @@ class AgentPipeline:
         # 5. Writer and checks: each sentence is released only once it passes (R36, R42, R43, R60).
         if written:
             facts = [fact for result in written for fact in result.facts]
-            burning = not breaker_advice_allowed(earlier + [turn.text])
+            burning = state.burning_mentioned or not breaker_advice_allowed(earlier + [turn.text])
             try:
                 stream = CheckedStream(self.writer(written[0].reply_type, facts, history), burning_mentioned=burning)
                 for sentence in stream:
                     yield emit(sentence)
-                    if deadline.passed():
-                        raise deadline.DeadlinePassed("the reply passed the message deadline")
                 if stream.blocked_rule:
                     self._quietly(self.store.log_event, "blocked sentence",
                                   f"{stream.blocked_rule}: {stream.blocked_sentence}", turn.conversation_id)
@@ -253,7 +284,7 @@ class AgentPipeline:
                    "passages": [p for r in written for p in r.passages],
                    "excluded": list(dict.fromkeys(e for r in written for e in r.excluded))}
         label = f"{route_label}, {'clear' if routed.clear or route_label == flow_before else 'unclear'}"
-        yield finish(route_label, outcome, receipt, db_actions, label)
+        yield finish(route_label, outcome, receipt, db_actions, label, [tag for tag, _, _ in handoffs])
 
     # -- routing ----------------------------------------------------------------------------------------
     def _route(self, text: str, history: list[dict], error_event) -> RouteResult:
@@ -270,12 +301,13 @@ class AgentPipeline:
             first = routed.requests[0] if routed.requests else None
             asked_for_person = routed.clear and routed.route == "handoff" and any(r.detail == "person" for r in routed.requests)
             answering_id_prompt = has_identifier(text) and not state.customer_id
-            confirming = scheduling.YES.search(text) or scheduling.NO.search(text)
+            confirming = bool(BARE_REPLY.match(text)) or scheduling.YES.search(text) and len(text.split()) <= 3
             new_topic = routed.clear and routed.route != state.active_flow and not answering_id_prompt and not confirming
-            # A different scheduling action (book, then cancel another appointment) is a new topic too.
+            # A different scheduling action (book, then cancel another appointment) is a new topic too,
+            # even after a leading "no" or "yes" ("no, cancel my other appointment instead").
             switched_action = routed.clear and state.active_flow == "scheduling" and first is not None \
                 and first.route == "scheduling" and first.detail in SCHEDULING_ACTIONS \
-                and first.detail != state.flow.get("kind") and not confirming
+                and first.detail != state.flow.get("kind") and not BARE_REPLY.match(text)
             if asked_for_person or switched_action:
                 state.flow, state.active_flow = {}, None
                 return routed.requests, False
@@ -289,10 +321,17 @@ class AgentPipeline:
     # -- flows ------------------------------------------------------------------------------------------
     @staticmethod
     def _action(request: Request) -> bool:
-        """Money or membership actions are the action gap, whether the router or the code check spots them (R48)."""
-        return request.route == "account" and (request.detail == "action" or is_action_request(request.text))
+        """Money or membership actions are the action gap, whether the router or the code check spots them (R48).
+        On the knowledge route only unambiguous actions count: "can I pay by card?" is a question the FAQ answers."""
+        if request.route == "account" and request.detail == "action":
+            return True
+        if request.route in ("account", "scheduling"):
+            return is_action_request(request.text)
+        return request.route == "knowledge" and is_action_request(request.text, strict=True)
 
     def _flow(self, request: Request) -> FlowResult:
+        if self._action(request):
+            return FlowResult([], "handoff", handoff_reason="action gap")
         if request.route == "knowledge" or request.detail == "charged twice":
             return answer(request.text, self.searcher, self.threshold)
         if request.route == "redirect":

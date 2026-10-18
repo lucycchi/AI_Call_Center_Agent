@@ -3,6 +3,7 @@
 Every change is read back with a confirmation id and needs a clear yes; the transaction itself repeats the
 eligibility check, so a slot taken in between is offered again rather than double-booked."""
 
+import logging
 import re
 import uuid
 from dataclasses import asdict
@@ -19,6 +20,11 @@ from app.scheduling.eligibility import SERVICE_NAMES, Slot, offer
 AFFIRMATIVE = re.compile(r"^\W*(?:(?:um|uh|oh)\W+)?(yes|yeah|yep|yup|sure|ok|okay|correct|that works|sounds good|book it|"
                          r"do it|please do|perfect|go ahead|take it|works|let'?s do (?:it|that)|do that|great)\b", re.I)
 HEDGE = re.compile(r"\?|\b(but|wait|actually|instead|hold on|not|no|nope|hmm|maybe|unless|first|which|what|how)\b", re.I)
+# A yes that names a day or time is about a different slot, not this read-back ("Yes, Tuesday works").
+NAMES_A_TIME = re.compile(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|morning|afternoon|"
+                          r"evening|next week|january|february|march|april|june|july|august|september|october|november|"
+                          r"december|\d{1,2}(st|nd|rd|th)|\d{1,2}(:\d\d)? ?(am|pm)|\d{1,2} to \d{1,2})\b", re.I)
+log = logging.getLogger("meridian.scheduling")
 NO = re.compile(r"^\W*(no|nope|neither|none of)\b", re.I)
 EARLIER = re.compile(r"\b(earlier|sooner|anything before|any earlier)\b", re.I)
 # Ordinal words only: a bare "one" or "1" is too often part of a date or window ("the Tuesday one", "1 to 5").
@@ -28,7 +34,8 @@ ORDINALS = [r"\b(first|1st|option (?:1|one)|number (?:1|one)|#1)\b", r"\b(second
 
 class _PlainYes:
     def search(self, text: str) -> bool:
-        return bool(AFFIRMATIVE.search(text)) and not HEDGE.search(AFFIRMATIVE.sub("", text, count=1))
+        rest = AFFIRMATIVE.sub("", text, count=1)
+        return bool(AFFIRMATIVE.search(text)) and not HEDGE.search(rest) and not NAMES_A_TIME.search(rest)
 
 
 YES = _PlainYes()
@@ -54,10 +61,32 @@ def _offer_facts(slots: list[dict], lead: str = "Offer these slots and ask which
                      for n, s in enumerate(slots, 1)]
 
 
+NUMBERS = {"1": 0, "one": 0, "first": 0, "1st": 0, "2": 1, "two": 1, "second": 1, "2nd": 1, "3": 2, "three": 2,
+           "third": 2, "3rd": 2}
+BARE_NUMBER = re.compile(r"^\W*(?:option |number |#|the )?(1|2|3|one|two|three)(?: one| please| thanks| option)*\W*$", re.I)
+NTH_ONE = re.compile(r"\b(first|second|third|1st|2nd|3rd)\b(?! of\b)(?:\s+(?:one|option|slot|choice|time|window))?", re.I)
+NTH_WITH_NOUN = re.compile(r"\b(1st|2nd|3rd)\s+(?:one|option|slot|choice|time|window)\b", re.I)
+
+
+def _numbered(text: str, choices: list[dict]) -> dict | None:
+    """"2", "two please", "the 2nd one", "the third option": a slot by its number in the offer."""
+    match = BARE_NUMBER.match(text) or NTH_WITH_NOUN.search(text)
+    if not match:
+        word = NTH_ONE.search(text)
+        match = word if word and word.group(1).isalpha() else None
+    if match:
+        index = NUMBERS[match.group(1).lower()]
+        return choices[index] if index < len(choices) else None
+    return None
+
+
 def _pick(text: str, choices: list[dict], now, key_date="slot_date") -> dict | None:
-    """Dates and windows first ("the Tuesday one", "October 22 in the morning"), then ordinal words."""
+    """Slot numbers, then dates and windows ("the Tuesday one", "October 22 in the morning"), then other ordinals."""
     if len(choices) == 1 and YES.search(text):
         return choices[0]
+    numbered = _numbered(text, choices)
+    if numbered:
+        return numbered
     wanted = parse_request(text, now)
     if wanted and (wanted.date or wanted.window or wanted.part):
         for choice in choices:
@@ -80,7 +109,10 @@ def _read_back(flow: dict, what: str, fee_cents: int = 0) -> FlowResult:
 
 
 def _make_offer(db, customer, flow: dict, text: str, now, lead: str | None = None) -> FlowResult:
-    result = offer(db, customer, flow["service"], parse_request(text, now), now)
+    requested = parse_request(text, now)
+    if requested and requested.date and requested.date < now.date():
+        requested, lead = None, f"{requested.date:%B} {requested.date.day} has already passed. Offer the soonest slots instead:"
+    result = offer(db, customer, flow["service"], requested, now)
     if result.decline_reason:
         service = SERVICE_NAMES[flow["service"]]
         flow.clear()
@@ -157,9 +189,12 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
         confirmed = confirm_booking({"store": store, "conversation_id": state.conversation_id}, booked,
                                     chosen["slot_date"], chosen["window"], chosen["service_type"])
         if booked.warranty_review:
-            store.create_ticket(None, f"{customer.name}, {customer.customer_id}", f"{claim} claim: {flow.get('issue', '')}",
-                                f"booked appointment {booked.appointment_id} as a normal visit", "warranty not verifiable "
-                                "from the database", "", "warranty review", booked.appointment_id)
+            try:  # the booking has committed; a failed review ticket must not hide it
+                store.create_ticket(None, f"{customer.name}, {customer.customer_id}", f"{claim} claim: {flow.get('issue', '')}",
+                                    f"booked appointment {booked.appointment_id} as a normal visit",
+                                    "warranty not verifiable from the database", "", "warranty review", booked.appointment_id)
+            except Exception as error:
+                log.error("warranty review for appointment %s not saved: %s", booked.appointment_id, error)
             return FlowResult(confirmed.facts + [NO_FEE_IF_COVERED], "confirmation", db_actions=confirmed.db_actions)
         return confirmed
     if NO.search(text):

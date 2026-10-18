@@ -116,3 +116,42 @@ def test_breaker_reset_advice_is_blocked_once_a_burning_smell_was_mentioned():
     assert (result.ok, result.rule) == (False, "breaker_advice")
     stream = CheckedStream(iter(["Let's check a few things.", "Flip the breaker off and on."]), burning_mentioned=True)
     assert list(stream) == ["Let's check a few things."] and stream.blocked_rule == "breaker_advice"
+
+
+def _customer_document_sentences():
+    import csv
+    import re
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    current = {r["path"].rsplit(".", 1)[0].replace("/", "__") for r in csv.DictReader((root / "data" / "document_list.csv").open())
+               if r["status"] == "current" and r["audience"] == "customers"}
+    for path in sorted((root / "data" / "kb_text").glob("*.md")):
+        if path.stem in current:
+            for line in path.read_text().splitlines():
+                text = re.sub(r"^[-#*|\s\d.)]+", "", line).replace("**", "").strip()
+                for sentence in re.split(r"(?<=[.!?])\s+", text):
+                    if len(sentence.split()) >= 3:
+                        yield path.stem, sentence
+
+
+def test_every_sentence_of_the_current_customer_documents_passes_the_promise_checks():
+    blocked = [(doc, s, check_sentence(s, "").rule) for doc, s in _customer_document_sentences()
+               if not check_sentence(s, "").ok and check_sentence(s, "").rule != "internal_text"]
+    assert not blocked, blocked[:5]
+
+
+@pytest.mark.parametrize("sentence", [
+    "As a Comfort Club member, your diagnostic fee will be waived.", "The $89 diagnostic fee gets credited toward the repair.",
+    "That pending authorization will be removed automatically.", "The diagnostic fee is waived for members."])
+def test_published_wording_from_the_documents_passes(sentence):
+    assert check_sentence(sentence, "").ok, check_sentence(sentence, "").rule
+
+
+@pytest.mark.parametrize("sentence, rule", [
+    ("I'll refund you the $89.", "refund"), ("We'll credit your account $89.", "waiver"), ("We can drop the late fee.", "waiver"),
+    ("We will refund the duplicate charge.", "refund"), ("I'll waive the after-hours fee this time.", "waiver"),
+    ("Your diagnostic fee is waived today.", "waiver"),
+])
+def test_real_promises_fail(sentence, rule):
+    result = check_sentence(sentence, "")
+    assert (result.ok, result.rule) == (False, rule)

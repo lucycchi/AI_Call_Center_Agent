@@ -116,3 +116,15 @@ def test_served_areas_without_a_zone_and_unserved_cities_are_declined_differentl
 ])
 def test_calendar_dates(text, expected):
     assert parse_request(text, NOW) == expected
+
+
+def test_a_past_date_is_still_read_as_that_date():
+    assert parse_request("October 10", NOW) == DateRequest(date(2026, 10, 10))
+
+
+def test_a_past_date_is_answered_with_the_soonest_slots(db):
+    from app.flows import scheduling
+    from app.core.state import ConversationState
+    state = ConversationState("c", "v", flow={"kind": "book", "step": "start", "service": "hvac_repair"})
+    result = scheduling.step(db, SEED, customer(db, "Linda Foster", "MHC-10001"), state, "October 10 please", NOW, None)
+    assert "already passed" in " ".join(result.facts)

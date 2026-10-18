@@ -55,9 +55,9 @@ def _unclear(text: str) -> RouteResult:
 def route(text: str, history: list[dict], client) -> RouteResult:
     recent = "\n".join(f"{m['role']}: {m['content']}" for m in history[-6:])
     deadline.check()
-    left = deadline.remaining()
+    timeout = deadline.per_attempt()
     response = client.messages.create(
-        **({"timeout": max(left, 0.5)} if left is not None else {}),
+        **({"timeout": timeout} if timeout is not None else {}),
         model=SETTINGS.router_model, max_tokens=SETTINGS.router_max_tokens, system=RULES,
         output_config={"effort": "low", "format": {"type": "json_schema", "schema": SCHEMA}},
         messages=[{"role": "user", "content": f"Recent conversation:\n{recent or '(none)'}\n\nNew message: {text}"}])

@@ -5,12 +5,12 @@ import re
 
 STREET_TYPES = r"(?:st|street|ln|lane|dr|drive|rd|road|ct|court|ave|avenue|way|blvd|boulevard|pass|trl|trail|ter|terrace|pl|place|loop|pkwy|parkway|cv|cove|cir|circle)"
 # Words that follow a number but never name a street ("15 years old way past warranty", "2 systems at my place").
-NOT_STREET_NAMES = (r"(?:years?|old|months?|weeks?|days?|hours?|minutes?|times?|systems?|units?|people|kids|dogs|of|at|in|on|"
-                    r"to|for|my|the|a|an|and|or|is|was|are|by|from|with|our|your|this|that|more|less|degrees?|percent)")
+NOT_STREET_NAMES = (r"(?:years?|months?|weeks?|days?|hours?|minutes?|times?|systems?|units?|people|kids|dogs|degrees?|"
+                    r"percent|of|at|in|on|to|for|my|your|our|is|was|are|more|less)")
 PATTERNS = [
     (re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"), "[email]"),
     (re.compile(r"(?<![\w-])\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)"), "[phone]"),
-    (re.compile(rf"\b\d{{1,6}}(?: (?!{NOT_STREET_NAMES}\b)[A-Za-z]+){{1,4}} {STREET_TYPES}\b\.?", re.I), "[street]"),
+    (re.compile(rf"\b\d{{1,6}} (?!{NOT_STREET_NAMES}\b)[A-Za-z]+(?: [A-Za-z]+){{0,3}} {STREET_TYPES}\b\.?", re.I), "[street]"),
 ]
 
 

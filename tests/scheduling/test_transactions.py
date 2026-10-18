@@ -151,3 +151,18 @@ def test_the_warranty_flag_is_only_for_hvac_repair_visits(db):
     grace = who(db, "Grace Okafor", "MHC-10003")
     slot = next(s for s in tx.eligible_slots(db, grace, "plumbing", NOW))
     assert tx.book(db, grace, slot.slot_id, "sink", "c-gp", NOW).warranty_visit is False
+
+
+def test_a_booking_is_rolled_back_if_the_deadline_passes_before_its_commit(db, monkeypatch):
+    import time
+
+    from app.core import deadline
+    before = count(db, "appointments")
+    token = deadline.start(0.05)
+    monkeypatch.setattr(tx, "_after_change", lambda _db: time.sleep(0.1))
+    try:
+        with pytest.raises(deadline.DeadlinePassed):
+            tx.book(db, who(db, "Linda Foster", "MHC-10001"), 56, "AC", "c-late", NOW)
+    finally:
+        deadline.DEADLINE.reset(token)
+    assert count(db, "appointments") == before and slot_status(db, 56) == "open"

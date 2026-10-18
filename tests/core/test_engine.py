@@ -240,3 +240,32 @@ def test_a_writer_that_promises_a_waiver_is_stopped_before_the_promise(world, tm
     assert sentences[0] == "The Comfort Club is $189 a year." and not any("waived" in s for s in sentences)
     events = pipeline.store._rows("select kind, detail from events")
     assert any(e["kind"] == "blocked sentence" and e["detail"].startswith("waiver") for e in events)
+
+
+def test_the_burning_smell_rule_lasts_the_whole_conversation(world, tmp_path):
+    db = tmp_path / "s4.sqlite"
+    shutil.copy(SEED, db)
+    advise = [False]
+
+    def writer(reply_type, facts, history):
+        yield "Reset any tripped breaker once." if advise[0] else "The Comfort Club is $189 a year."
+    pipeline = AgentPipeline(store=OpsStore(tmp_path / "ops4.sqlite"), scheduling_db=db, seed_db=SEED,
+                             searcher=FakeSearcher(), route_fn=world["router"], writer=writer, threshold=0.4)
+    engine = Engine(pipeline)
+    say(engine, "I smell something burning from the vents")
+    for n in range(25):
+        say(engine, f"what does the membership include {n}")
+    advise[0] = True
+    sentences, done = say(engine, "what does the membership include now")
+    assert "Reset any tripped breaker once." not in sentences
+
+
+def test_each_model_attempt_gets_half_the_time_left():
+    from app.core import deadline
+    client = FakeClient({"clear": True, "requests": [{"text": "x", "route": "knowledge", "detail": "none", "service_type": "none"}]})
+    token = deadline.start(10)
+    try:
+        route("x", [], client)
+    finally:
+        deadline.DEADLINE.reset(token)
+    assert 4.0 < client.calls[0]["timeout"] <= 5.0

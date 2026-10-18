@@ -73,3 +73,15 @@ def test_conversion_removes_outputs_for_documents_no_longer_searchable(tmp_path)
     main(out=tmp_path)
     assert not stale.exists()
     assert (tmp_path / "faq__customer_faq.md").exists()
+
+
+def test_every_document_list_row_has_exactly_five_fields():
+    import csv
+    rows = list(csv.reader((ROOT / "data" / "document_list.csv").open()))
+    assert all(len(row) == 5 for row in rows), [row[0] for row in rows if len(row) != 5]
+
+
+def test_receipts_can_name_the_stale_documents_each_current_one_supersedes():
+    from app.flows.knowledge import SUPERSEDED
+    assert "faq/faq_old_copy.md" in SUPERSEDED["faq/customer_faq.md"]
+    assert "archive/comfort_club_overview.md" in SUPERSEDED["membership/comfort_club_overview.md"]

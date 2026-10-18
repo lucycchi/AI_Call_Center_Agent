@@ -13,29 +13,30 @@ rootdir: /home/lucyc/gauntlet/AI_Call_Center_Agent
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.15.1, langsmith-0.14.11
-collected 301 items
+collected 358 items
 
-tests/accounts/test_accounts.py .............................            [  9%]
-tests/core/test_engine.py ............                                   [ 13%]
-tests/eval/test_cases.py ...........................................     [ 27%]
-tests/eval/test_retrieval_metrics.py ..................                  [ 33%]
-tests/flows/test_conversations.py ...........                            [ 37%]
-tests/flows/test_knowledge.py ....                                       [ 38%]
-tests/handoff/test_handoff.py ..........                                 [ 42%]
-tests/knowledge/test_search.py ..............                            [ 46%]
-tests/ops/test_store.py .........                                        [ 49%]
+tests/accounts/test_accounts.py .............................            [  8%]
+tests/core/test_engine.py ..............                                 [ 12%]
+tests/eval/test_cases.py ...........................................     [ 24%]
+tests/eval/test_retrieval_metrics.py ..................                  [ 29%]
+tests/flows/test_conversations.py ...................................... [ 39%]
+..                                                                       [ 40%]
+tests/flows/test_knowledge.py ....                                       [ 41%]
+tests/handoff/test_handoff.py ..........                                 [ 44%]
+tests/knowledge/test_search.py ..............                            [ 48%]
+tests/ops/test_store.py .........                                        [ 50%]
 tests/pipeline/test_documents.py .......                                 [ 52%]
-tests/pipeline/test_findings.py .....................                    [ 59%]
-tests/pipeline/test_labels.py ..............                             [ 63%]
-tests/pipeline/test_templates.py .........                               [ 66%]
-tests/replies/test_checks.py ......................                      [ 74%]
-tests/safety/test_safety.py ...............................              [ 84%]
-tests/scheduling/test_eligibility.py ....................                [ 91%]
-tests/scheduling/test_transactions.py .............                      [ 95%]
+tests/pipeline/test_findings.py .....................                    [ 58%]
+tests/pipeline/test_labels.py ..............                             [ 62%]
+tests/pipeline/test_templates.py .........                               [ 64%]
+tests/replies/test_checks.py ................................            [ 73%]
+tests/safety/test_safety.py .........................................    [ 85%]
+tests/scheduling/test_eligibility.py .........................           [ 92%]
+tests/scheduling/test_transactions.py ..............                     [ 96%]
 tests/test_config.py ..........                                          [ 98%]
 tests/test_engine_interface.py ....                                      [100%]
 
-============================= 301 passed in 10.69s =============================
+============================= 358 passed in 16.01s =============================
 ```
 
 ## Requirement coverage
@@ -109,3 +110,33 @@ The author chose to fix everything recommended (items 1 to 22):
 - **Records:** dated passages and excluded documents in receipts; the fee mismatch and lookups in the dispute ticket; errors recorded as events; idle mid-flow conversations abandoned, the idle sweep safe against a new message, and the caller can end a chat; safety advice before the ticket; router output limit set to 2,000 in settings with the reason.
 - **Open questions, all yes:** the core checks conversation ownership; the action-request code check backs up the router; the warranty flag only on HVAC repair visits; a "wants an earlier slot" ticket when the earliest slots are not enough; a different scheduling action counts as a new topic.
 - **Documentation and tests:** all architecture updates; a test for every finding, an engine test with the operations database unavailable, and a fake writer that breaks rules.
+
+## Review of the fixes
+
+Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent reviewed `git diff 7a2979c..HEAD` against every finding and chosen fix above. Claude ran all 358 tests (passed); both reproduced their findings with offline probes. Most findings are fixed; these remain or are new.
+
+| Finding | Codex | Claude |
+|---|---|---|
+| A goodbye closes the chat, and the next message ("actually wait, I smell gas") gets the closed text with no safety reply (the status check runs before safety) | | yes (top) |
+| "C.O." is no longer understood ("the C.O. alarm is going off" is clear): punctuation became a clause mark before the swap | | yes (top) |
+| A booking can still commit after the deadline (checked before the transaction, not before its commit) | yes (top) | |
+| A committed booking can go unconfirmed: a failed warranty-review ticket, a writer failure or the deadline passing in the writer | yes (top) | yes (top) |
+| Sentence checks now block published terms ("as a member, your diagnostic fee will be waived", "credited toward the repair", "the pending authorization will be removed"), while some real promises still pass ("I'll refund you the $89", "we'll credit your account") | | yes (top) |
+| Picking by number is worse: a bare "2" loops; "the 2nd one" is read as 2 November | | yes (top) |
+| A failed billing-review ticket is never retried (the invoice is marked reviewed first) | yes (top) | |
+| The idle sweep can still close a conversation receiving a message (message insert and time update are separate writes) | yes (top) | |
+| The burning-smell rule forgets after 20 stored messages | yes (top) | yes (unclear) |
+| Stale documents missing from receipts: unquoted commas in `data/document_list.csv` cut the reason column | | yes |
+| Real street names with "Old" or "The" ("1200 Old Mill Rd") are no longer masked | | yes |
+| "Yes, Tuesday works" at a Monday read-back books Monday | | yes |
+| A "no" or "yes" before a new scheduling action ("no, cancel my other appointment") hides the switch | yes | yes |
+| The action-request backstop covers only the account route | yes | yes (unclear) |
+| A past date this month ("October 10") stays in the past | yes | yes (low) |
+| Failed state or receipt writes are silently dropped on a normal turn | yes | |
+| A complete reply whose last sentence lands after 15 seconds also gets a handoff ticket | | yes |
+| The dispute note is added to every later ticket, including emergencies; "anything earlier?" twice opens two tickets; "ok, all set" at a read-back ends the chat | | yes |
+| Receipt outcome labels are engine words, not the plain labels of the reply receipt (R71) | | yes (unclear) |
+| Each model call's timeout applies per attempt, so one retry can double it | | yes (unclear) |
+| Tests miss each of the above | yes | yes |
+
+**Author's choices on the review of the fixes:** fix everything recommended (items 1 to 21): safety before the closed check, abbreviations before clause marks, a lasting burning-smell flag; the deadline checked inside the transaction before commit; confirmations of committed changes as fixed sentences; a yes naming another day does not count; slot numbers and "the Nth one" pick slots; no handoff after a finished reply; "all set" is not a goodbye; sentence checks retuned and tested against every customer-document sentence; the document list quoted; the street denylist only for the word after the number, tested on every seeded address; message and time saved together; billing review marked after its ticket; a failed state save is an operations failure; billing notes only on billing tickets and one earlier-slot ticket; plain receipt labels; only a bare yes or no is a confirmation; the action backstop on scheduling and unambiguous knowledge requests; past dates told as passed; each model attempt gets half the time left.

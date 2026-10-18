@@ -22,6 +22,12 @@ def remaining() -> float | None:
     return None if deadline is None else max(deadline - time.monotonic(), 0.0)
 
 
+def per_attempt(retries: int = 1) -> float | None:
+    """The timeout for one model-call attempt: the time left shared across the attempt and its retries."""
+    left = remaining()
+    return None if left is None else max(left / (retries + 1), 0.5)
+
+
 def passed() -> bool:
     left = remaining()
     return left is not None and left <= 0

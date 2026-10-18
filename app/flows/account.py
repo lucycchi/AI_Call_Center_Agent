@@ -1,10 +1,14 @@
 """Account questions for an identified caller, from read-only lookups (R46, R47)."""
 
+import logging
 from datetime import date
 
 from app.accounts.fee_check import fee_mismatches
 from app.accounts.lookups import membership, open_invoices, system
 from app.flows.protocol import FlowResult
+
+
+log = logging.getLogger("meridian.account")
 
 
 def _money(cents: int) -> str:
@@ -40,8 +44,11 @@ def account_answer(db, customer, detail: str | None, state, store) -> FlowResult
         state.tried.append(f"read the invoice lines for {invoice.invoice_id}")
         state.notes += [f"fee differs from schedule: {m}" for m in mismatches if f"fee differs from schedule: {m}" not in state.notes]
         if mismatches and invoice.invoice_id not in reviewed:
-            reviewed.append(invoice.invoice_id)
-            store.create_ticket(None, f"{customer.name}, {customer.customer_id}", f"fee check on {invoice.invoice_id}",
-                                "none; caller not told", "; ".join(mismatches), "", "billing review")
+            try:
+                store.create_ticket(None, f"{customer.name}, {customer.customer_id}", f"fee check on {invoice.invoice_id}",
+                                    "none; caller not told", "; ".join(mismatches), "", "billing review")
+                reviewed.append(invoice.invoice_id)  # only once the review is saved, so a failure is tried again
+            except Exception as error:
+                log.error("billing review for %s not saved: %s", invoice.invoice_id, error)
     facts.append("Read the lines exactly as recorded and never call a charge right or wrong.")
     return FlowResult(facts, "account answer", db_actions=[f"invoice lookup {customer.customer_id}"])

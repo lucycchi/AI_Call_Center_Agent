@@ -1,8 +1,8 @@
 path,status,audience,effective_date,reason
-archive/comfort_club_overview.md,stale,customers,,Archived older membership terms ($149 plan, 10% discount, transfers to a new address); superseded by membership/comfort_club_overview.md
+archive/comfort_club_overview.md,stale,customers,,"Archived older membership terms ($149 plan, 10% discount, transfers to a new address); superseded by membership/comfort_club_overview.md"
 archive/warranty_terms_2023.txt,stale,customers,2023,2023 warranty terms (90-day repair labour); superseded by warranty/warranty_policy.md (2025-06-15)
-faq/customer_faq.md,current,customers,2026-03-02,Current customer FAQ: hours, windows, fees, payments, duplicate charges
-faq/faq_old_copy.md,stale,customers,,Undated old copy of the FAQ ($79 diagnostic, $129 after-hours, old hours); superseded by faq/customer_faq.md
+faq/customer_faq.md,current,customers,2026-03-02,"Current customer FAQ: hours, windows, fees, payments, duplicate charges"
+faq/faq_old_copy.md,stale,customers,,"Undated old copy of the FAQ ($79 diagnostic, $129 after-hours, old hours); superseded by faq/customer_faq.md"
 faq/troubleshooting_before_you_call.md,current,customers,,Undated but nothing newer replaces it; quick checks offered before booking a non-emergency visit
 internal/agent_discretion_notes.md,current,internal,,Staff discretion on waivers and discounts; never searchable; feeds the no-waiver and no-refund code rules
 membership/comfort_club_overview.md,current,customers,2026-01-01,Current Comfort Club terms and prices
@@ -12,7 +12,7 @@ policies/service_area.md,current,customers,2026-04-01,Current service area inclu
 pricing/2026_fee_schedule.pdf,current,customers,2026-01-01,Current fee schedule; converted keeping row and column pairs
 pricing/repair_price_book_2026.csv,current,customers,2026,Current price book; converted to one line per item
 services/duct_cleaning.md,placeholder,customers,,Only says TODO; the real answer (partner referral) is in services/service_catalog.md
-services/scheduling_guide.md,stale,internal,2024-11,November 2024 guide (48-hour notice, emergency overflow booking, waitlist) contradicts current FAQ and schema
+services/scheduling_guide.md,stale,internal,2024-11,"November 2024 guide (48-hour notice, emergency overflow booking, waitlist) contradicts current FAQ and schema"
 services/service_catalog.md,current,customers,2026-02-10,Current service catalog and price ranges
 services/technician_arrival_and_etas.md,current,internal,,Agent-facing delay procedure that grants a fee waiver; never searchable; late-technician calls hand off
 warranty/warranty_policy.md,current,customers,2025-06-15,Current warranty terms and manufacturer table

@@ -104,3 +104,9 @@ def test_danger_is_not_cancelled_by_a_negation_in_another_clause_and_gas_synonym
                                   "no gas smell, it just clicks"])
 def test_a_gas_appliance_or_a_negated_smell_is_not_danger(text):
     assert check(text, []).kind == "clear"
+
+
+@pytest.mark.parametrize("text", ["the C.O. alarm is going off", "C.O. detector beeping", "My c.o. detector went off!",
+                                  "I smell gas.", "Gas smell, near the furnace."])
+def test_punctuation_inside_or_around_a_trigger_still_matches(text):
+    assert check(text, []).kind == "danger"

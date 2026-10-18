@@ -12,6 +12,7 @@ from pathlib import Path
 
 from app.accounts.fees import SCHEDULE
 from app.config import SETTINGS, real_now
+from app.core import deadline
 from app.scheduling.eligibility import eligible_slots
 from app.scheduling.seed import freed_status
 
@@ -64,6 +65,7 @@ def _transaction(db: sqlite3.Connection, confirmation_id: str, kind: type, chang
         db.execute("insert into agent_confirmations (confirmation_id, result, created_at) values (?, ?, ?)",
                    (confirmation_id, json.dumps(asdict(result)), real_now().isoformat(timespec="seconds")))
         _after_change(db)
+        deadline.check()  # just before the commit: nothing commits after the caller was told it was passed on
         db.commit()
         return result
     except BaseException:

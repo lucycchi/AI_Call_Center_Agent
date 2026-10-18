@@ -26,6 +26,7 @@ BOUNDARY_WORDS = r"\b(but|though|although|however|now|also|and now|just)\b"
 
 def normalise(text: str) -> str:
     text = re.sub(r"['’]", "", text.lower())
+    text = re.sub(r"\b([a-z])\.\s?([a-z])\b\.?", r"\1\2", text)  # abbreviations first: "c.o." is "co"
     text = re.sub(r"[,.;:!?()\n]+", f" {CLAUSE} ", text)
     text = re.sub(BOUNDARY_WORDS, rf"{CLAUSE} \1", text)
     text = re.sub(r"[^a-z0-9|]+", " ", text)

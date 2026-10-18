@@ -81,3 +81,20 @@ def test_every_table_in_the_architecture_exists_in_write_ahead_logging_mode(tmp_
     section = (ROOT / "docs" / "ARCHITECTURE.md").read_text().split("### 4.2 Operations database")[1].split("## 5.")[0]
     documented = {name.lower() for name in re.findall(r"^    ([A-Z_]+) \{", section, re.M)}
     assert documented and documented <= tables, documented - tables
+
+
+def test_every_seeded_customer_address_is_masked_and_streets_with_old_or_the_too():
+    from app.flows.identify import has_identifier
+    seed = sqlite3.connect(ROOT / "call_data" / "scheduling_db" / "meridian_scheduling.sqlite")
+    addresses = [r[0] for r in seed.execute("select service_address from customers")]
+    addresses += ["1200 Old Mill Rd", "8 Old Manor Rd", "310 Old Bee Caves Rd", "4500 The Lakes Blvd"]
+    for address in addresses:
+        assert mask(f"I live at {address}, Austin") == "I live at [street], Austin", address
+        assert has_identifier(address), address
+
+
+def test_the_idle_sweep_never_closes_a_conversation_with_a_recent_message(store):
+    store.log_message("c1", "caller", "hello")
+    store._write("update conversations set last_message_at = '2000-01-01T00:00:00' where conversation_id = 'c1'")
+    store.close_idle()
+    assert store.conversation("c1")["status"] == "open"
