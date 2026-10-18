@@ -39,6 +39,15 @@
    "kind": "sub-reason",
    "expected_outcome": "handed_off",
    "handoff_reason": "burning smell"
+  },
+  {
+   "request": "an earlier slot than the one offered",
+   "kind": "earlier slot",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "burning smell",
+   "caller_words": "Can you do anything earlier?",
+   "reference": null,
+   "also_correct": "a handoff ticket marked 'wants an earlier slot', counted as a handoff"
   }
  ],
  "expected_outcome": "handed_off",

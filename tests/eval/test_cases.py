@@ -364,3 +364,13 @@ def test_every_number_in_a_reference_answer_is_in_its_evidence_lines(tmp_path):
         assert not missing, (name, missing)
         if re.search(r"confirm\w* the (final )?price|confirmed by the technician", reference):
             assert re.search(r"confirms the final price|quoted by the technician", evidence), (name, "price confirmation")
+
+
+def test_waitlist_calls_ask_for_an_earlier_slot_scored_by_the_earliest_slots(tmp_path):
+    waitlist = [c for c in _built(tmp_path) if c["must_not"] == ["promise a waitlist"]]
+    assert len(waitlist) == 9
+    for case in waitlist:
+        earlier = [r for r in case["requests"] if r["kind"] == "earlier slot"]
+        assert len(earlier) == 1, case["case_id"]
+        assert earlier[0]["expected_outcome"] == case["requests"][0]["expected_outcome"]
+        assert "wants an earlier slot" in earlier[0]["also_correct"]

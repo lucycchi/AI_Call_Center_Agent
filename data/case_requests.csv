@@ -1,7 +1,13 @@
 case_id,request,kind,caller_words,reference
 T0ad82d45,whether a Standard member can upgrade to Plus mid-year,knowledge,Can I upgrade from the regular plan to the Plus plan mid-year?,UPGRADE
+T1b970162,an earlier slot than the one offered,earlier slot,Can you do anything earlier?,
+T1c979c8b,an earlier slot than the one offered,earlier slot,"Um, can you do anything earlier?",
+T391b9f20,an earlier slot than the one offered,earlier slot,Can you do anything earlier?,
+T6f36e785,an earlier slot than the one offered,earlier slot,Can you do anything earlier?,
+T70425efa,an earlier slot than the one offered,earlier slot,Can you do anything earlier?,
 T738adaab,whether the membership can still be cancelled before it renews,knowledge,And I can still cancel before then?,CANCEL_BEFORE_RENEWAL
-T7d8fb3e5,book a warranty diagnostic visit,booking:hvac_repair,Tomorrow if you can.,
+T7d8fb3e5,book a warranty diagnostic visit,booking:hvac_repair,Take it.,
+T81429224,an earlier slot than the one offered,earlier slot,"Um, can you do anything earlier?",
 T9919897a,book a visit for the repeat repair,booking:hvac_repair,Can you get someone out?,
 T9e29febc,whether joining the Comfort Club would save money,knowledge,would save me money on this,MEMBERSHIP_SAVINGS
 T9e29febc,join the Comfort Club,action,add it,
@@ -11,3 +17,6 @@ Tbaf67f84,whether the Comfort Club covers plumbing,knowledge,Does it cover plumb
 Tbc5df324,book the free in-home estimate,booking:estimate,"Yeah, let's do that.",
 Tc36da844,how much compressor replacement labor costs,knowledge,How much is labor on a compressor?,COMPRESSOR
 Tc36da844,book a warranty diagnostic visit,booking:hvac_repair,Okay. Let's schedule it then.,
+Td12bdf25,an earlier slot than the one offered,earlier slot,Can you do anything earlier?,
+Teff9802d,an earlier slot than the one offered,earlier slot,Can you do anything earlier?,
+Tf0d9c2f5,an earlier slot than the one offered,earlier slot,"Um, can you do anything earlier?",

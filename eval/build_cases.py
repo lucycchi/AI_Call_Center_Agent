@@ -325,7 +325,7 @@ def _existing_appointment(db: sqlite3.Connection, need: dict, day: str, window: 
     raise ValueError(f"no way to give the caller an appointment on {day} {window or ''} in {card['zone']}")
 
 
-def extra_requests(case_id: str, zone: str) -> list[dict]:
+def extra_requests(case_id: str, zone: str, first: dict | None = None) -> list[dict]:
     """Requests in the call beyond its labelled sub-reason, from the reviewed list in data/case_requests.csv
     (written from every script and checked against the transcripts); each is graded on its own (R14, R39)."""
     extra = []
@@ -335,12 +335,18 @@ def extra_requests(case_id: str, zone: str) -> list[dict]:
         kind, outcome, why = row["kind"], "contained", None
         if kind == "action":
             outcome, why = "handed_off", "action gap"
+        elif kind == "earlier slot":
+            # Handled when the agent offers the earliest eligible slots; it shares the booking's outcome (a declined
+            # or handed-off booking has no slot to improve on). Never promising a waitlist stays a must-not (R44).
+            outcome, why = (first["expected_outcome"], first["handoff_reason"]) if first else ("contained", None)
         elif kind.startswith("booking:"):
             service = kind.split(":")[1].replace("hvac_", "")
             if ZONE_CAPACITY.get(zone, {}).get(service, 1) == 0:
                 outcome, why = "clean_decline", f"no {service} capacity in {zone} zone"
         extra.append({"request": row["request"], "kind": kind, "expected_outcome": outcome, "handoff_reason": why,
                       "caller_words": row["caller_words"], "reference": row["reference"] or None})
+        if kind == "earlier slot":
+            extra[-1]["also_correct"] = "a handoff ticket marked 'wants an earlier slot', counted as a handoff"
     return extra
 
 
@@ -374,8 +380,8 @@ def build_cases(out: Path, seed: int = 20261016) -> list[dict]:
         if reason == "billing":
             fixtures.append(_invoice_fixture(card, " ".join(call.customer_lines), n, paid=sub in ("charged twice", "refund")))
         outcome, why = expected_outcome(reason, sub, card["zone"])
-        requests = [{"request": sub, "kind": "sub-reason", "expected_outcome": outcome, "handoff_reason": why}] \
-            + extra_requests(template, card["zone"])
+        first_request = {"request": sub, "kind": "sub-reason", "expected_outcome": outcome, "handoff_reason": why}
+        requests = [first_request] + extra_requests(template, card["zone"], first_request)
         handed = [r for r in requests if r["expected_outcome"] == "handed_off"]
         if handed:
             outcome, why = "handed_off", handed[0]["handoff_reason"]

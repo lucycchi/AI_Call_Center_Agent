@@ -43,7 +43,7 @@
    "kind": "booking:hvac_repair",
    "expected_outcome": "contained",
    "handoff_reason": null,
-   "caller_words": "Tomorrow if you can.",
+   "caller_words": "Take it.",
    "reference": null
   }
  ],
