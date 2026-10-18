@@ -9,7 +9,37 @@ from datetime import date, datetime, timedelta
 MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november",
           "december"]
 WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-SPOKEN_WINDOWS = {("8", "12"): "08:00-12:00", ("12", "4"): "12:00-16:00", ("1", "5"): "13:00-17:00", ("4", "7"): "16:00-19:00"}
+WINDOWS = {(8, 12): "08:00-12:00", (12, 16): "12:00-16:00", (13, 17): "13:00-17:00", (16, 19): "16:00-19:00"}
+STARTS = {start: window for (start, _), window in WINDOWS.items()}
+TIME = r"(noon|\d{1,2})(?::(\d\d))?\s*(a\.?m\.?|p\.?m\.?)?"
+TIME_RANGE = re.compile(rf"\b(?:from\s+)?{TIME}\s*(?:to|-|–|until|till|through)\s*{TIME}(?![\d/])", re.I)
+ONE_TIME = re.compile(rf"\b(?:at\s+{TIME}|(noon|\d{{1,2}})(?::(\d\d))?\s*(a\.?m\.?|p\.?m\.?))(?![\d/])", re.I)
+
+
+def _hour(text: str, meridiem: str | None, fallback: str | None = None) -> int:
+    """A spoken hour on the 24-hour clock; with no am or pm, 1 to 7 are afternoon and 8 to 11 morning."""
+    hour = 12 if text.lower() == "noon" else int(text)
+    meridiem = (meridiem or fallback or "").lower().replace(".", "")
+    if meridiem == "pm" and hour < 12:
+        return hour + 12
+    if meridiem == "am":
+        return 0 if hour == 12 else hour
+    return hour + 12 if 1 <= hour <= 7 else hour
+
+
+def _window(said: str) -> str | None:
+    """ "12 to 4", "12:00 PM to 4:00 PM", "noon-4", "1pm", "at 8" as the window they name."""
+    match = TIME_RANGE.search(said)
+    if match:
+        h1, _, m1, h2, _, m2 = match.groups()
+        end = _hour(h2, m2)
+        start = _hour(h1, m1, m2 if m2 and int(h1 if h1 != "noon" else 12) < int(h2 if h2 != "noon" else 12) else None)
+        return WINDOWS.get((start, end))
+    match = ONE_TIME.search(said)
+    if match:
+        hour, meridiem = (match.group(1), match.group(3)) if match.group(1) else (match.group(4), match.group(6))
+        return STARTS.get(_hour(hour, meridiem))
+    return None
 
 
 @dataclass(frozen=True)
@@ -70,8 +100,7 @@ def parse_request(text: str, now: datetime) -> DateRequest | None:
             if ahead == 0 and match.group(1) == "next ":
                 ahead = 7
             day = today + timedelta(days=ahead)
-    spoken = re.search(r"\b(8|12|1|4) ?(?:to|-|–) ?(12|4|5|7)\b", said)
-    window = SPOKEN_WINDOWS.get(spoken.groups()) if spoken else None
+    window = _window(said)
     if window is None and re.search(r"\bevening\b|\bafter work\b", said):
         window = "16:00-19:00"  # the only evening window
     part = None

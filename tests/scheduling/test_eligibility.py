@@ -128,3 +128,11 @@ def test_a_past_date_is_answered_with_the_soonest_slots(db):
     state = ConversationState("c", "v", flow={"kind": "book", "step": "start", "service": "hvac_repair"})
     result = scheduling.step(db, SEED, customer(db, "Linda Foster", "MHC-10001"), state, "October 10 please", NOW, None)
     assert "already passed" in " ".join(result.facts)
+
+
+@pytest.mark.parametrize("text, window", [
+    ("Monday 12:00 PM to 4:00 PM", "12:00-16:00"), ("12pm-4pm", "12:00-16:00"), ("noon to 4", "12:00-16:00"),
+    ("8:00 AM to 12:00 PM", "08:00-12:00"), ("8am", "08:00-12:00"), ("1pm", "13:00-17:00"), ("1 to 5 pm", "13:00-17:00"),
+    ("4:00 to 7:00", "16:00-19:00"), ("12–4", "12:00-16:00"), ("from 12 until 4", "12:00-16:00")])
+def test_clock_times_map_to_their_windows(text, window):
+    assert parse_request(text, NOW).window == window

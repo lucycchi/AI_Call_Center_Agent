@@ -435,7 +435,7 @@ The author can chat with the agent in a terminal (`python -m app.cli`) and see i
 
 The author can run the working set, read the numbers and the replayed conversations, and see the threshold curve.
 
-- [ ] Task 18: simulated caller, fresh database copies and scoring. Requirements: R12, R13, R14, R15, R16, R17
+- [x] Task 18: simulated caller, fresh database copies and scoring. Requirements: R12, R13, R14, R15, R16, R17
 - [ ] Task 19: Codex grader, grader check, answer measures and adversarial runs. Requirements: R18, R19, R20, R31, R57
 - [ ] Task 20: working-set rehearsal, threshold curve and quick test run. Requirements: R21, R22, R32
 

@@ -80,6 +80,7 @@ def test_the_writer_streams_sentences_from_the_facts_only():
     assert "A tune-up is $129 for non-members." in call["messages"][-1]["content"]
     assert "discretion" not in call["system"].lower()
     assert "never as he or she" in call["system"]
+    assert "Never say a team member will follow up unless" in call["system"]
 
 
 def test_the_writer_sends_history_as_text_never_as_stored_roles():

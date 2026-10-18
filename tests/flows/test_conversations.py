@@ -654,3 +654,58 @@ def test_a_cancel_request_routed_as_a_redirect_is_still_an_action_gap(chat):
     chat["routes_add"]("cancel my membership now", clear(request("cancel my membership now", "redirect", "wrong number")))
     _, done = chat["say"]("I'm Linda Foster, MHC-10001. cancel my membership now")
     assert chat["store"].tickets()[-1]["reason_tag"] == "action gap"
+
+
+# Found by the first harness run.
+
+def test_messages_after_a_handoff_are_added_to_the_open_ticket_not_new_tickets(chat):
+    chat["routes_add"]("not what i agreed", clear(request("the invoice is not what I agreed to", "handoff", "dispute")))
+    chat["routes_add"]("robert", clear(request("it's Robert Chen", "handoff", "dispute")))
+    chat["routes_add"]("fine", clear(request("Fine.", "handoff", "dispute")))
+    chat["say"]("The tech quoted me $89 and the invoice says $149. That's not what I agreed to.")
+    reply, done = chat["say"]("Um, sure, it's Robert Chen, 512-311-4666.")
+    assert "Ticket #1" in reply and "added" in reply
+    chat["say"]("Fine.")
+    tickets = chat["store"].tickets()
+    assert len(tickets) == 1 and len(chat["store"].ticket_messages(1)) == 2
+    reply, done = chat["say"]("I smell gas")
+    assert len(chat["store"].tickets()) == 2 and chat["store"].tickets()[-1]["priority"] == 2
+
+
+def test_an_unavailable_requested_day_is_said_plainly_in_the_offer(chat):
+    reply, _ = chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair tomorrow, 12 to 4")
+    assert "Saturday, October 17, 12pm to 4pm is not available" in reply
+
+
+def test_the_writer_knows_today():
+    from tests.replies.test_checks import FakeClient
+    client = FakeClient(["Ok."])
+    list(__import__("app.replies.writer", fromlist=["write"]).write("policy answer", ["fact"], [], client))
+    assert "Friday 16 October 2026" in client.calls[0]["system"]
+
+
+def test_the_router_is_told_that_asking_whether_something_can_be_done_is_a_question():
+    from app.routing.router import RULES
+    assert "whether or how" in RULES
+
+
+def test_clock_times_pick_and_confirm_the_right_window(chat):
+    from app.flows.scheduling import _pick, confirms
+    choices = [{"slot_date": "2026-10-19", "window": "08:00-12:00"}, {"slot_date": "2026-10-19", "window": "12:00-16:00"}]
+    assert _pick("Monday 12:00 PM to 4:00 PM is fine, thanks.", choices, SETTINGS.now) == choices[1]
+    assert confirms("Yes, 12:00 PM to 4:00 PM is right.", "2026-10-19", "12:00-16:00", SETTINGS.now) is True
+    assert confirms("Yes, 12:00 PM to 4:00 PM is right.", "2026-10-19", "08:00-12:00", SETTINGS.now) is False
+
+
+def test_booking_the_same_service_again_that_day_moves_the_first_visit(chat):
+    book_to_read_back(chat)
+    chat["say"]("yes")
+    chat["routes_add"]("afternoon instead", clear(request("book Monday afternoon instead", "scheduling", "book", "hvac_repair")))
+    reply, _ = chat["say"]("Can you book Monday afternoon instead, 12 to 4")
+    reply, _ = chat["say"]("yes")
+    assert "moving" in reply.lower()
+    chat["say"]("yes")
+    rows = sqlite3.connect(chat["db"]).execute(
+        "select s.window from appointments a join appointment_slots s using (slot_id) where a.customer_id = 'MHC-10001' "
+        "and a.status = 'scheduled' and s.slot_date = '2026-10-19'").fetchall()
+    assert rows == [("12:00-16:00",)]

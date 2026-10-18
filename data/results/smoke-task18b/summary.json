@@ -1,0 +1,26 @@
+{
+ "containment": 0.6521739130434783,
+ "containment_without_redirects": 0.6521739130434783,
+ "scope_ceiling": 0.6521739130434783,
+ "adjusted_ceiling": 0.6521739130434783,
+ "action_gap": 0.0,
+ "wrong_confident": 0.0,
+ "knowledge_accuracy": null,
+ "routing_accuracy": 1.0,
+ "handoff_correct_safety_and_booking": null,
+ "handoff_correct_other": 1.0,
+ "booking_correct": null,
+ "lookup_correct": null,
+ "clean_declines": 0,
+ "flaky": [],
+ "interval_low": 0.0,
+ "interval_high": 1.0,
+ "scenarios": 3,
+ "weighted_calls": 46,
+ "human_baseline": null,
+ "human_baseline_excluding_actions": null,
+ "stopped_at_budget": false,
+ "extra": {
+  "spent_usd": 0.0833
+ }
+}

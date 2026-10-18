@@ -143,6 +143,13 @@ def _make_offer(db, customer, flow: dict, text: str, now, lead: str | None = Non
     if requested and requested.date and requested.date < now.date():
         requested, lead = None, f"{requested.date:%B} {requested.date.day} has already passed. Offer the soonest slots instead:"
     result = offer(db, customer, flow["service"], requested, now)
+    if requested and requested.date and result.slots and not lead and not any(
+            s.slot_date == requested.date.isoformat() and (requested.window is None or s.window == requested.window)
+            for s in result.slots):
+        asked = (spoken_when(requested.date.isoformat(), requested.window) if requested.window
+                 else f"{requested.date:%A}, {requested.date:%B} {requested.date.day}"
+                 + (f" {requested.part}" if requested.part else ""))
+        lead = f"{asked} is not available. Offer these instead and ask which one suits:"
     if result.decline_reason:
         service = SERVICE_NAMES[flow["service"]]
         flow.clear()
@@ -202,6 +209,15 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
             return FlowResult(_offer_facts(flow["offered"], "Ask which of these slots suits, or what other time works:"),
                               "booking offer")
         flow["chosen"] = chosen
+        same_day = [a for a in tx.scheduled_appointments(db, customer.customer_id)
+                    if a.slot_date == chosen["slot_date"] and a.service_type == chosen["service_type"]]
+        if same_day:
+            # The caller already has this service booked that day: move that visit rather than book a second one.
+            existing = same_day[0]
+            flow["kind"], flow["appointment"] = "reschedule", asdict(existing)
+            return _read_back(flow, f"moving your existing {SERVICE_NAMES[existing.service_type]} visit on "
+                                    f"{_when(existing.slot_date, existing.window)} to {_when(chosen['slot_date'], chosen['window'])}",
+                              tx.late_fee_preview(db, existing.appointment_id, now))
         return _read_back(flow, f"{SERVICE_NAMES[chosen['service_type']]} on {_when(chosen['slot_date'], chosen['window'])}")
     # Read-back: book only on a clear yes.
     if confirms(text, flow["chosen"]["slot_date"], flow["chosen"]["window"], now):

@@ -224,7 +224,10 @@ def test_breaker_advice_from_the_writer_is_blocked_after_a_burning_smell(world, 
     say(engine, "I smell something burning from the vents")
     sentences, done = say(engine, "what does the membership include")
     assert "Reset any tripped breaker once." not in sentences and done.outcome == "handed_off"
-    assert pipeline.store.tickets()[-1]["reason_tag"] == "blocked reply"
+    # The block is recorded and added to the burning-smell ticket already open, not a new ticket (R58).
+    events = pipeline.store._rows("select kind, detail from events")
+    assert any(e["kind"] == "blocked sentence" and e["detail"].startswith("breaker_advice") for e in events)
+    assert len(pipeline.store.tickets()) == 1
 
 
 def test_a_writer_that_promises_a_waiver_is_stopped_before_the_promise(world, tmp_path):
@@ -290,3 +293,21 @@ def test_a_tripped_breaker_many_messages_after_a_burning_smell_is_an_emergency(w
         say(engine, f"what does the membership include {n}", conversation="b1")
     sentences, done = say(engine, "the breaker just tripped", conversation="b1")
     assert done.outcome == "safety" and sentences[0] == fixed_reply("danger")[0]
+
+
+def test_model_calls_inside_a_turn_also_reach_an_outer_sink(world, tmp_path):
+    from app.core.model_log import SINK, RecordingClient
+    from tests.flows.scripted import ScriptedClient
+    db = tmp_path / "s5.sqlite"
+    shutil.copy(SEED, db)
+    client = RecordingClient(ScriptedClient({}), "x")
+    pipeline = AgentPipeline(store=OpsStore(tmp_path / "ops5.sqlite"), scheduling_db=db, seed_db=SEED, searcher=FakeSearcher(),
+                             route_fn=lambda text, history: route(text, history, client), writer=echo_writer, threshold=0.4,
+                             money_check=lambda s, p: True)
+    seen = []
+    token = SINK.set(lambda *args: seen.append(args[0]))
+    try:
+        say(Engine(pipeline), "what does the membership include")
+    finally:
+        SINK.reset(token)
+    assert "route" in seen

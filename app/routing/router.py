@@ -28,6 +28,8 @@ Split the message into its separate requests, in the caller's words, and give ea
 - scheduling: book a visit ("book", with the service: hvac_repair, hvac_tune_up for a tune-up, plumbing, or estimate for a system replacement), or reschedule, cancel or confirm an existing appointment.
 - handoff: a disputed charge or quote, or a refund ("dispute"); a complaint or a manager ("complaint"); a technician who is late ("late technician"); commercial work ("commercial"); asking for a person ("person"); anything else outside these ("other").
 - redirect: job enquiries ("hiring") or a wrong number ("wrong number").
+Asking whether or how something can be done ("can I still cancel before then?", "how do I set up autopay?") is a
+knowledge question; only asking for it to be done is an account action.
 Mark clear false if what the caller is asking is ambiguous, if they are angry or abusive, or if you are unsure of the route.
 Callers often give their name, account number, phone or address, and may give different details from earlier in the
 conversation (someone else in the household); that is normal and does not make a message unclear. Use detail "none" and service_type "none" when they do not apply."""

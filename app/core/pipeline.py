@@ -99,8 +99,12 @@ class AgentPipeline:
         first_ms: list[int] = []
         agent_ref: list[int | None] = [None]  # the agent reply this turn's model calls belong to
 
+        outer = SINK.get()  # a test run's budget, for example, also counts this turn's model calls
+
         def record(purpose, model_id, sdk_version, settings, input_tokens, output_tokens, ms, microdollars):
             spent[0] += microdollars
+            if outer:
+                outer(purpose, model_id, sdk_version, settings, input_tokens, output_tokens, ms, microdollars)
             self._quietly(self.store.log_model_call, agent_ref[0], purpose, model_id, sdk_version, settings,
                           input_tokens, output_tokens, ms, microdollars)
         sink, clock = SINK.set(record), deadline.start(self.deadline_s)
@@ -287,8 +291,12 @@ class AgentPipeline:
                 log.error("writer failed: %s", error)
                 error_event(f"writer failed: {type(error).__name__}: {error}")
                 handoffs.append(("error", "the reply could not be finished", turn.text))
-        # 6. Everything handed off this turn goes in one ticket (R39).
-        if handoffs:
+        # 6. Everything handed off this turn goes in one ticket (R39). With a ticket already open in this conversation,
+        # the message was added to it at the start of the turn, so no new ticket is opened (R58).
+        if handoffs and state.ticket_id:
+            fixed.append(f"I've added that to Ticket #{state.ticket_id}; our team will contact you within one business day.")
+            outcome = "handed_off"
+        elif handoffs:
             tags = [tag for tag, _, _ in handoffs]
             fixed += ticket(tags[0], "; ".join(c for _, c, _ in handoffs if c),
                             "; ".join(dict.fromkeys(w for _, _, w in handoffs)), tags[1:])
