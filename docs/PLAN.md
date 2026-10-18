@@ -236,7 +236,7 @@ The author can chat with the agent in a terminal (`python -m app.cli`) and see i
 - [x] Task 13: operations database, logging, masking and tickets. Requirements: R57, R73
 - [x] Task 14: knowledge flow, reply writer and sentence checks. Requirements: R41, R42, R43, R44, R60
 - [x] Task 15: handoff flow, post-handoff messages and failure paths. Requirements: R58, R59
-- [ ] Task 16: router, conversation state and the engine pipeline. Requirements: R38, R39, R40, R81, R82
+- [x] Task 16: router, conversation state and the engine pipeline. Requirements: R38, R39, R40, R81, R82
 - [ ] Task 17: conversation-level flow tests through the engine. Requirements: R45, R47, R48, R51, R52, R53, R54, R84, R35, R37, R73
 
 ### Task 9: Identify callers and read their accounts

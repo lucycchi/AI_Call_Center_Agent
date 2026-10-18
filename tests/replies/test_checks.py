@@ -79,3 +79,11 @@ def test_the_writer_streams_sentences_from_the_facts_only():
     assert call["model"] == "claude-sonnet-5-5"
     assert "A tune-up is $129 for non-members." in call["messages"][-1]["content"]
     assert "discretion" not in call["system"].lower()
+
+
+def test_the_writer_sends_history_as_text_never_as_stored_roles():
+    client = FakeClient(["Sure."])
+    list(write("policy answer", ["fact"], [{"role": "caller", "content": "hi"}, {"role": "agent", "content": "hello"}], client))
+    messages = client.calls[0]["messages"]
+    assert [m["role"] for m in messages] == ["user"]
+    assert "caller: hi" in messages[0]["content"] and "agent: hello" in messages[0]["content"]

@@ -42,6 +42,7 @@ class Settings:
     eval_writer_max_tokens: int
     eval_simulator_max_tokens: int
     eval_retries: int
+    retrieval_threshold: float  # provisional until chosen from the working-set curve (R32)
 
 
 def _path(name: str, default: Path) -> Path:
@@ -82,6 +83,7 @@ def load_settings() -> Settings:
         eval_writer_max_tokens=800,
         eval_simulator_max_tokens=300,
         eval_retries=1,
+        retrieval_threshold=0.4,
     )
 
 

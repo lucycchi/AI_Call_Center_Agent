@@ -30,8 +30,10 @@ def split_sentences(chunks: Iterator[str]) -> Iterator[str]:
 
 
 def write(reply_type: str, facts: list[str], history: list[dict], client) -> Iterator[str]:
-    prompt = (f"Reply type: {reply_type}. {REPLY_TYPES[reply_type]}\n\nFacts:\n" + "\n".join(f"- {f}" for f in facts))
-    messages = [*history, {"role": "user", "content": prompt}]
+    recent = "\n".join(f"{m['role']}: {m['content']}" for m in history[-6:])
+    prompt = (f"Recent conversation:\n{recent or '(none)'}\n\nReply type: {reply_type}. {REPLY_TYPES[reply_type]}\n\n"
+              "Facts:\n" + "\n".join(f"- {f}" for f in facts))
+    messages = [{"role": "user", "content": prompt}]
     with client.messages.stream(model=SETTINGS.writer_model, max_tokens=SETTINGS.eval_writer_max_tokens, system=RULES,
                                 messages=messages, output_config={"effort": "low"}) as stream:
         yield from split_sentences(stream.text_stream)

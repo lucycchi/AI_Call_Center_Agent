@@ -89,6 +89,12 @@ def _late_fee(db: sqlite3.Connection, slot_id: int, now: datetime) -> int:
     return LATE_FEE_CENTS if starts - now < timedelta(hours=24) else 0
 
 
+def late_fee_preview(db: sqlite3.Connection, appointment_id: int, now: datetime) -> int:
+    """The late fee a change to this appointment would carry, stated in the read-back before the caller confirms."""
+    (slot_id,) = db.execute("select slot_id from appointments where appointment_id = ?", (appointment_id,)).fetchone()
+    return _late_fee(db, slot_id, now)
+
+
 def _own_scheduled(db: sqlite3.Connection, customer, appointment_id: int) -> int | None:
     row = db.execute("select slot_id from appointments where appointment_id = ? and customer_id = ? and status = 'scheduled'",
                      (appointment_id, customer.customer_id)).fetchone()
