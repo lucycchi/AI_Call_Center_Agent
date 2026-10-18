@@ -1,6 +1,6 @@
 {
   "name": "AI Call Center Agent",
-  "stage": "build",
+  "stage": "gate",
   "test_command": "python -m pytest",
   "approvals": [
     {
@@ -25,5 +25,10 @@
     }
   ],
   "milestone": 1,
-  "milestones": 6
+  "milestones": 6,
+  "last_gate": {
+    "milestone": 1,
+    "passed": true,
+    "fingerprint": "0f0e124786df469f53d88f429210b66dd4625f28"
+  }
 }

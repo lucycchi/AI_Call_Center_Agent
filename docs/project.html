@@ -48,31 +48,31 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <main>
 <header>
 <h1>AI Call Center Agent</h1>
-<p class="stage">Current stage: Plan (needs your approval before moving on)</p>
+<p class="stage">Current stage: Milestone gate, milestone 1 of 6 (needs your approval before moving on)</p>
 </header>
 <section id="summary">
 <h2>Summary</h2>
 <p><strong>The problem.</strong> Meridian Home Comfort, a fictional heating, cooling and plumbing company in the Austin area, cannot keep up with its calls. The challenge (<code>docs/PRD.md</code>) is to build, in four working days, a chat agent at a public web address that answers routine calls from the company's documents, reads callers' accounts, books and changes appointments in a provided SQLite database, hands everything else to a human with full context, and proves its performance with numbers measured on held-out data.</p>
 <p><strong>The approach.</strong> One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.</p>
-<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>) and the specification (<code>docs/SPEC.md</code>, 83 numbered requirements) are approved, and the decisions are recorded in <code>docs/DECISIONS.md</code>; the technology stack is recorded as its own decision (technology stack (D35)). No code exists yet. This document describes how the system is built; the plan comes next.</p>
+<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestone 1 of 6 is built: configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>), and the prepared documents. The later milestones are planned.</p>
 </section>
 <h3>Key decisions</h3>
 <ul>
-<li>What retention, masking and rollback protections does the live system have? Conversation logs are purged after 30 days; phone numbers, emails and street addresses are masked in logs and the staff view (names and account numbers, which are synthetic and needed on tickets, stay). A one-page rollback runbook in the README covers rolling back a Fly.io release (prompts and the search index ship inside the release) and restoring the disk from Fly&#x27;s daily snapshot, and it is practised once before submission.</li>
-<li>How are test cases built so the measured numbers mean something (with the rehearsal on working-set cases)? Each test case is tied to a real database customer matching the transcript&#x27;s facts (zone, membership, brand, install age); the simulated caller gets a caller card with that customer&#x27;s details, not the transcript&#x27;s. Billing cases add their invoice to the fresh test database copy. Transcripts are grouped by template and split by template, so no template appears in both sets. The held-out run uses one case per template, weighted by its real call count; both calls and distinct scenarios are reported, with the margin of error on scenarios. A 10-case rehearsal on working-set cases runs at the end of day 3, after which the agent is frozen. The first run of each held-out case is the scored result; a case that fails then passes on its one retry is reported as flaky. Where no real customer matches a transcript, the test copy may add a synthetic customer, marked as synthetic.</li>
 <li>What status does a freed slot get when the seed copy itself shows it as booked? When an appointment is cancelled or moved, its slot returns to the seed copy&#x27;s status if that was open or members-only. If the seed copy shows the slot as booked (a seeded appointment), the slot is freed to open, which is what the schema&#x27;s &#x27;free the old slot (open)&#x27; rule says. Refines the freed-slot rule in the data rules (D29).</li>
 <li>Which protections are added to booking confirmations, the reviewer link and downtime alerts? (1) Each read-back carries a confirmation ID; a repeated or retried confirmation returns the first result instead of changing the database again. (2) The secret reviewer link is used once to start a signed reviewer session, then redirects to a clean address, and the token is never logged. (3) A free outside uptime monitor checks the health endpoint and alerts the author when the site is down.</li>
 <li>Which technology stack does the system use? Python 3.12; FastAPI with one worker process; each caller message is an ordinary request and its checked sentences stream back as server-sent events tied to that message; server-rendered HTML with a little plain JavaScript; the provided scheduling SQLite file plus a separate operations SQLite file, both in write-ahead logging mode on the attached disk; the search index built offline and shipped inside each release; an in-app scheduler with an app-wide gate that messages hold shared and the nightly reset holds exclusively; alerts through a webhook; Anthropic and Voyage SDKs pinned.</li>
+<li>Which architecture refinements does the plan review require? (1) Confirmation ids are stored in a new agent_confirmations table inside the scheduling database, written in the same transaction as the booking change; the provided tables are untouched and the nightly reset recreates the new table empty. (2) The engine yields typed events: one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions. (3) Each message and its released sentences are saved; the stream replays saved sentences on reconnect, and a message left unfinished by a restart becomes a handoff. (4) Timeouts: Anthropic 20 seconds, Voyage 5 seconds, alert webhook 5 seconds, and a 15-second deadline per message after which it hands off. (5) Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation, one retry, a separate test key, and an $8 stop per run. (6) The reviewer token sits after a # in the link, which browsers never send to servers; the page sends it once and clears it. (7) The final-run freeze covers only the agent-behaviour files and the search index, recorded as a hash. (8) The keyword index is rebuilt at startup from the shipped chunks.</li>
+<li>Who labels the blind third of the templates that checks the Codex labels? Codex, set to an OpenAI frontier model on the author&#x27;s subscription, labels every template without seeing Haiku&#x27;s labels, as before. Claude Fable 5.1 (claude-fable-5-1) labels the same blind third of the templates, without seeing Haiku&#x27;s or Codex&#x27;s labels, in place of the author. Reported: Fable-versus-Codex agreement on that third (a cross-company check), Codex-versus-Haiku agreement, and routing accuracy against the Codex labels. The README states that no human labeled the templates. The author&#x27;s blind grading of about 30 answers (D8) is unchanged.</li>
 </ul>
 <section id="progress">
 <h2>Progress</h2>
-<h3>Milestone 1: Data foundations and discovery (0 of 5 done)</h3>
+<h3>Milestone 1: Data foundations and discovery (5 of 5 done)</h3>
 <ul>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 1: project setup, pinned configuration and the agent-core interface. Requirements: R33</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 2: load transcripts and group them into templates. Requirements: R1</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 3: label call reasons with Haiku, Codex and the author's sheet. Requirements: R2, R3, R4</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 4: generate the findings document. Requirements: R5, R6, R7, R8, R56</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 5: document list, conflict register and format conversion. Requirements: R24, R25, R26</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 1: project setup, pinned configuration and the agent-core interface. Requirements: R33</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 2: load transcripts and group them into templates. Requirements: R1</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 3: label call reasons with Haiku, Codex and Claude Fable 5.1. Requirements: R2, R3, R4</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 4: generate the findings document. Requirements: R5, R6, R7, R8, R56</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 5: document list, conflict register and format conversion. Requirements: R24, R25, R26</span></li>
 </ul>
 <h3>Milestone 2: Search and test set (0 of 3 done)</h3>
 <ul>
@@ -143,7 +143,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>R1: Group the 420 transcripts into templates (calls that share the same request and staff response pattern once names, numbers and filler words are removed): first group automatically on normalised text, then merge near-identical groups using a reviewed merge list committed to the repository; record each transcript's template and the template's call count. <em>(Builder's call on the method.)</em></li>
 <li>R2: Label every transcript with one main call reason and a sub-reason (for example billing: current balance), using Claude Haiku 5.5 with a fixed category list that is first proposed from the data and then frozen.</li>
 <li>R3: Produce independent check labels for every template from an OpenAI frontier model run through Codex, without showing it Haiku's labels, and save the model name with the labels (template labeling (D18)). Tell the author before this runs so they can set Codex to a frontier model.</li>
-<li>R4: Provide a labeling sheet on which the author labels about a third of the templates without seeing either AI's labels, and report the author's agreement with Codex and Codex's agreement with Haiku.</li>
+<li>R4: Have Claude Fable 5.1 label about a third of the templates without seeing Haiku's or Codex's labels, and report Fable's agreement with Codex and Codex's agreement with Haiku; the README states that no human labeled the templates (blind third labeled by Claude Fable 5.1 (D38)).</li>
 <li>R5: Produce a findings document that ranks the top four or five call reasons in a table with rank, calls, share, staff minutes, running total, and handled or handed off with the reason; describes the method and the agreement rates; and states that the transcripts are templated.</li>
 <li>R6: The findings document shows two lists, the observed top three call reasons and the agent's scope, and for each top-three reason states how many calls are answered from documents, how many from account lookups, and how many are handed off and why (choosing handled call reasons to meet the top-three requirement (D12)).</li>
 <li>R7: The findings document reports the human baseline: the share of calls staff resolved on the call (about 85 percent), the same share excluding account actions the agent will not take (about 73 percent), and the 11 dropped bookings.</li>
@@ -333,7 +333,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     APP --&gt;|"alert text"| ALERT["Alert webhook to the author"]
     LAP["Offline toolkit on the author's laptop"] --&gt;|"search index and seed data in each release"| APP
     UP["Outside uptime monitor"] --&gt;|"checks the health endpoint"| APP
-    LAP --&gt;|"answers to grade, templates to label"| CDX["Codex with an OpenAI frontier model"]</pre>
+    LAP --&gt;|"answers to grade, templates to label"| CDX["Codex with an OpenAI frontier model"]
+    LAP --&gt;|"transcripts to label, offline"| ANT</pre>
 <p><em>The browser talks only to the web app; the app owns both databases and calls the AI services; the laptop toolkit prepares data and grades results offline; an outside monitor alerts the author if the app stops answering.</em></p>
 <h3>2. Main parts</h3>
 <pre class="mermaid">flowchart TB
@@ -359,6 +360,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>Each sentence is checked before release. If a sentence fails, generation stops, the sentences already shown stay, the rest becomes a handoff message with a ticket, and a "blocked" event is logged.</li>
 <li>Every step records events and model calls in the operations store.</li>
 </ol>
+<p>The engine guarantees exactly one done event, always last: if the pipeline stops without one it adds an "incomplete" done event, and if the pipeline raises it adds an "error" done event; the handoff flow turns both into a handoff message.</p>
 <table>
 <thead><tr><th>Part</th><th>What it does</th><th>Where its rules come from</th></tr></thead>
 <tbody>
@@ -409,9 +411,9 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT city "city, decides the zone"
         TEXT zip "postal code"
         TEXT membership_tier "none, standard or plus"
-        TEXT membership_renewal_date "date, empty if not a member"
+        TEXT membership_renewal_date "date written YYYY-MM-DD, empty if not a member"
         TEXT system_brand "equipment brand"
-        TEXT system_install_date "date the system was installed"
+        TEXT system_install_date "date installed, written YYYY-MM-DD"
     }
     TECHNICIANS {
         INTEGER tech_id PK "whole number, given automatically"
@@ -421,11 +423,11 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     }
     APPOINTMENT_SLOTS {
         INTEGER slot_id PK "whole number, given automatically"
-        TEXT slot_date "date of the slot"
+        TEXT slot_date "date of the slot, written YYYY-MM-DD"
         TEXT window "one of four time windows"
         INTEGER tech_id FK "the technician working it"
         TEXT zone "zone covered that day"
-        TEXT service_type "repair, tune-up, plumbing or estimate"
+        TEXT service_type "hvac_repair, hvac_tune_up, plumbing or estimate"
         TEXT status "open, booked, reserved_members or blocked"
     }
     APPOINTMENTS {
@@ -433,7 +435,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         INTEGER slot_id FK "the slot booked"
         TEXT customer_id FK "who booked it"
         TEXT issue_description "caller's issue, unreliable in the seed"
-        TEXT created_at "when it was booked, the fixed now for new rows"
+        TEXT created_at "when booked; seeded rows hold a date only, new rows the fixed now"
         TEXT status "scheduled, completed, cancelled or no_show"
         INTEGER is_warranty_visit "1 means no diagnostic fee"
     }
@@ -441,8 +443,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT invoice_id PK "invoice number, e.g. INV-204411"
         TEXT customer_id FK "who is billed"
         INTEGER appointment_id FK "visit billed, may be empty"
-        TEXT issued_date "date issued"
-        TEXT due_date "date due"
+        TEXT issued_date "date issued, written YYYY-MM-DD"
+        TEXT due_date "date due, written YYYY-MM-DD"
         INTEGER amount_cents "total in cents"
         INTEGER balance_cents "unpaid amount in cents, 0 means paid"
         TEXT line_items "list of description and cents pairs"
@@ -841,7 +843,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     CALLER --&gt;|"text plus facts chosen by code"| ANT["Anthropic"]
     CALLER --&gt;|"question text only"| VOY["Voyage AI"]
     LOG --&gt;|"answers and references, offline"| CDX["Codex, OpenAI"]
-    TR["Transcripts"] --&gt;|"template text, offline"| CDX
+    TR["Transcripts"] --&gt;|"one full sample call per template, offline"| CDX
+    TR --&gt;|"caller lines for labeling, offline"| ANT
     KB["Current documents"] --&gt;|"section text, offline"| VOY</pre>
 <p><em>What leaves the app: Anthropic sees the conversation and the facts code selected; Voyage sees questions and document sections; Codex sees transcripts and graded answers offline; logs keep only masked text.</em></p>
 <p>Anthropic receives the caller's own text (needed to understand and identify them) plus facts chosen by code; it never receives internal documents as written or database rows a flow does not need. All customer data is synthetic, but the habits are production ones: internal documents are never sent as written (only paraphrased rules), the model never receives database rows beyond the facts a flow needs, logs are masked and purged after 30 days, and keys live only in <code>.env</code> locally and Fly.io secrets in production.</p>
@@ -887,7 +890,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     CORE --&gt;|"calls"| REPLY["replies: writer and checks"]
     CORE --&gt;|"records to"| OPS["ops: logs, limits, alerts, jobs"]
     EVAL["eval: harness, simulator, grader"] --&gt;|"drives"| CORE
-    PIPE["pipeline: templates, labels, index, findings"] --&gt;|"produces data for"| KNOW</pre>
+    PIPE["pipeline: templates, labels, index, findings"] --&gt;|"produces data for"| KNOW
+    PIPE --&gt;|"uses the zone map and settings"| SCHED</pre>
 <p><em>Every package depends on the core only through plain function calls; the offline evaluation drives the same core the web uses.</em></p>
 <table>
 <thead><tr><th>Folder</th><th>Contents</th></tr></thead>
@@ -903,9 +907,9 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>app/replies/</code></td><td>Sonnet writer, reply types, sentence checks, internal-text match</td></tr>
 <tr><td><code>app/ops/</code></td><td>Operations database, logging and masking, spending and rate limits, alerts, nightly reset, purge</td></tr>
 <tr><td><code>app/config.py</code></td><td>Pinned model IDs, fixed "now", thresholds and limits</td></tr>
-<tr><td><code>pipeline/</code></td><td>Template grouping, labeling sheets, Codex labeling, document list, conflict register, index build, and the findings document <code>docs/FINDINGS.md</code> (ranking table, human baselines, scope lists, executive findings)</td></tr>
+<tr><td><code>pipeline/</code></td><td>Transcript loading and template grouping (with families), Haiku, Codex and Fable labeling and the blind-third sheet, label agreement, staff policy-error checks, zone capacity counts, the document list, conflict register and format conversion, index build, and the findings document <code>docs/FINDINGS.md</code>; it uses the app's zone map (<code>app/scheduling/zones.py</code>) and settings</td></tr>
 <tr><td><code>eval/</code></td><td>Test-set builder (caller cards, fixtures), simulator, Codex grader, metrics and reports</td></tr>
-<tr><td><code>data/</code></td><td>Document list, conflict register, built index, labels, test set, results</td></tr>
+<tr><td><code>data/</code></td><td>Document list, conflict register, converted documents (<code>data/kb_text/</code>), the hand transcription of the holiday-hours image, templates, labels, built index, test set, results</td></tr>
 <tr><td><code>tests/</code></td><td>Unit and flow tests run by <code>python -m pytest</code></td></tr>
 </tbody>
 </table>
@@ -914,8 +918,10 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <table>
 <thead><tr><th>File</th><th>What it holds</th></tr></thead>
 <tbody>
-<tr><td><code>data/templates.csv</code></td><td>Each transcript's template id, the template's call count, and the reviewed merge list</td></tr>
-<tr><td><code>data/labels.csv</code></td><td>Haiku's, Codex's and the author's call reason per template, with the Codex model name</td></tr>
+<tr><td><code>data/templates.csv</code></td><td>Each call's template id, the template's call count, its family (a waitlist template shares its booking twin's family (template families (D39))), the normalised request and the staff outcome</td></tr>
+<tr><td><code>data/template_merges.csv</code></td><td>The reviewed merge list</td></tr>
+<tr><td><code>data/labels_haiku.csv</code>, <code>data/labels_codex.csv</code>, <code>data/labels_fable.csv</code></td><td>Haiku's call reason per call; Codex's per template (the reference) and Claude Fable 5.1's for the blind third (blind third labeled by Claude Fable 5.1 (D38)), each with its model name</td></tr>
+<tr><td><code>data/label_agreement.json</code></td><td>Codex against Haiku and Fable against Codex, with any disagreements</td></tr>
 <tr><td><code>data/split.json</code></td><td>The random seed, the working and held-out template lists, and a hash of the held-out test cases recorded when they were frozen</td></tr>
 <tr><td><code>data/testset/&lt;case&gt;.json</code></td><td>One test case: template, caller card, fixtures, expected outcome, expected handoff reason, reference answer and its document line spans</td></tr>
 <tr><td><code>data/results/&lt;run&gt;/attempts.jsonl</code></td><td>One line per attempt: case, attempt number, first-run flag, conversation, database checks, model ids and settings, grader verdict and grader model</td></tr>
@@ -1292,7 +1298,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D18: Who provides the independent ground-truth call-reason labels?</h3>
 <ul>
-<li><strong>Status:</strong> settled</li>
+<li><strong>Status:</strong> replaced by "Which frontier model provides the independent check labels for the call-reason templates?" (D37)</li>
 <li><strong>Replaces:</strong> "Who provides the independent ground-truth call-reason labels that the router and the discovery ranking are checked against?" (D14)</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
 <li><strong>Options:</strong>
@@ -1604,7 +1610,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D36: Which architecture refinements does the plan review require?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
 <li><strong>Options:</strong>
 <ul>
@@ -1618,6 +1624,59 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Choice:</strong> (1) Confirmation ids are stored in a new agent_confirmations table inside the scheduling database, written in the same transaction as the booking change; the provided tables are untouched and the nightly reset recreates the new table empty. (2) The engine yields typed events: one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions. (3) Each message and its released sentences are saved; the stream replays saved sentences on reconnect, and a message left unfinished by a restart becomes a handoff. (4) Timeouts: Anthropic 20 seconds, Voyage 5 seconds, alert webhook 5 seconds, and a 15-second deadline per message after which it hands off. (5) Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation, one retry, a separate test key, and an $8 stop per run. (6) The reviewer token sits after a # in the link, which browsers never send to servers; the page sends it once and clears it. (7) The final-run freeze covers only the agent-behaviour files and the search index, recorded as a hash. (8) The keyword index is rebuilt at startup from the shipped chunks.</li>
 <li><strong>Reason:</strong> Each closes a way the approved behaviour could fail in practice: double bookings after a crash, lost receipts, hung requests, runaway test spend, a leaked reviewer token, or a final run that cannot start.</li>
 </ul>
+<h3>D37: Which frontier model provides the independent check labels for the call-reason templates?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "Who labels the blind third of the templates that checks the Codex labels?" (D38)</li>
+<li><strong>Replaces:</strong> "Who provides the independent ground-truth call-reason labels?" (D18)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Claude Fable 5.1 (Anthropic's most capable model) labels every template, with the author's blind third as the independent check and the shared-company limitation disclosed</li>
+<li>An OpenAI frontier model through Codex (the replaced decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/MODEL_RESEARCH.md">docs/MODEL_RESEARCH.md</a>: Using a model from a different company avoids correlated mistakes when one model checks another.</li>
+<li><a href="docs/DECISIONS.md">docs/DECISIONS.md</a>: Template labeling (D18) chose Codex so the check labels came from a different company than the Haiku labels and router.</li>
+</ul></li>
+<li><strong>Choice:</strong> Claude Fable 5.1 (model ID claude-fable-5-1) labels one sample call per template without seeing Haiku's labels, from code, with the model name saved; about $1. The author labels about a third of the templates blind, and the author-versus-Fable agreement is reported as the trust measure. The README states that the frontier labels and the router are both from Anthropic, so routing accuracy against those labels may be optimistic. Answer grading stays with OpenAI through Codex (grading through Codex (D15)).</li>
+<li><strong>Reason:</strong> The author's preference: the strongest available labeler, repeatable from code, no Codex setup step. The independence lost by using the same company as the router is partly restored by the author's blind labels and stated openly.</li>
+</ul>
+<h3>D38: Who labels the blind third of the templates that checks the Codex labels?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Replaces:</strong> "Which frontier model provides the independent check labels for the call-reason templates?" (D37)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Claude Fable 5.1 labels the blind third instead of the author; Codex still labels every template</li>
+<li>The author labels the blind third by hand (the earlier decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/DECISIONS.md">docs/DECISIONS.md</a>: Template labeling (D18): Codex labels every template and the author labels about a third blind as the check.</li>
+</ul></li>
+<li><strong>Choice:</strong> Codex, set to an OpenAI frontier model on the author's subscription, labels every template without seeing Haiku's labels, as before. Claude Fable 5.1 (claude-fable-5-1) labels the same blind third of the templates, without seeing Haiku's or Codex's labels, in place of the author. Reported: Fable-versus-Codex agreement on that third (a cross-company check), Codex-versus-Haiku agreement, and routing accuracy against the Codex labels. The README states that no human labeled the templates. The author's blind grading of about 30 answers (D8) is unchanged.</li>
+<li><strong>Reason:</strong> The author's preference, to save their labeling time. The check stays independent across companies (OpenAI and Anthropic), at a cost of about $0.30, but it is no longer a human check; that limitation is disclosed.</li>
+</ul>
+<h3>D39: How are the nine waitlist templates treated, given that each is the matching booking call plus one fixed waitlist exchange?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-18</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Keep all 52 templates, and link each waitlist template to its booking twin as a family that always lands on the same side of the test split</li>
+<li>Merge each waitlist template into its booking twin (43 templates)</li>
+<li>Keep 52 templates with no link</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/reviews/template-grouping-check-REPORT-fable.md">docs/reviews/template-grouping-check-REPORT-fable.md</a>: Claude Fable 5.1 read all 420 transcripts: no splits needed; merge the nine waitlist templates into their booking twins (43); 52 defensible if the waitlist offer counts as a distinct staff response.</li>
+<li><a href="docs/reviews/template-grouping-check-REPORT-user-agent-codex-2.md">docs/reviews/template-grouping-check-REPORT-user-agent-codex-2.md</a>: Codex: grouping correct at 52; the waitlist exchange is an additional request and staff branch worth keeping separate.</li>
+</ul></li>
+<li><strong>Choice:</strong> Keep the 52 templates. data/templates.csv gains a family column: each waitlist template's family is its booking twin's template id, every other template is its own family. The test split (Task 7) assigns whole families, so twins are never on opposite sides. The plan's 70 to 120 template estimate is corrected.</li>
+<li><strong>Reason:</strong> Keeps the waitlist variant as its own test scenario (the agent must not promise a waitlist, one of the seven staff error patterns) while preventing near-duplicate leakage between the tuning and held-out sets. About one column and a few lines plus a test.</li>
+</ul>
 <h3>Glossary</h3>
 <ul>
 <li><strong>Action gap:</strong> calls the agent understands but deliberately hands off because they need an action it is not allowed to take</li>
@@ -1627,6 +1686,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Attached disk (volume):</strong> storage that stays when the server restarts</li>
 <li><strong>Batch:</strong> a group of items sent together in one request</li>
 <li><strong>Benchmark:</strong> a fixed public test used to compare models</li>
+<li><strong>Blind label:</strong> a label given without seeing anyone else's label for the same item</li>
 <li><strong>Cached answer:</strong> an answer prepared in advance and reused so it appears instantly</li>
 <li><strong>Call driver:</strong> a reason customers call</li>
 <li><strong>Caller card:</strong> the facts given to the AI playing the caller: name, account number, phone, address and request</li>
@@ -1637,6 +1697,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Conflict register:</strong> a written list of documents that disagree and which one wins, with the reason</li>
 <li><strong>Containment ceiling:</strong> the highest containment possible, equal to the share of calls about reasons the agent handles</li>
 <li><strong>Containment rate:</strong> the share of calls the AI finishes without passing them to a person</li>
+<li><strong>Correlated mistakes:</strong> errors two models make in the same way because they were built similarly, so one cannot catch the other's</li>
 <li><strong>Cut order:</strong> the agreed order in which optional work is dropped if time runs out</li>
 <li><strong>Database transaction:</strong> a group of database changes that all happen together or not at all</li>
 <li><strong>Embedding:</strong> a list of numbers representing a text's meaning, used to find similar text</li>
@@ -1665,6 +1726,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Server-sent events:</strong> a one-way stream of text from server to browser</li>
 <li><strong>Speech-to-text / text-to-speech:</strong> turning spoken audio into written words, and written words into spoken audio</li>
 <li><strong>Suggested-question button:</strong> a clickable common question shown in the chat so the caller need not type it</li>
+<li><strong>Template family:</strong> a group of templates that are near-identical and must stay on the same side of the test split</li>
 <li><strong>Transcript template:</strong> a call pattern that repeats across many transcripts with only names, numbers and filler words changed</li>
 <li><strong>Typed event:</strong> a message with a fixed kind and fields, such as a sentence or a final summary</li>
 <li><strong>Uptime monitor:</strong> an outside service that regularly checks a site and alerts when it stops answering</li>
@@ -1675,7 +1737,87 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </section>
 <section id="gates">
 <h2>Milestone gates</h2>
-<p>No milestone gates yet.</p>
+<h3>Milestone 1 gate</h3>
+<p>Reviews of this milestone compare against <code>tortoise/plan</code>, the last approval.</p>
+<h4>Tests</h4>
+<p><strong>Passed:</strong> <code>python -m pytest</code> finished with exit code 0.</p>
+<pre><code>============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.7.0
+rootdir: /home/lucyc/gauntlet/AI_Call_Center_Agent
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.15.1, langsmith-0.14.11
+collected 48 items
+
+tests/pipeline/test_documents.py ......                                  [ 12%]
+tests/pipeline/test_findings.py ...............                          [ 43%]
+tests/pipeline/test_labels.py .............                              [ 70%]
+tests/pipeline/test_templates.py ......                                  [ 83%]
+tests/test_config.py ......                                              [ 95%]
+tests/test_engine_interface.py ..                                        [100%]
+
+============================== 48 passed in 0.50s ==============================</code></pre>
+<h4>Requirement coverage</h4>
+<p>Every requirement in SPEC.md is named by a task in PLAN.md.</p>
+<h4>Tasks</h4>
+<p>Every task in milestone 1 is ticked (5 of 5).</p>
+<h4>Architecture check</h4>
+<p>Run by Codex (gpt-5.6-sol, per-run override because the configured gpt-6.1-sol is not available on a ChatGPT-account Codex command line) and by a fresh Claude agent, both using <code>prompts/architecture-check.md</code>.</p>
+<p><strong>Both found:</strong></p>
+<ul>
+<li>The evaluation-files table names a single <code>data/labels.csv</code> with the author's labels; the code writes <code>labels_haiku.csv</code>, <code>labels_codex.csv</code>, <code>labels_fable.csv</code> and <code>label_agreement.json</code>, and Claude Fable 5.1 labels the blind third (D38). The table also puts the merge list inside <code>templates.csv</code>, which is a separate file.</li>
+<li>The data-flow diagram omits that transcripts go to Anthropic offline for Haiku and Fable labeling, and says Codex receives "template text" rather than one full sample transcript per template.</li>
+<li>The engine's handling of a missing or repeated completion event differs from the document's promise (one terminal done event; an unfinished message becomes a handoff).</li>
+</ul>
+<p><strong>Only the Claude agent found:</strong></p>
+<ul>
+<li>The slot service types in the database diagram should use the stored values (<code>hvac_repair</code>, <code>hvac_tune_up</code>, <code>plumbing</code>, <code>estimate</code>), and date fields should say they are written YYYY-MM-DD.</li>
+<li><code>.env</code> and <code>.env.example</code> set <code>DAILY_SPEND_CAP_USD=5</code>, which <code>app/config.py</code> reads as the $10 site cap; and <code>DATABASE_PATH</code> points the live database at the read-only seed copy.</li>
+<li>Model IDs can be overridden from the environment, contradicting "pinned" (technology stack (D35)).</li>
+<li>The pipeline imports <code>app.scheduling.zones</code> and <code>app.config</code>, not shown in the code-structure diagram; the folder table omits the labeling, agreement, staff-check, capacity and conversion modules and <code>data/kb_text/</code>.</li>
+</ul>
+<p><strong>Only Codex found:</strong></p>
+<ul>
+<li>The summary's "where the project stands" paragraph is stale (83 requirements, no code).</li>
+<li>The pinned settings lack the message-rate limits, evaluation token limits and retry count from the plan's global constraints.</li>
+<li>52 templates against the plan's 70 to 120 estimate.</li>
+<li>The holiday transcription is written to <code>data/kb_text/policies__holiday_hours_2026.md</code>, not the plan's <code>data/kb_text/holiday_hours_2026.txt</code>.</li>
+</ul>
+<h4>Reviews</h4>
+<p>Code reviews of <code>git diff tortoise/plan</code> by Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent, both using <code>prompts/code-review.md</code>. Both ran the tests: 48 passed (Codex could run 38; 10 need a writable temporary folder its sandbox lacks).</p>
+<table>
+<thead><tr><th>Finding</th><th>Codex</th><th>Claude</th></tr></thead>
+<tbody>
+<tr><td><code>.env.example</code> and <code>.env</code> point the live scheduling database at the seed file</td><td>yes (top)</td><td>yes (top)</td></tr>
+<tr><td><code>DAILY_SPEND_CAP_USD=5</code> turns the $10 site cap into $5</td><td>yes</td><td>yes</td></tr>
+<tr><td><code>CLASSIFIER_MODEL</code> in <code>.env.example</code> is ignored (code reads <code>ROUTER_MODEL</code>); <code>TODAY</code> unused</td><td>yes</td><td>yes</td></tr>
+<tr><td>The engine yields sentences after the first done event, and sends no done event if the pipeline raises</td><td>yes</td><td>yes</td></tr>
+<tr><td>Findings print reason-level Fable agreement as "including sub-reasons"</td><td>yes</td><td>yes</td></tr>
+<tr><td>Findings print "perfect agreement" prose regardless of the numbers</td><td></td><td>yes</td></tr>
+<tr><td>The provisional path crashes when Fable labels are missing</td><td></td><td>yes</td></tr>
+<tr><td>Agreement marked "final" even if Fable labels are incomplete</td><td>yes</td><td></td></tr>
+<tr><td>Template grouping uses broad outcome buckets rather than staff response patterns, and does not remove names; 52 templates</td><td>yes (wrong)</td><td>checked by eye: groups correct; plan estimate off</td></tr>
+<tr><td>Single-template reasons (hiring, commercial, wrong number) cannot appear in both sets</td><td></td><td>yes</td></tr>
+<tr><td>Findings ranking table lists all 11 reasons, not the top four or five</td><td>yes</td><td></td></tr>
+<tr><td>Agent-scope section gives a generic "why" for handoffs (wrong for the 16 burning-smell safety handoffs) and no whole-scope list</td><td></td><td>yes</td></tr>
+<tr><td>Human baseline counts waitlist calls and dropped bookings as resolved without saying so</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Transcript header line "Agent: &lt;name&gt;" is parsed as a staff line</td><td></td><td>yes</td></tr>
+<tr><td>Capacity "bookable" counts already-started slots and ignores technician overlap</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Member diagnostic-fee count uses today's tier</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Holiday transcription file path differs from the plan</td><td>yes</td><td></td></tr>
+<tr><td>Conversion never removes outputs for documents later excluded</td><td>yes (addition)</td><td></td></tr>
+<tr><td>Three-file labels against <code>data/labels.csv</code> in the architecture and plan</td><td>yes (unclear)</td><td></td></tr>
+<tr><td>Tests too weak to catch the above (config, engine, findings, agreement, templates)</td><td>yes (addition)</td><td>yes</td></tr>
+<tr><td>Seed guard: refuse to start if the live path equals the seed</td><td></td><td>yes (addition)</td></tr>
+</tbody>
+</table>
+<h4>Author's choices</h4>
+<p>Recorded 2026-10-18. The author accepted every recommended fix:</p>
+<ul>
+<li><strong>Code, test-first:</strong> point <code>DATABASE_PATH</code> at <code>data/scheduling.sqlite</code> and refuse to start if the live path is the seed file; rename the site cap setting to <code>SITE_DAILY_USD</code> and fix <code>.env.example</code> and <code>.env</code>; pin the model IDs (no environment override) and add the missing rate, test-token and retry settings; make the engine stop at the first done event and end with an error done event on a crash; fix the findings document (provisional path, sub-reason agreement from its own figure, conditional agreement wording, top-five table plus a table of the rest, a reason for each handed-off sub-reason, baseline note with the figure excluding dropped bookings, "members today" wording); mark agreement final only when every blind-third template has a Fable label; skip the transcript header line; clear converted documents before each conversion.</li>
+<li><strong>Documents:</strong> update the architecture (label and template files, stored service-type values and date formats, offline transcripts to Anthropic, pipeline use of the app's zone map, folder table, status paragraph) and the plan (three label files, holiday file path, template estimate, family split).</li>
+<li><strong>Template grouping:</strong> a dedicated transcript check was run twice (Claude Fable 5.1, and Codex at the author's request; reports in <code>docs/reviews/</code>). Both found no template needs splitting and names never affect grouping. They differed on the nine waitlist templates. The author chose to keep the 52 templates and link each waitlist template to its booking twin as a family that stays on one side of the test split (template families (D39), proposed).</li>
+</ul>
 </section>
 <section id="final-checks">
 <h2>Final checks</h2>

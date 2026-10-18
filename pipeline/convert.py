@@ -44,10 +44,14 @@ def convert_price_book(path: Path) -> str:
     return "\n".join(out)
 
 
-def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
+def main(out: Path = OUT) -> None:
+    """Rebuild the folder from scratch, so a document later marked stale or internal is never left behind."""
+    if out.exists():
+        for old in out.iterdir():
+            old.unlink()
+    out.mkdir(parents=True, exist_ok=True)
     for path in searchable_documents():
-        target = OUT / (str(path.relative_to(KB)).replace("/", "__").rsplit(".", 1)[0] + ".md")
+        target = out / (str(path.relative_to(KB)).replace("/", "__").rsplit(".", 1)[0] + ".md")
         if path.suffix == ".pdf":
             target.write_text(convert_pdf_table(path))
         elif path.suffix == ".csv":
@@ -56,7 +60,7 @@ def main() -> None:
             shutil.copy(HOLIDAY, target)
         else:
             shutil.copy(path, target)
-    print(f"wrote {len(list(OUT.iterdir()))} files to {OUT}")
+    print(f"wrote {len(list(out.iterdir()))} files to {out}")
 
 
 if __name__ == "__main__":

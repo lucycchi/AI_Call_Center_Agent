@@ -520,6 +520,20 @@ can only propose a decision; only the author settles one.
 - **Choice:** Codex, set to an OpenAI frontier model on the author's subscription, labels every template without seeing Haiku's labels, as before. Claude Fable 5.1 (claude-fable-5-1) labels the same blind third of the templates, without seeing Haiku's or Codex's labels, in place of the author. Reported: Fable-versus-Codex agreement on that third (a cross-company check), Codex-versus-Haiku agreement, and routing accuracy against the Codex labels. The README states that no human labeled the templates. The author's blind grading of about 30 answers (D8) is unchanged.
 - **Reason:** The author's preference, to save their labeling time. The check stays independent across companies (OpenAI and Anthropic), at a cost of about $0.30, but it is no longer a human check; that limitation is disclosed.
 
+## D39: How are the nine waitlist templates treated, given that each is the matching booking call plus one fixed waitlist exchange?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
+- **Options:**
+  - Keep all 52 templates, and link each waitlist template to its booking twin as a family that always lands on the same side of the test split
+  - Merge each waitlist template into its booking twin (43 templates)
+  - Keep 52 templates with no link
+- **Research:**
+  - [docs/reviews/template-grouping-check-REPORT-fable.md](docs/reviews/template-grouping-check-REPORT-fable.md): Claude Fable 5.1 read all 420 transcripts: no splits needed; merge the nine waitlist templates into their booking twins (43); 52 defensible if the waitlist offer counts as a distinct staff response.
+  - [docs/reviews/template-grouping-check-REPORT-user-agent-codex-2.md](docs/reviews/template-grouping-check-REPORT-user-agent-codex-2.md): Codex: grouping correct at 52; the waitlist exchange is an additional request and staff branch worth keeping separate.
+- **Choice:** Keep the 52 templates. data/templates.csv gains a family column: each waitlist template's family is its booking twin's template id, every other template is its own family. The test split (Task 7) assigns whole families, so twins are never on opposite sides. The plan's 70 to 120 template estimate is corrected.
+- **Reason:** Keeps the waitlist variant as its own test scenario (the agent must not promise a waitlist, one of the seven staff error patterns) while preventing near-duplicate leakage between the tuning and held-out sets. About one column and a few lines plus a test.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
@@ -569,6 +583,7 @@ can only propose a decision; only the author settles one.
 - **Server-sent events:** a one-way stream of text from server to browser
 - **Speech-to-text / text-to-speech:** turning spoken audio into written words, and written words into spoken audio
 - **Suggested-question button:** a clickable common question shown in the chat so the caller need not type it
+- **Template family:** a group of templates that are near-identical and must stay on the same side of the test split
 - **Transcript template:** a call pattern that repeats across many transcripts with only names, numbers and filler words changed
 - **Typed event:** a message with a fixed kind and fields, such as a sentence or a final summary
 - **Uptime monitor:** an outside service that regularly checks a site and alerts when it stops answering

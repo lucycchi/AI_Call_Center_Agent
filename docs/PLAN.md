@@ -80,7 +80,7 @@ The author can open the draft findings document (the top call reasons, the human
   - A merge row joining two template ids makes their calls share one id.
 - [ ] **Step 2: Run** `python -m pytest tests/pipeline/test_templates.py -v`. Expected: FAIL.
 - [ ] **Step 3: Implement.** Group on the normalised first substantive caller request (skip filler openings such as "sorry you cut out", "can you hear me", "sorry I'm driving") together with the normalised staff outcome lines; apply the reviewed merge list; write `data/templates.csv` (`call_id, template_id, template_calls`). Review the groups by eye and fill the merge list.
-- [ ] **Step 4: Run** the tests. Expected: PASS. Run `python -m pipeline.templates`; expect 70 to 120 templates.
+- [ ] **Step 4: Run** the tests. Expected: PASS. Run `python -m pipeline.templates`; expect about 52 templates in 43 families (the nine waitlist templates join their booking twins' families (template families (D39))). The earlier estimate of 70 to 120 was too high: two independent transcript checks (`docs/reviews/`) found no template needs splitting.
 - [ ] **Step 5: Commit** `feat: transcript loading and template grouping`.
 
 ### Task 3: Label call reasons with Haiku, Codex and Claude Fable 5.1
@@ -129,7 +129,7 @@ The author can open the draft findings document (the top call reasons, the human
 
 **Files:**
 - Create: `data/document_list.csv`, `data/conflict_register.csv`, `pipeline/convert.py`, `tests/pipeline/test_documents.py`
-- Output: `data/kb_text/` (one text file per searchable document), `data/kb_text/holiday_hours_2026.txt` (hand-checked)
+- Output: `data/kb_text/` (one text file per searchable document, rebuilt from scratch each run), with the hand-checked holiday transcription kept at `data/holiday_hours_2026.txt` and copied to `data/kb_text/policies__holiday_hours_2026.md`
 
 **Interfaces:**
 - Produces: `searchable_documents() -> list[Path]`, `internal_documents() -> list[Path]`, `convert_pdf_table(path) -> str`, `convert_price_book(path) -> str`.
@@ -194,10 +194,10 @@ def fuse(rankings: list[list[str]], k: int = 60) -> list[str]:
 
 **Interfaces:**
 - Consumes: templates (Task 2), labels (Task 3), chunks (Task 6).
-- Produces: `split_templates(templates, labels, seed=20261016) -> Split(working, held_out)`; test-case JSON (`case_id, template_id, calls_weight, caller_card, fixtures, expected_outcome, expected_handoff_reason, reference_answer, evidence_spans`); `freeze_hash(paths) -> str`; `apply_fixtures(db_path, fixtures)`.
+- Produces: `split_templates(templates, labels, seed=20261016) -> Split(working, held_out)`, assigning whole template families (template families (D39)); test-case JSON (`case_id, template_id, calls_weight, caller_card, fixtures, expected_outcome, expected_handoff_reason, reference_answer, evidence_spans`); `freeze_hash(paths) -> str`; `apply_fixtures(db_path, fixtures)`.
 
 - [ ] **Step 1: Write the failing tests.**
-  - No template id appears in both sets; every call reason with at least two templates appears in both.
+  - No template, and no template family, appears in both sets; every call reason with at least two families appears in both (hiring, commercial and wrong number each have a single template, so each sits on one side only).
   - `data/split_counts.csv` has, for each call reason, calls and templates for the whole corpus, the working set and the held-out set, and the columns add up to 420 calls.
   - `freeze_hash` changes when any byte of a held-out case changes.
   - A caller card for a north-zone standard member with a Trane system picks a database customer in a north city, tier `standard`, brand `Trane`; when none exists it adds a customer marked `"synthetic": true`.
@@ -655,7 +655,7 @@ The author can read the final numbers on the Results tab and in the README, and 
 - Modify: `README.md`
 - Create: `docs/VIDEO_OUTLINE.md`, `tests/test_repository.py`
 
-- [ ] **Step 1: Write the failing tests.** The README has sections "What it does", "Install", "Run", "Tests", "Evaluation", "Results", "Containment", "Executive findings", "Feedback loop", "Uptime monitoring" and "Rollback"; its containment numbers equal `data/results/final/summary.json`. The repository contains `data/document_list.csv`, `data/conflict_register.csv`, `data/testset/`, `data/labels.csv`, `eval/grader_prompt.md`, `data/results/final/verdicts.jsonl` and `data/results/final/summary.json`. No tracked file matches patterns for Anthropic keys (`sk-ant-`), OpenAI keys (`sk-`), Voyage keys (`pa-`), Fly tokens (`FlyV1`), webhook URLs with tokens, or the values of `REVIEWER_TOKEN`, `SESSION_SECRET` and `STAFF_PASSWORD_HASH` from the local `.env`. The video outline covers how the call drivers were found, why this chunking and retrieval, how handoff works and what the numbers say, in 3 to 4 minutes.
+- [ ] **Step 1: Write the failing tests.** The README has sections "What it does", "Install", "Run", "Tests", "Evaluation", "Results", "Containment", "Executive findings", "Feedback loop", "Uptime monitoring" and "Rollback"; its containment numbers equal `data/results/final/summary.json`. The repository contains `data/document_list.csv`, `data/conflict_register.csv`, `data/testset/`, `data/labels_haiku.csv`, `data/labels_codex.csv`, `data/labels_fable.csv`, `eval/grader_prompt.md`, `data/results/final/verdicts.jsonl` and `data/results/final/summary.json`. No tracked file matches patterns for Anthropic keys (`sk-ant-`), OpenAI keys (`sk-`), Voyage keys (`pa-`), Fly tokens (`FlyV1`), webhook URLs with tokens, or the values of `REVIEWER_TOKEN`, `SESSION_SECRET` and `STAFF_PASSWORD_HASH` from the local `.env`. The video outline covers how the call drivers were found, why this chunking and retrieval, how handoff works and what the numbers say, in 3 to 4 minutes.
 - [ ] **Step 2: Run** `python -m pytest tests/test_repository.py -v`. Expected: FAIL.
 - [ ] **Step 3: Write** the README for a junior software engineer and the outline.
 - [ ] **Step 4: Run** the full suite `python -m pytest`. Expected: PASS.

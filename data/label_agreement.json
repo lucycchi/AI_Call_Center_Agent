@@ -3,6 +3,7 @@
  "fable_vs_codex": 1.0,
  "fable_labels": 17,
  "human_labels": 0,
+ "fable_missing": [],
  "status": "final",
  "fable_vs_codex_sub_reason": 1.0,
  "disagreements": {

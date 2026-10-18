@@ -59,3 +59,34 @@ def test_merge_list_joins_two_templates(tmp_path):
     merges.write_text(f"from_template,to_template\n{first['B']},{first['A']}\n")
     merged = group_templates([a, b], merges)
     assert merged["A"] == merged["B"]
+
+
+def test_header_line_with_the_staff_name_is_not_read_as_something_staff_said():
+    calls = load_transcripts(DATA / "call_transcripts", DATA / "call_transcripts_index.csv")
+    first = next(c for c in calls if c.call_id == "CALL-20260902-0001")
+    assert first.agent_lines[0].startswith("Meridian Home Comfort, Tasha speaking")
+    assert all(line != "Tasha" for c in calls for line in c.agent_lines)
+
+
+def test_a_callers_name_inside_the_request_does_not_split_a_template(tmp_path):
+    a = make_call("A", ["Hi, this is Linda Foster, what's my current balance?"], ["You have an open balance of $245."])
+    b = make_call("B", ["Hi, this is Omar Patel, what's my current balance?"], ["You have an open balance of $312."])
+    groups = group_templates([a, b], tmp_path / "merges.csv")
+    assert groups["A"] == groups["B"]
+
+
+def test_a_waitlist_template_belongs_to_its_booking_twins_family(tmp_path):
+    from pipeline.templates import families
+
+    booked = make_call("A", ["My kitchen sink is backing up."], ["You're booked. The diagnostic fee is $89."])
+    waitlist = make_call("B", ["My kitchen sink is backing up.", "Can you do anything earlier?"],
+                         ["Unfortunately that's the earliest I have for a non-emergency. I can add you to the waitlist for cancellations.",
+                          "You're booked. The diagnostic fee is $89."])
+    other = make_call("C", ["What's my current balance?"], ["You have an open balance of $245."])
+    calls = [booked, waitlist, other]
+    groups = group_templates(calls, tmp_path / "merges.csv")
+    family = families(calls, groups)
+    assert groups["A"] != groups["B"]
+    assert family[groups["B"]] == groups["A"]
+    assert family[groups["A"]] == groups["A"]
+    assert family[groups["C"]] == groups["C"]

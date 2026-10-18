@@ -93,3 +93,66 @@ def test_emailing_an_invoice_copy_is_not_an_account_action():
     calls = [make("A", 60, ["What is this invoice for?"], ["It's the diagnostic fee plus the drain line clearing.",
                                                             "Absolutely, sending that to the email on file now."])]
     assert human_baseline(calls)["resolved_without_account_actions"] == 1
+
+
+def _section(text, heading):
+    start = text.index(heading)
+    rest = text[start + len(heading):]
+    return rest[: rest.index("\n## ")] if "\n## " in rest else rest
+
+
+def test_findings_are_written_provisionally_when_fable_labels_are_missing(tmp_path):
+    out = tmp_path / "FINDINGS.md"
+    write_findings(out, agreement={"codex_vs_haiku": 0.9, "fable_vs_codex": None, "fable_vs_codex_sub_reason": None,
+                                   "fable_labels": 0, "status": "provisional", "fable_missing": ["T1"]})
+    text = out.read_text()
+    assert "provisional" in text.lower()
+    assert "Perfect agreement" not in text
+
+
+def test_agreement_wording_follows_the_numbers(tmp_path):
+    out = tmp_path / "FINDINGS.md"
+    write_findings(out, agreement={"codex_vs_haiku": 0.96, "fable_vs_codex": 0.94, "fable_vs_codex_sub_reason": 0.88,
+                                   "fable_labels": 17, "status": "final", "fable_missing": []})
+    method = _section(out.read_text(), "## Method")
+    assert "96%" in method and "94%" in method and "88%" in method
+    assert "Perfect agreement" not in method
+
+
+def test_ranking_table_shows_the_top_five_and_the_rest_separately(tmp_path):
+    out = tmp_path / "FINDINGS.md"
+    write_findings(out)
+    text = out.read_text()
+    top = [line for line in _section(text, "## Top call reasons").splitlines() if line.startswith("| ") and line[2].isdigit()]
+    assert len(top) == 5
+    assert "## Other call reasons" in text
+
+
+def test_each_handed_off_sub_reason_says_why(tmp_path):
+    out = tmp_path / "FINDINGS.md"
+    write_findings(out)
+    scope = _section(out.read_text(), "## Agent scope")
+    burning = next(line for line in scope.splitlines() if "burning smell" in line)
+    assert "safety" in burning
+    refund = next(line for line in scope.splitlines() if "| refund |" in line)
+    assert "authority" in refund
+
+
+def test_baseline_states_what_it_counts_and_the_figure_without_dropped_bookings(tmp_path):
+    out = tmp_path / "FINDINGS.md"
+    write_findings(out)
+    baseline = _section(out.read_text(), "## Human baseline")
+    assert "waitlist" in baseline
+    assert "82%" in baseline
+
+
+def test_exactly_three_executive_findings_and_members_today_wording(tmp_path):
+    out = tmp_path / "FINDINGS.md"
+    write_findings(out)
+    text = out.read_text()
+    executive = _section(text, "## Executive findings")
+    assert executive.count("\n### ") == 3
+    assert "members today" in executive
+    mismatch_rows = [line for line in _section(text, "## Seeded appointments outside the customer's zone").splitlines()
+                     if line.startswith("| ") and line[2].isdigit()]
+    assert mismatch_rows

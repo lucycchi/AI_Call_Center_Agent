@@ -48,9 +48,12 @@ def normalise(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+NAME_PHRASES = re.compile(r"\b(this is|my name is) [a-z]+ [a-z]+\b ?")
+
+
 def request_of(call: Call) -> str:
     for line in call.customer_lines:
-        norm = normalise(line)
+        norm = NAME_PHRASES.sub(" ", normalise(line)).strip()
         if norm and not norm.startswith(FILLER_OPENINGS):
             for wrapper in WRAPPERS:
                 norm = re.sub(wrapper, " ", norm).strip()
@@ -87,20 +90,34 @@ def group_templates(calls: list[Call], merges: Path) -> dict[str, str]:
     return groups
 
 
+def families(calls: list[Call], groups: dict[str, str]) -> dict[str, str]:
+    """Each waitlist template belongs to the family of its booking twin (template families (D39));
+    every other template is its own family. Families stay on one side of the test split."""
+    by_key = {}
+    for call in calls:
+        by_key.setdefault((request_of(call), outcome_of(call)), groups[call.call_id])
+    family = {}
+    for (request, outcome), template in by_key.items():
+        twin = by_key.get((request, "booked")) if outcome == "waitlist" else None
+        family[template] = twin or template
+    return family
+
+
 def main() -> None:
     data = ROOT / "call_data"
     calls = load_transcripts(data / "call_transcripts", data / "call_transcripts_index.csv")
     groups = group_templates(calls, ROOT / "data" / "template_merges.csv")
     sizes = Counter(groups.values())
+    family = families(calls, groups)
     out = ROOT / "data" / "templates.csv"
     out.parent.mkdir(exist_ok=True)
     with out.open("w", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["call_id", "template_id", "template_calls", "request", "outcome"])
+        writer.writerow(["call_id", "template_id", "template_calls", "family", "request", "outcome"])
         for call in calls:
             template = groups[call.call_id]
-            writer.writerow([call.call_id, template, sizes[template], request_of(call), outcome_of(call)])
-    print(f"{len(calls)} calls in {len(sizes)} templates -> {out}")
+            writer.writerow([call.call_id, template, sizes[template], family[template], request_of(call), outcome_of(call)])
+    print(f"{len(calls)} calls in {len(sizes)} templates and {len(set(family.values()))} families -> {out}")
 
 
 if __name__ == "__main__":

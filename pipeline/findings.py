@@ -43,6 +43,17 @@ REASON_STATUS = {
 
 NOT_RESOLVED = {"safety", "callback", "redirect"}
 
+# Why a top-three sub-reason is handed off rather than handled.
+HANDOFF_WHY = {
+    "burning smell": "safety: a possible electrical fire, so a fixed safety reply and a priority handoff (burning smell decision (D19))",
+    "pay an invoice": "action on money: sending a payment link is in the action gap",
+    "autopay": "action on money: setting up autopay is in the action gap; no document covers it",
+    "cancel": "action on membership: turning off auto-renew is in the action gap",
+    "upgrade": "action on membership: an upgrade charges the customer, so it is in the action gap",
+    "quote dispute": "needs a human's authority: a disputed charge goes to a billing supervisor",
+    "refund": "needs a human's authority: refunds go to a billing supervisor",
+}
+
 # Actions on money or membership the agent will not take (the action gap, account lookups (D17)).
 ACCOUNT_ACTION = re.compile(r"payment link|secure link to add a card|auto-renew is off|you're upgraded", re.I)
 
@@ -100,14 +111,32 @@ def _invoice_patterns(db: sqlite3.Connection) -> dict:
             "member_charged_diagnostic": member_diag}
 
 
-def write_findings(path: Path) -> None:
+def _agreement_lines(agreement: dict) -> list[str]:
+    if agreement.get("status") != "final" or agreement.get("fable_vs_codex") is None:
+        missing = ", ".join(agreement.get("fable_missing", [])) or "all"
+        return [f"- **Agreement (provisional).** Codex against Haiku: {agreement['codex_vs_haiku']:.0%} of templates. "
+                f"The Claude Fable 5.1 check on the blind third is not complete yet (missing: {missing}); this document is "
+                "provisional until it is."]
+    lines = [f"- **Agreement.** Codex against Haiku: {agreement['codex_vs_haiku']:.0%} of templates. Fable against Codex on the blind "
+             f"third ({agreement['fable_labels']} templates): {agreement['fable_vs_codex']:.0%} on the call reason and "
+             f"{agreement['fable_vs_codex_sub_reason']:.0%} on the sub-reason. No human labeled the templates; the agreement is "
+             "between models from two companies."]
+    if agreement["codex_vs_haiku"] == 1 and agreement["fable_vs_codex"] == 1 and agreement["fable_vs_codex_sub_reason"] == 1:
+        lines.append("- **Why agreement is perfect.** It reflects how clean and repetitive these synthetic transcripts are, and "
+                     "should not be read as evidence that real calls are this easy to sort.")
+    return lines
+
+
+def write_findings(path: Path, agreement: dict | None = None) -> None:
     data = ROOT / "call_data"
     calls = load_transcripts(data / "call_transcripts", data / "call_transcripts_index.csv")
     templates = {r["call_id"]: r["template_id"] for r in csv.DictReader((ROOT / "data" / "templates.csv").open())}
+    families = {r["template_id"]: r["family"] for r in csv.DictReader((ROOT / "data" / "templates.csv").open())}
     codex = {r["template_id"]: (r["reason"], r["sub_reason"]) for r in csv.DictReader((ROOT / "data" / "labels_codex.csv").open())}
     reason = {c.call_id: codex[templates[c.call_id]][0] for c in calls}
     sub = {c.call_id: codex[templates[c.call_id]][1] for c in calls}
-    agreement = json.loads((ROOT / "data" / "label_agreement.json").read_text())
+    if agreement is None:
+        agreement = json.loads((ROOT / "data" / "label_agreement.json").read_text())
     db = sqlite3.connect(data / "scheduling_db" / "meridian_scheduling.sqlite")
     rows = rank_reasons(calls, reason)
     baseline = human_baseline(calls)
@@ -124,41 +153,49 @@ def write_findings(path: Path) -> None:
            "`python -m pipeline.findings` from the labeled data in `data/`.", "",
            "## Method", "",
            f"- **The transcripts are templated.** The 420 calls fall into {len(set(templates.values()))} templates: calls that share the "
-           "same request and the same staff outcome once names, numbers and filler words are removed. Labels are given per template.",
+           "same request and the same staff outcome once names, numbers and filler words are removed. Labels are given per template. "
+           f"Nine waitlist templates are the matching booking call plus one fixed waitlist exchange; each is linked to its booking twin as "
+           f"a family ({len(set(families.values()))} families), and families stay on one side of the test split (template families (D39)).",
            f"- **Labels.** Claude Haiku 5.5 labeled every call against a fixed category list. Codex ({next(iter(csv.DictReader((ROOT / 'data' / 'labels_codex.csv').open())))['model']}, OpenAI) "
            "labeled one sample call per template without seeing Haiku's labels; these Codex labels are the reference. Claude Fable 5.1 "
            "labeled a blind third of the templates as a cross-company check.",
-           f"- **Agreement.** Codex against Haiku: {agreement['codex_vs_haiku']:.0%} of templates. Fable against Codex on the blind third: "
-           f"{agreement['fable_vs_codex']:.0%} ({agreement['fable_labels']} templates), including sub-reasons. No human labeled the templates; "
-           "the agreement is between models from two companies. Perfect agreement reflects how clean and repetitive these synthetic "
-           "transcripts are, and should not be read as evidence that real calls are this easy to sort.",
+           *_agreement_lines(agreement),
            "- **Volume** is ranked by number of calls; staff minutes come from the call durations in the transcript index.", "",
            "## Top call reasons", "",
            "| Rank | Call reason | Calls | Share | Staff minutes | Running total | Handled or handed off | Reason |",
            "|---|---|---|---|---|---|---|---|"]
-    for rank, row in enumerate(rows, 1):
+    def table_row(rank, row):
         status, why = REASON_STATUS.get(row.reason, ("handed off", ""))
-        out.append(f"| {rank} | {row.reason} | {row.calls} | {row.share:.0%} | {row.minutes} | {row.running_total:.0%} | {status} | {why} |")
+        return f"| {rank} | {row.reason} | {row.calls} | {row.share:.0%} | {row.minutes} | {row.running_total:.0%} | {status} | {why} |"
+
+    out += [table_row(rank, row) for rank, row in enumerate(rows[:5], 1)]
+    out += ["", "## Other call reasons", "", "The remaining reasons, ranked the same way:", "",
+            "| Rank | Call reason | Calls | Share | Staff minutes | Running total | Handled or handed off | Reason |",
+            "|---|---|---|---|---|---|---|---|"]
+    out += [table_row(rank, row) for rank, row in enumerate(rows[5:], 6)]
     top3 = [r.reason for r in rows[:3]]
     out += ["", "## Observed top three", "", *[f"{i}. {r}" for i, r in enumerate(top3, 1)], "",
             "## Agent scope", "",
             "For each of the top three reasons, how its calls are handled (handled-reason list (D26)):", "",
-            "| Call reason | Sub-reason | Calls | How the agent handles it |", "|---|---|---|---|"]
+            "| Call reason | Sub-reason | Calls | How the agent handles it | Why, if handed off |", "|---|---|---|---|---|"]
     for top in top3:
         subs = Counter(sub[c.call_id] for c in calls if reason[c.call_id] == top)
         for s, count in subs.most_common():
-            out.append(f"| {top} | {s} | {count} | {HANDLING.get(s, 'handoff')} |")
+            how = HANDLING.get(s, "handoff")
+            out.append(f"| {top} | {s} | {count} | {how} | {HANDOFF_WHY.get(s, '') if how == 'handoff' else ''} |")
     totals = Counter(HANDLING.get(sub[c.call_id], "handoff") for c in calls if reason[c.call_id] in top3)
     out += ["", "Across the top three: " + ", ".join(f"{k} {v}" for k, v in totals.most_common()) +
-            ". Calls handed off within a top-three reason need a human's authority or an action on money or membership "
-            "(the action gap); they are raised with the PM as part of the open question on whether handing off part of a "
+            ". Each handed-off sub-reason gives its reason above; they are raised with the PM as part of the open question on whether handing off part of a "
             "top-three reason still counts as answering it.", "",
             "## Human baseline", "",
             f"- Staff resolved {baseline['resolved_on_call']} of {n} calls on the call ({_pct(baseline['resolved_on_call'], n)}).",
             f"- Excluding calls resolved only by an account action the agent will not take (payment links, autopay, cancelling "
             f"auto-renew, upgrades): {baseline['resolved_without_account_actions']} ({_pct(baseline['resolved_without_account_actions'], n)}). "
             "This is the fair comparison for the agent's containment.",
-            f"- In {baseline['dropped_bookings']} calls the caller asked to book and staff ended the call without booking.", "",
+            f"- In {baseline['dropped_bookings']} calls the caller asked to book and staff ended the call without booking.",
+            f"- These figures count waitlist calls (the caller was offered a waitlist and still booked) and dropped bookings as "
+            f"resolved. Excluding the dropped bookings, staff resolved {baseline['resolved_on_call'] - baseline['dropped_bookings']} "
+            f"({_pct(baseline['resolved_on_call'] - baseline['dropped_bookings'], n)}).", "",
             "## Executive findings", "",
             "### Staff policy errors", "",
             f"{error_calls} of {n} calls ({_pct(error_calls, n)}) contain a staff statement or action that contradicts the current documents:", ""]
@@ -181,7 +218,7 @@ def write_findings(path: Path) -> None:
             "scheduling database has none.",
             f"- **Diagnostic credit:** {invoices['diagnostic_plus_repair']} of {invoices['invoices']} invoices charge the $89 diagnostic fee "
             f"on top of a repair, although the FAQ says it is credited toward an approved repair, and {invoices['member_charged_diagnostic']} "
-            "charge it to members, for whom it is waived.", "",
+            "charge it to customers who are members today, for whom it is waived (the invoices do not record the tier at the time).", "",
             "## Seeded appointments outside the customer's zone", "",
             f"{len(mismatches)} scheduled appointments in the seeded database are in a zone that does not match the customer's city. "
             "The agent leaves existing appointments as recorded and applies the zone rule only to new bookings.", "",

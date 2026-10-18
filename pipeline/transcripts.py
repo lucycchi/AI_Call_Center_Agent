@@ -20,7 +20,10 @@ def load_transcripts(folder: Path, index_csv: Path) -> list[Call]:
     calls = []
     for path in sorted(folder.glob("CALL-*.txt")):
         customer, agent = [], []
-        for line in path.read_text().splitlines():
+        text = path.read_text()
+        # Skip the header (Call ID, Date, Agent: <staff name>, Duration, Direction), which ends at the first blank line.
+        body = text.split("\n\n", 1)[1] if "\n\n" in text else text
+        for line in body.splitlines():
             if line.startswith("Customer:"):
                 customer.append(line[len("Customer:"):].strip())
             elif line.startswith("Agent:"):

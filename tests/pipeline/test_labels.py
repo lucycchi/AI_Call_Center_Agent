@@ -142,3 +142,12 @@ def test_haiku_label_per_template_is_the_majority_of_its_calls():
     templates = {"C1": "T1", "C2": "T1", "C3": "T1", "C4": "T2"}
     haiku = {"C1": "billing", "C2": "billing", "C3": "membership", "C4": "warranty"}
     assert majority_by_template(templates, haiku) == {"T1": "billing", "T2": "warranty"}
+
+
+def test_agreement_is_final_only_when_every_blind_template_has_a_fable_label(tmp_path):
+    out = tmp_path / "agreement.json"
+    write_agreement(out, codex={"T1": "billing", "T2": "warranty"}, haiku_by_template={"T1": "billing", "T2": "warranty"},
+                    fable={"T1": "billing"}, blind_ids=["T1", "T2"])
+    result = json.loads(out.read_text())
+    assert result["status"] == "provisional"
+    assert result["fable_missing"] == ["T2"]

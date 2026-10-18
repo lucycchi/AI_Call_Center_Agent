@@ -6,7 +6,7 @@
 
 **The approach.** One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.
 
-**Where the project stands.** The intent (`docs/DESIGN.md`) and the specification (`docs/SPEC.md`, 83 numbered requirements) are approved, and the decisions are recorded in `docs/DECISIONS.md`; the technology stack is recorded as its own decision (technology stack (D35)). No code exists yet. This document describes how the system is built; the plan comes next.
+**Where the project stands.** The intent (`docs/DESIGN.md`), the specification (`docs/SPEC.md`, 86 numbered requirements), this architecture and the plan (`docs/PLAN.md`) are approved, with the decisions recorded in `docs/DECISIONS.md`; the technology stack is its own decision (technology stack (D35)). Milestone 1 of 6 is built: configuration and the agent-core interface, transcript templates and labels, the findings document (`docs/FINDINGS.md`), and the prepared documents. The later milestones are planned.
 
 ## 1. System overview
 
@@ -24,6 +24,7 @@ flowchart LR
     LAP["Offline toolkit on the author's laptop"] -->|"search index and seed data in each release"| APP
     UP["Outside uptime monitor"] -->|"checks the health endpoint"| APP
     LAP -->|"answers to grade, templates to label"| CDX["Codex with an OpenAI frontier model"]
+    LAP -->|"transcripts to label, offline"| ANT
 ```
 
 *The browser talks only to the web app; the app owns both databases and calls the AI services; the laptop toolkit prepares data and grades results offline; an outside monitor alerts the author if the app stops answering.*
@@ -55,6 +56,8 @@ flowchart TB
 6. The flow hands the writer the facts and a reply type.
 7. Each sentence is checked before release. If a sentence fails, generation stops, the sentences already shown stay, the rest becomes a handoff message with a ticket, and a "blocked" event is logged.
 8. Every step records events and model calls in the operations store.
+
+The engine guarantees exactly one done event, always last: if the pipeline stops without one it adds an "incomplete" done event, and if the pipeline raises it adds an "error" done event; the handoff flow turns both into a handoff message.
 
 | Part | What it does | Where its rules come from |
 |---|---|---|
@@ -108,9 +111,9 @@ erDiagram
         TEXT city "city, decides the zone"
         TEXT zip "postal code"
         TEXT membership_tier "none, standard or plus"
-        TEXT membership_renewal_date "date, empty if not a member"
+        TEXT membership_renewal_date "date written YYYY-MM-DD, empty if not a member"
         TEXT system_brand "equipment brand"
-        TEXT system_install_date "date the system was installed"
+        TEXT system_install_date "date installed, written YYYY-MM-DD"
     }
     TECHNICIANS {
         INTEGER tech_id PK "whole number, given automatically"
@@ -120,11 +123,11 @@ erDiagram
     }
     APPOINTMENT_SLOTS {
         INTEGER slot_id PK "whole number, given automatically"
-        TEXT slot_date "date of the slot"
+        TEXT slot_date "date of the slot, written YYYY-MM-DD"
         TEXT window "one of four time windows"
         INTEGER tech_id FK "the technician working it"
         TEXT zone "zone covered that day"
-        TEXT service_type "repair, tune-up, plumbing or estimate"
+        TEXT service_type "hvac_repair, hvac_tune_up, plumbing or estimate"
         TEXT status "open, booked, reserved_members or blocked"
     }
     APPOINTMENTS {
@@ -132,7 +135,7 @@ erDiagram
         INTEGER slot_id FK "the slot booked"
         TEXT customer_id FK "who booked it"
         TEXT issue_description "caller's issue, unreliable in the seed"
-        TEXT created_at "when it was booked, the fixed now for new rows"
+        TEXT created_at "when booked; seeded rows hold a date only, new rows the fixed now"
         TEXT status "scheduled, completed, cancelled or no_show"
         INTEGER is_warranty_visit "1 means no diagnostic fee"
     }
@@ -140,8 +143,8 @@ erDiagram
         TEXT invoice_id PK "invoice number, e.g. INV-204411"
         TEXT customer_id FK "who is billed"
         INTEGER appointment_id FK "visit billed, may be empty"
-        TEXT issued_date "date issued"
-        TEXT due_date "date due"
+        TEXT issued_date "date issued, written YYYY-MM-DD"
+        TEXT due_date "date due, written YYYY-MM-DD"
         INTEGER amount_cents "total in cents"
         INTEGER balance_cents "unpaid amount in cents, 0 means paid"
         TEXT line_items "list of description and cents pairs"
@@ -611,7 +614,8 @@ flowchart LR
     CALLER -->|"text plus facts chosen by code"| ANT["Anthropic"]
     CALLER -->|"question text only"| VOY["Voyage AI"]
     LOG -->|"answers and references, offline"| CDX["Codex, OpenAI"]
-    TR["Transcripts"] -->|"template text, offline"| CDX
+    TR["Transcripts"] -->|"one full sample call per template, offline"| CDX
+    TR -->|"caller lines for labeling, offline"| ANT
     KB["Current documents"] -->|"section text, offline"| VOY
 ```
 
@@ -674,6 +678,7 @@ flowchart TB
     CORE -->|"records to"| OPS["ops: logs, limits, alerts, jobs"]
     EVAL["eval: harness, simulator, grader"] -->|"drives"| CORE
     PIPE["pipeline: templates, labels, index, findings"] -->|"produces data for"| KNOW
+    PIPE -->|"uses the zone map and settings"| SCHED
 ```
 
 *Every package depends on the core only through plain function calls; the offline evaluation drives the same core the web uses.*
@@ -691,9 +696,9 @@ flowchart TB
 | `app/replies/` | Sonnet writer, reply types, sentence checks, internal-text match |
 | `app/ops/` | Operations database, logging and masking, spending and rate limits, alerts, nightly reset, purge |
 | `app/config.py` | Pinned model IDs, fixed "now", thresholds and limits |
-| `pipeline/` | Template grouping, labeling sheets, Codex labeling, document list, conflict register, index build, and the findings document `docs/FINDINGS.md` (ranking table, human baselines, scope lists, executive findings) |
+| `pipeline/` | Transcript loading and template grouping (with families), Haiku, Codex and Fable labeling and the blind-third sheet, label agreement, staff policy-error checks, zone capacity counts, the document list, conflict register and format conversion, index build, and the findings document `docs/FINDINGS.md`; it uses the app's zone map (`app/scheduling/zones.py`) and settings |
 | `eval/` | Test-set builder (caller cards, fixtures), simulator, Codex grader, metrics and reports |
-| `data/` | Document list, conflict register, built index, labels, test set, results |
+| `data/` | Document list, conflict register, converted documents (`data/kb_text/`), the hand transcription of the holiday-hours image, templates, labels, built index, test set, results |
 | `tests/` | Unit and flow tests run by `python -m pytest` |
 
 ## 13. Evaluation files
@@ -702,8 +707,10 @@ The test evidence is kept as versioned files in `data/`, so held-out isolation a
 
 | File | What it holds |
 |---|---|
-| `data/templates.csv` | Each transcript's template id, the template's call count, and the reviewed merge list |
-| `data/labels.csv` | Haiku's, Codex's and the author's call reason per template, with the Codex model name |
+| `data/templates.csv` | Each call's template id, the template's call count, its family (a waitlist template shares its booking twin's family (template families (D39))), the normalised request and the staff outcome |
+| `data/template_merges.csv` | The reviewed merge list |
+| `data/labels_haiku.csv`, `data/labels_codex.csv`, `data/labels_fable.csv` | Haiku's call reason per call; Codex's per template (the reference) and Claude Fable 5.1's for the blind third (blind third labeled by Claude Fable 5.1 (D38)), each with its model name |
+| `data/label_agreement.json` | Codex against Haiku and Fable against Codex, with any disagreements |
 | `data/split.json` | The random seed, the working and held-out template lists, and a hash of the held-out test cases recorded when they were frozen |
 | `data/testset/<case>.json` | One test case: template, caller card, fixtures, expected outcome, expected handoff reason, reference answer and its document line spans |
 | `data/results/<run>/attempts.jsonl` | One line per attempt: case, attempt number, first-run flag, conversation, database checks, model ids and settings, grader verdict and grader model |

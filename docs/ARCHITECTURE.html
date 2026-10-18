@@ -50,7 +50,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <h2>Summary</h2>
 <p><strong>The problem.</strong> Meridian Home Comfort, a fictional heating, cooling and plumbing company in the Austin area, cannot keep up with its calls. The challenge (<code>docs/PRD.md</code>) is to build, in four working days, a chat agent at a public web address that answers routine calls from the company's documents, reads callers' accounts, books and changes appointments in a provided SQLite database, hands everything else to a human with full context, and proves its performance with numbers measured on held-out data.</p>
 <p><strong>The approach.</strong> One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.</p>
-<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>) and the specification (<code>docs/SPEC.md</code>, 83 numbered requirements) are approved, and the decisions are recorded in <code>docs/DECISIONS.md</code>; the technology stack is recorded as its own decision (technology stack (D35)). No code exists yet. This document describes how the system is built; the plan comes next.</p>
+<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestone 1 of 6 is built: configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>), and the prepared documents. The later milestones are planned.</p>
 <h2>1. System overview</h2>
 <p>The system has three kinds of user (the reviewer or a caller, the author, and staff using the shared password), one web application, two databases on one disk, three outside AI services, and an offline toolkit on the author's laptop.</p>
 <pre class="mermaid">flowchart LR
@@ -63,7 +63,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     APP --&gt;|"alert text"| ALERT["Alert webhook to the author"]
     LAP["Offline toolkit on the author's laptop"] --&gt;|"search index and seed data in each release"| APP
     UP["Outside uptime monitor"] --&gt;|"checks the health endpoint"| APP
-    LAP --&gt;|"answers to grade, templates to label"| CDX["Codex with an OpenAI frontier model"]</pre>
+    LAP --&gt;|"answers to grade, templates to label"| CDX["Codex with an OpenAI frontier model"]
+    LAP --&gt;|"transcripts to label, offline"| ANT</pre>
 <p><em>The browser talks only to the web app; the app owns both databases and calls the AI services; the laptop toolkit prepares data and grades results offline; an outside monitor alerts the author if the app stops answering.</em></p>
 <h2>2. Main parts</h2>
 <pre class="mermaid">flowchart TB
@@ -89,6 +90,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>Each sentence is checked before release. If a sentence fails, generation stops, the sentences already shown stay, the rest becomes a handoff message with a ticket, and a "blocked" event is logged.</li>
 <li>Every step records events and model calls in the operations store.</li>
 </ol>
+<p>The engine guarantees exactly one done event, always last: if the pipeline stops without one it adds an "incomplete" done event, and if the pipeline raises it adds an "error" done event; the handoff flow turns both into a handoff message.</p>
 <table>
 <thead><tr><th>Part</th><th>What it does</th><th>Where its rules come from</th></tr></thead>
 <tbody>
@@ -139,9 +141,9 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT city "city, decides the zone"
         TEXT zip "postal code"
         TEXT membership_tier "none, standard or plus"
-        TEXT membership_renewal_date "date, empty if not a member"
+        TEXT membership_renewal_date "date written YYYY-MM-DD, empty if not a member"
         TEXT system_brand "equipment brand"
-        TEXT system_install_date "date the system was installed"
+        TEXT system_install_date "date installed, written YYYY-MM-DD"
     }
     TECHNICIANS {
         INTEGER tech_id PK "whole number, given automatically"
@@ -151,11 +153,11 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     }
     APPOINTMENT_SLOTS {
         INTEGER slot_id PK "whole number, given automatically"
-        TEXT slot_date "date of the slot"
+        TEXT slot_date "date of the slot, written YYYY-MM-DD"
         TEXT window "one of four time windows"
         INTEGER tech_id FK "the technician working it"
         TEXT zone "zone covered that day"
-        TEXT service_type "repair, tune-up, plumbing or estimate"
+        TEXT service_type "hvac_repair, hvac_tune_up, plumbing or estimate"
         TEXT status "open, booked, reserved_members or blocked"
     }
     APPOINTMENTS {
@@ -163,7 +165,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         INTEGER slot_id FK "the slot booked"
         TEXT customer_id FK "who booked it"
         TEXT issue_description "caller's issue, unreliable in the seed"
-        TEXT created_at "when it was booked, the fixed now for new rows"
+        TEXT created_at "when booked; seeded rows hold a date only, new rows the fixed now"
         TEXT status "scheduled, completed, cancelled or no_show"
         INTEGER is_warranty_visit "1 means no diagnostic fee"
     }
@@ -171,8 +173,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT invoice_id PK "invoice number, e.g. INV-204411"
         TEXT customer_id FK "who is billed"
         INTEGER appointment_id FK "visit billed, may be empty"
-        TEXT issued_date "date issued"
-        TEXT due_date "date due"
+        TEXT issued_date "date issued, written YYYY-MM-DD"
+        TEXT due_date "date due, written YYYY-MM-DD"
         INTEGER amount_cents "total in cents"
         INTEGER balance_cents "unpaid amount in cents, 0 means paid"
         TEXT line_items "list of description and cents pairs"
@@ -571,7 +573,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     CALLER --&gt;|"text plus facts chosen by code"| ANT["Anthropic"]
     CALLER --&gt;|"question text only"| VOY["Voyage AI"]
     LOG --&gt;|"answers and references, offline"| CDX["Codex, OpenAI"]
-    TR["Transcripts"] --&gt;|"template text, offline"| CDX
+    TR["Transcripts"] --&gt;|"one full sample call per template, offline"| CDX
+    TR --&gt;|"caller lines for labeling, offline"| ANT
     KB["Current documents"] --&gt;|"section text, offline"| VOY</pre>
 <p><em>What leaves the app: Anthropic sees the conversation and the facts code selected; Voyage sees questions and document sections; Codex sees transcripts and graded answers offline; logs keep only masked text.</em></p>
 <p>Anthropic receives the caller's own text (needed to understand and identify them) plus facts chosen by code; it never receives internal documents as written or database rows a flow does not need. All customer data is synthetic, but the habits are production ones: internal documents are never sent as written (only paraphrased rules), the model never receives database rows beyond the facts a flow needs, logs are masked and purged after 30 days, and keys live only in <code>.env</code> locally and Fly.io secrets in production.</p>
@@ -617,7 +620,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     CORE --&gt;|"calls"| REPLY["replies: writer and checks"]
     CORE --&gt;|"records to"| OPS["ops: logs, limits, alerts, jobs"]
     EVAL["eval: harness, simulator, grader"] --&gt;|"drives"| CORE
-    PIPE["pipeline: templates, labels, index, findings"] --&gt;|"produces data for"| KNOW</pre>
+    PIPE["pipeline: templates, labels, index, findings"] --&gt;|"produces data for"| KNOW
+    PIPE --&gt;|"uses the zone map and settings"| SCHED</pre>
 <p><em>Every package depends on the core only through plain function calls; the offline evaluation drives the same core the web uses.</em></p>
 <table>
 <thead><tr><th>Folder</th><th>Contents</th></tr></thead>
@@ -633,9 +637,9 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>app/replies/</code></td><td>Sonnet writer, reply types, sentence checks, internal-text match</td></tr>
 <tr><td><code>app/ops/</code></td><td>Operations database, logging and masking, spending and rate limits, alerts, nightly reset, purge</td></tr>
 <tr><td><code>app/config.py</code></td><td>Pinned model IDs, fixed "now", thresholds and limits</td></tr>
-<tr><td><code>pipeline/</code></td><td>Template grouping, labeling sheets, Codex labeling, document list, conflict register, index build, and the findings document <code>docs/FINDINGS.md</code> (ranking table, human baselines, scope lists, executive findings)</td></tr>
+<tr><td><code>pipeline/</code></td><td>Transcript loading and template grouping (with families), Haiku, Codex and Fable labeling and the blind-third sheet, label agreement, staff policy-error checks, zone capacity counts, the document list, conflict register and format conversion, index build, and the findings document <code>docs/FINDINGS.md</code>; it uses the app's zone map (<code>app/scheduling/zones.py</code>) and settings</td></tr>
 <tr><td><code>eval/</code></td><td>Test-set builder (caller cards, fixtures), simulator, Codex grader, metrics and reports</td></tr>
-<tr><td><code>data/</code></td><td>Document list, conflict register, built index, labels, test set, results</td></tr>
+<tr><td><code>data/</code></td><td>Document list, conflict register, converted documents (<code>data/kb_text/</code>), the hand transcription of the holiday-hours image, templates, labels, built index, test set, results</td></tr>
 <tr><td><code>tests/</code></td><td>Unit and flow tests run by <code>python -m pytest</code></td></tr>
 </tbody>
 </table>
@@ -644,8 +648,10 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <table>
 <thead><tr><th>File</th><th>What it holds</th></tr></thead>
 <tbody>
-<tr><td><code>data/templates.csv</code></td><td>Each transcript's template id, the template's call count, and the reviewed merge list</td></tr>
-<tr><td><code>data/labels.csv</code></td><td>Haiku's, Codex's and the author's call reason per template, with the Codex model name</td></tr>
+<tr><td><code>data/templates.csv</code></td><td>Each call's template id, the template's call count, its family (a waitlist template shares its booking twin's family (template families (D39))), the normalised request and the staff outcome</td></tr>
+<tr><td><code>data/template_merges.csv</code></td><td>The reviewed merge list</td></tr>
+<tr><td><code>data/labels_haiku.csv</code>, <code>data/labels_codex.csv</code>, <code>data/labels_fable.csv</code></td><td>Haiku's call reason per call; Codex's per template (the reference) and Claude Fable 5.1's for the blind third (blind third labeled by Claude Fable 5.1 (D38)), each with its model name</td></tr>
+<tr><td><code>data/label_agreement.json</code></td><td>Codex against Haiku and Fable against Codex, with any disagreements</td></tr>
 <tr><td><code>data/split.json</code></td><td>The random seed, the working and held-out template lists, and a hash of the held-out test cases recorded when they were frozen</td></tr>
 <tr><td><code>data/testset/&lt;case&gt;.json</code></td><td>One test case: template, caller card, fixtures, expected outcome, expected handoff reason, reference answer and its document line spans</td></tr>
 <tr><td><code>data/results/&lt;run&gt;/attempts.jsonl</code></td><td>One line per attempt: case, attempt number, first-run flag, conversation, database checks, model ids and settings, grader verdict and grader model</td></tr>

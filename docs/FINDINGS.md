@@ -4,9 +4,10 @@ What the 420 call transcripts (July to September 2026) show about why customers 
 
 ## Method
 
-- **The transcripts are templated.** The 420 calls fall into 52 templates: calls that share the same request and the same staff outcome once names, numbers and filler words are removed. Labels are given per template.
+- **The transcripts are templated.** The 420 calls fall into 52 templates: calls that share the same request and the same staff outcome once names, numbers and filler words are removed. Labels are given per template. Nine waitlist templates are the matching booking call plus one fixed waitlist exchange; each is linked to its booking twin as a family (43 families), and families stay on one side of the test split (template families (D39)).
 - **Labels.** Claude Haiku 5.5 labeled every call against a fixed category list. Codex (gpt-6.1-sol, OpenAI) labeled one sample call per template without seeing Haiku's labels; these Codex labels are the reference. Claude Fable 5.1 labeled a blind third of the templates as a cross-company check.
-- **Agreement.** Codex against Haiku: 100% of templates. Fable against Codex on the blind third: 100% (17 templates), including sub-reasons. No human labeled the templates; the agreement is between models from two companies. Perfect agreement reflects how clean and repetitive these synthetic transcripts are, and should not be read as evidence that real calls are this easy to sort.
+- **Agreement.** Codex against Haiku: 100% of templates. Fable against Codex on the blind third (17 templates): 100% on the call reason and 100% on the sub-reason. No human labeled the templates; the agreement is between models from two companies.
+- **Why agreement is perfect.** It reflects how clean and repetitive these synthetic transcripts are, and should not be read as evidence that real calls are this easy to sort.
 - **Volume** is ranked by number of calls; staff minutes come from the call durations in the transcript index.
 
 ## Top call reasons
@@ -18,6 +19,13 @@ What the 420 call transcripts (July to September 2026) show about why customers 
 | 3 | membership | 71 | 17% | 117.9 | 68% | partly handled | Plan details from documents, renewal dates from lookups; autopay, cancelling and upgrades handed off |
 | 4 | warranty | 45 | 11% | 74.8 | 78% | handled | Coverage from documents and the install-date lookup; claims booked |
 | 5 | existing appointment | 38 | 9% | 58.7 | 87% | handled | Confirm, cancel and reschedule in the database; late technicians handed off |
+
+## Other call reasons
+
+The remaining reasons, ranked the same way:
+
+| Rank | Call reason | Calls | Share | Staff minutes | Running total | Handled or handed off | Reason |
+|---|---|---|---|---|---|---|---|
 | 6 | complaint or manager | 16 | 4% | 25.6 | 91% | handed off | Needs a human's authority |
 | 7 | replacement estimate | 12 | 3% | 22.5 | 94% | handled | Estimates are a bookable service |
 | 8 | safety emergency | 9 | 2% | 13.1 | 96% | handed off | Fixed safety reply, then a priority handoff |
@@ -35,32 +43,33 @@ What the 420 call transcripts (July to September 2026) show about why customers 
 
 For each of the top three reasons, how its calls are handled (handled-reason list (D26)):
 
-| Call reason | Sub-reason | Calls | How the agent handles it |
-|---|---|---|---|
-| new booking | hvac repair | 79 | booking |
-| new booking | plumbing | 25 | booking |
-| new booking | burning smell | 16 | handoff |
-| new booking | tune-up | 16 | booking |
-| billing | quote dispute | 16 | handoff |
-| billing | current balance | 15 | lookups |
-| billing | pay an invoice | 14 | handoff |
-| billing | what an invoice is for | 13 | lookups |
-| billing | charged twice | 11 | documents |
-| billing | refund | 8 | handoff |
-| membership | what it includes or price | 20 | documents |
-| membership | renewal date | 14 | lookups |
-| membership | autopay | 14 | handoff |
-| membership | cancel | 13 | handoff |
-| membership | upgrade | 6 | handoff |
-| membership | member discount on a new system | 4 | documents |
+| Call reason | Sub-reason | Calls | How the agent handles it | Why, if handed off |
+|---|---|---|---|---|
+| new booking | hvac repair | 79 | booking |  |
+| new booking | plumbing | 25 | booking |  |
+| new booking | burning smell | 16 | handoff | safety: a possible electrical fire, so a fixed safety reply and a priority handoff (burning smell decision (D19)) |
+| new booking | tune-up | 16 | booking |  |
+| billing | quote dispute | 16 | handoff | needs a human's authority: a disputed charge goes to a billing supervisor |
+| billing | current balance | 15 | lookups |  |
+| billing | pay an invoice | 14 | handoff | action on money: sending a payment link is in the action gap |
+| billing | what an invoice is for | 13 | lookups |  |
+| billing | charged twice | 11 | documents |  |
+| billing | refund | 8 | handoff | needs a human's authority: refunds go to a billing supervisor |
+| membership | what it includes or price | 20 | documents |  |
+| membership | renewal date | 14 | lookups |  |
+| membership | autopay | 14 | handoff | action on money: setting up autopay is in the action gap; no document covers it |
+| membership | cancel | 13 | handoff | action on membership: turning off auto-renew is in the action gap |
+| membership | upgrade | 6 | handoff | action on membership: an upgrade charges the customer, so it is in the action gap |
+| membership | member discount on a new system | 4 | documents |  |
 
-Across the top three: booking 120, handoff 87, lookups 42, documents 35. Calls handed off within a top-three reason need a human's authority or an action on money or membership (the action gap); they are raised with the PM as part of the open question on whether handing off part of a top-three reason still counts as answering it.
+Across the top three: booking 120, handoff 87, lookups 42, documents 35. Each handed-off sub-reason gives its reason above; they are raised with the PM as part of the open question on whether handing off part of a top-three reason still counts as answering it.
 
 ## Human baseline
 
 - Staff resolved 355 of 420 calls on the call (85%).
 - Excluding calls resolved only by an account action the agent will not take (payment links, autopay, cancelling auto-renew, upgrades): 308 (73%). This is the fair comparison for the agent's containment.
 - In 11 calls the caller asked to book and staff ended the call without booking.
+- These figures count waitlist calls (the caller was offered a waitlist and still booked) and dropped bookings as resolved. Excluding the dropped bookings, staff resolved 344 (82%).
 
 ## Executive findings
 
@@ -92,7 +101,7 @@ The north zone has 70% of customers but 31% of bookable slots and no plumbing sl
 
 - **Autopay:** 14 calls ask about it; no document covers it.
 - **Waitlist:** staff offered a waitlist in 34 calls; only a stale 2024 guide mentions one and the scheduling database has none.
-- **Diagnostic credit:** 45 of 81 invoices charge the $89 diagnostic fee on top of a repair, although the FAQ says it is credited toward an approved repair, and 22 charge it to members, for whom it is waived.
+- **Diagnostic credit:** 45 of 81 invoices charge the $89 diagnostic fee on top of a repair, although the FAQ says it is credited toward an approved repair, and 22 charge it to customers who are members today, for whom it is waived (the invoices do not record the tier at the time).
 
 ## Seeded appointments outside the customer's zone
 

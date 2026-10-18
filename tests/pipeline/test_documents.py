@@ -63,3 +63,13 @@ def test_conflict_register_has_a_row_for_every_conflicting_fact():
     assert all(r["winner"] and r["reason"] for r in rows)
     service_area = next(r for r in rows if r["fact"] == "service area")
     assert service_area["winner"] == "policies/service_area.md"
+
+
+def test_conversion_removes_outputs_for_documents_no_longer_searchable(tmp_path):
+    from pipeline.convert import main
+
+    stale = tmp_path / "archive__old_notes.md"
+    stale.write_text("old $79 fee")
+    main(out=tmp_path)
+    assert not stale.exists()
+    assert (tmp_path / "faq__customer_faq.md").exists()

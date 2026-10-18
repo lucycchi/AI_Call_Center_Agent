@@ -34,20 +34,36 @@ class Settings:
     eval_run_cap_usd: float
     eval_max_caller_turns: int
     eval_conversation_seconds: int
+    visitor_messages_per_10_min: int
+    visitor_messages_per_day: int
+    site_messages_per_minute: int
+    router_max_tokens: int
+    eval_writer_max_tokens: int
+    eval_simulator_max_tokens: int
+    eval_retries: int
 
 
-def _load() -> Settings:
-    data = Path(os.environ.get("DATA_DIR", ROOT / "data"))
+def _path(name: str, default: Path) -> Path:
+    """Relative paths in the environment are read from the project folder, not the working directory."""
+    value = Path(os.environ.get(name, default))
+    return value if value.is_absolute() else ROOT / value
+
+
+def load_settings() -> Settings:
+    data = _path("DATA_DIR", ROOT / "data")
     seed = ROOT / "call_data" / "scheduling_db" / "meridian_scheduling.sqlite"
+    live = _path("DATABASE_PATH", data / "scheduling.sqlite")
+    if live.resolve() == seed.resolve():
+        raise ValueError(f"DATABASE_PATH must not be the read-only seed file {seed}; use data/scheduling.sqlite")
     return Settings(
         now=datetime(2026, 10, 16, 9, 0, tzinfo=AUSTIN),
-        router_model=os.environ.get("ROUTER_MODEL", "claude-haiku-5-5"),
-        writer_model=os.environ.get("AGENT_MODEL", "claude-sonnet-5-5"),
-        scheduling_db_path=Path(os.environ.get("DATABASE_PATH", data / "scheduling.sqlite")),
+        router_model="claude-haiku-5-5",
+        writer_model="claude-sonnet-5-5",
+        scheduling_db_path=live,
         seed_db_path=seed,
-        ops_db_path=Path(os.environ.get("OPS_DATABASE_PATH", data / "operations.sqlite")),
+        ops_db_path=_path("OPS_DATABASE_PATH", data / "operations.sqlite"),
         per_visitor_daily_usd=_float("PER_VISITOR_DAILY_USD", 0.40),
-        site_daily_usd=_float("DAILY_SPEND_CAP_USD", 10.0),
+        site_daily_usd=_float("SITE_DAILY_USD", 10.0),
         reviewer_daily_usd=_float("REVIEWER_DAILY_USD", 3.0),
         spend_alert_usd=_float("SPEND_ALERT_USD", 5.0),
         anthropic_timeout_s=20,
@@ -57,10 +73,17 @@ def _load() -> Settings:
         eval_run_cap_usd=_float("EVAL_RUN_CAP_USD", 8.0),
         eval_max_caller_turns=12,
         eval_conversation_seconds=60,
+        visitor_messages_per_10_min=20,
+        visitor_messages_per_day=100,
+        site_messages_per_minute=60,
+        router_max_tokens=200,
+        eval_writer_max_tokens=800,
+        eval_simulator_max_tokens=300,
+        eval_retries=1,
     )
 
 
-SETTINGS = _load()
+SETTINGS = load_settings()
 
 
 def real_now() -> datetime:
