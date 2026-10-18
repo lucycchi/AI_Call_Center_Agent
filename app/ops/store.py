@@ -67,6 +67,11 @@ class OpsStore:
     def log_agent_message(self, message_id: int, text: str) -> None:
         self._write("update messages set text_masked = ? where message_id = ?", (mask(text), message_id))
 
+    def set_reply_stats(self, message_id: int, first_sentence_ms: int | None, full_reply_ms: int,
+                        cost_microdollars: int) -> None:
+        self._write("update messages set first_sentence_ms = ?, full_reply_ms = ?, cost_microdollars = ? "
+                    "where message_id = ?", (first_sentence_ms, full_reply_ms, cost_microdollars, message_id))
+
     def log_message(self, conversation_id: str, role: str, text: str, request_id: str | None = None) -> int:
         now = self._now()
         message_id = self._write("insert into messages (conversation_id, role, text_masked, created_at, request_id) "

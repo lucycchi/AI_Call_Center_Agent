@@ -6,12 +6,14 @@ the turn ends with one DoneEvent saying what happened."""
 import logging
 import re
 import sqlite3
+import time
 from collections.abc import Callable, Iterator
 from datetime import datetime
 from pathlib import Path
 
 from app.accounts.lookups import read_only
 from app.config import SETTINGS, real_now
+from app.core.model_log import SINK
 from app.core.state import ConversationState
 from app.core.types import DoneEvent, Event, SentenceEvent, Turn
 from app.flows import scheduling
@@ -37,6 +39,19 @@ HANDOFF_TAGS = {"dispute": "dispute", "complaint": "complaint", "late technician
 SAFETY_TAGS = {"danger": "emergency", "burning": "burning smell", "urgent": "emergency"}
 ANGRY = re.compile(r"\b(ridiculous|unacceptable|furious|angry|done with|worst|terrible|sick of)\b|!{2,}", re.I)
 OFFER_RETURN = "Offer to return to the booking afterwards."
+NEW_CUSTOMER = re.compile(r"\b(i'?m new|i am new|new customer|first time (calling|customer)|don'?t have an account)\b", re.I)
+# A bare acknowledgement or goodbye with nothing in progress needs no routing.
+ACKNOWLEDGEMENT = re.compile(r"^\W*(yes|yeah|yep|ok|okay|thanks|thank you|great|perfect|got it|cool|nope|no)"
+                             r"(\W+(that'?s (it|all|everything)|thanks|thank you( so much)?))*\W*$", re.I)
+ANYTHING_ELSE = "Is there anything else I can help you with?"
+
+
+def _decline_sentence(reason: str, city: str, service: str) -> str:
+    if reason == "served area without a scheduling zone":
+        return f"{city} is in our service area, but I can't book visits there from this chat."
+    if reason == "outside the service area":
+        return f"I'm sorry, {city} is outside our service area."
+    return f"I'm sorry, there's no {service} availability for your area in the next three weeks."
 
 
 def _mood(text: str) -> str:
@@ -54,6 +69,25 @@ class AgentPipeline:
 
     # -- one turn ---------------------------------------------------------------------------------------
     def run(self, turn: Turn) -> Iterator[Event]:
+        started = time.monotonic()
+        spent = [0]
+        first_ms: list[int] = []
+        agent_ref: list[int | None] = [None]  # the agent reply this turn's model calls belong to
+
+        def record(purpose, model_id, sdk_version, settings, input_tokens, output_tokens, ms, microdollars):
+            spent[0] += microdollars
+            self.store.log_model_call(agent_ref[0], purpose, model_id, sdk_version, settings, input_tokens, output_tokens,
+                                      ms, microdollars)
+        token = SINK.set(record)
+        try:
+            yield from self._turn(turn, started, spent, first_ms, lambda m: agent_ref.__setitem__(0, m))
+        finally:
+            SINK.reset(token)
+            if agent_ref[0] is not None:
+                self.store.set_reply_stats(agent_ref[0], first_ms[0] if first_ms else None,
+                                           round((time.monotonic() - started) * 1000), spent[0])
+
+    def _turn(self, turn: Turn, started: float, spent: list, first_ms: list, remember) -> Iterator[Event]:
         self.store.close_idle()
         row = self.store.conversation(turn.conversation_id)
         if row and row["status"] == "closed":
@@ -66,10 +100,13 @@ class AgentPipeline:
         if state.ticket_id:
             add_to_open_ticket({"store": self.store, "ticket_id": state.ticket_id}, caller_message)
         agent_message = self.store.log_message(turn.conversation_id, "agent", "")
+        remember(agent_message)
         turn_tickets: list[int] = []
         released: list[str] = []
 
         def emit(sentence: str) -> SentenceEvent:
+            if not first_ms:
+                first_ms.append(round((time.monotonic() - started) * 1000))
             released.append(sentence)
             self.store.log_sentence(agent_message, sentence)
             return SentenceEvent(sentence)
@@ -105,6 +142,10 @@ class AgentPipeline:
             yield emit(LIMIT)
             yield finish("limit", "limit", {"limit": limit}, [])
             return
+        if not state.active_flow and ACKNOWLEDGEMENT.match(turn.text):
+            yield emit(ANYTHING_ELSE)
+            yield finish("none", "answered", {"safety": "clear"}, [])
+            return
         # 3. Route, keeping follow-ups inside an active flow (R38, R40).
         history = self.store.history(turn.conversation_id)
         routed = self._route(turn.text, history)
@@ -124,10 +165,10 @@ class AgentPipeline:
                 fixed += result.facts
                 outcome = "redirect" if outcome == "answered" else outcome
             elif result.handoff_reason:
-                handoffs.append((result.handoff_reason, " ".join(result.facts) if result.reply_type == "decline" else "",
+                if result.reply_type == "decline":
+                    fixed.append(_decline_sentence(*result.facts))
+                handoffs.append((result.handoff_reason, result.facts[0] if result.reply_type == "decline" else "",
                                  request.text))
-                if result.handoff_reason == "decline":
-                    outcome = "declined"
             else:
                 written.append(result)
         if offer_return and written:
@@ -213,6 +254,9 @@ class AgentPipeline:
                     customer, state.customer_id = found, found.customer_id
                     state.who = f"{found.name}, {found.customer_id}"
                     state.id_attempts = 0
+                elif NEW_CUSTOMER.search(text):
+                    state.flow, state.active_flow, state.pending = {}, None, []
+                    return FlowResult([], "handoff", handoff_reason="new customer")
                 elif has_identifier(text):
                     state.id_attempts += 1
                     if state.id_attempts >= 2:

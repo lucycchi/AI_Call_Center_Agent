@@ -1,5 +1,7 @@
 """Account questions for an identified caller, from read-only lookups (R46, R47)."""
 
+from datetime import date
+
 from app.accounts.fee_check import fee_mismatches
 from app.accounts.lookups import membership, open_invoices, system
 from app.flows.protocol import FlowResult
@@ -29,7 +31,8 @@ def account_answer(db, customer, detail: str | None, state, store) -> FlowResult
     facts = []
     for invoice in invoices:
         lines = "; ".join(f"{desc} {_money(cents)}" for desc, cents in invoice.lines)
-        facts.append(f"Invoice {invoice.invoice_id}: balance {_money(invoice.balance_cents)}, due {invoice.due_date}; "
+        due = date.fromisoformat(invoice.due_date)
+        facts.append(f"Invoice {invoice.invoice_id}: balance {_money(invoice.balance_cents)}, due {due.day} {due:%B %Y}; "
                      f"lines as recorded: {lines}.")
         # A fixed fee that differs from the current schedule opens a silent review for staff (R47).
         reviewed = state.flow.setdefault("reviewed_invoices", [])

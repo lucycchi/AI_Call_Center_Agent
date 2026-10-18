@@ -17,6 +17,10 @@ from app.scheduling.eligibility import SERVICE_NAMES, Slot, offer
 YES = re.compile(r"^\W*(yes|yeah|yep|yup|sure|ok|okay|correct|that works|sounds good|book it|do it|please do|perfect|go ahead)\b", re.I)
 NO = re.compile(r"^\W*(no|nope|neither|none of)\b", re.I)
 ORDINALS = [r"\b(first|1st|one|1)\b", r"\b(second|2nd|two|2)\b", r"\b(third|3rd|three|3)\b"]
+# Warranty claims the database cannot verify are booked as normal visits for staff review (R53).
+REPEAT_REPAIR = re.compile(r"\b(same thing|same problem|again|came back|repeat repair|you fixed)\b", re.I)
+MEMBER_INSTALL = re.compile(r"\bmember when (it was|you|we)\b.*\binstall|\b5-year\b", re.I)
+NO_FEE_IF_COVERED = "There is no diagnostic fee if the technician confirms the repair is covered by the warranty."
 SERVICE_WORDS = [(r"\btune-?up|maintenance\b", "hvac_tune_up"), (r"\breplac\w*|new system|estimate\b", "estimate"),
                  (r"\bsink|drain|toilet|water heater|pipe|plumb\w*", "plumbing")]
 
@@ -61,7 +65,8 @@ def _make_offer(db, customer, flow: dict, text: str, now, lead: str | None = Non
     result = offer(db, customer, flow["service"], parse_request(text, now), now)
     if result.decline_reason:
         flow.clear()
-        return FlowResult([result.decline_reason], "decline", handoff_reason="decline")
+        return FlowResult([result.decline_reason, customer.city, SERVICE_NAMES[flow.get("service", "hvac_repair")]],
+                          "decline", handoff_reason="decline")
     flow["offered"] = [asdict(s) for s in result.slots]
     flow["step"] = "offer"
     return FlowResult(_offer_facts(flow["offered"], lead or "Offer these slots and ask which one suits:"), "booking offer")
@@ -78,6 +83,9 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
     if flow.get("step") in (None, "start"):
         flow.setdefault("service", guess_service(text))
         flow.setdefault("issue", text)
+        claim = "repeat repair" if REPEAT_REPAIR.search(text) else "member installation" if MEMBER_INSTALL.search(text) else None
+        if claim:
+            flow["claim"] = claim
         return _make_offer(db, customer, flow, text, now)
     if flow["step"] == "offer":
         chosen = _pick(text, flow["offered"], now)
@@ -97,9 +105,16 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
             flow["step"] = "start"
             return _make_offer(db, customer, flow, "", now, "That slot was just taken. Offer these instead:")
         state.tried.append(f"booked appointment {booked.appointment_id}")
+        claim = flow.get("claim")
         state.flow, state.active_flow = {}, None
-        return confirm_booking({"store": store, "conversation_id": state.conversation_id}, booked,
-                               chosen["slot_date"], chosen["window"], chosen["service_type"])
+        confirmed = confirm_booking({"store": store, "conversation_id": state.conversation_id}, booked,
+                                    chosen["slot_date"], chosen["window"], chosen["service_type"])
+        if booked.warranty_review:
+            store.create_ticket(None, f"{customer.name}, {customer.customer_id}", f"{claim} claim: {flow.get('issue', '')}",
+                                f"booked appointment {booked.appointment_id} as a normal visit", "warranty not verifiable "
+                                "from the database", "", "warranty review", booked.appointment_id)
+            return FlowResult(confirmed.facts + [NO_FEE_IF_COVERED], "confirmation", db_actions=confirmed.db_actions)
+        return confirmed
     if NO.search(text):
         flow["step"] = "offer"
         return FlowResult(_offer_facts(flow["offered"], "No change made. Ask which slot suits instead:"), "booking offer")

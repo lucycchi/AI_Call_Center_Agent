@@ -25,7 +25,10 @@ def build_engine(folder: Path):
     scheduling = folder / "scheduling.sqlite"
     shutil.copy(SETTINGS.seed_db_path, scheduling)
     chunks, embeddings = load_index(Path(__file__).resolve().parents[1] / "data" / "index")
-    client = anthropic.Anthropic(timeout=SETTINGS.anthropic_timeout_s, max_retries=1)
+    from app.core.model_log import RecordingClient
+
+    client = RecordingClient(anthropic.Anthropic(timeout=SETTINGS.anthropic_timeout_s, max_retries=1),
+                             sdk_version=f"anthropic {anthropic.__version__}")
     pipeline = AgentPipeline(store=OpsStore(folder / "ops.sqlite"), scheduling_db=scheduling, seed_db=SETTINGS.seed_db_path,
                              searcher=Searcher(chunks, VoyageEmbedder(input_type="query"), embeddings),
                              route_fn=lambda text, history: route(text, history, client),
