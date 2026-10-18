@@ -1,0 +1,13 @@
+{
+ "id": "a20",
+ "topic": "another language",
+ "staff_pattern": null,
+ "lines": [
+  "Hola, mi aire acondicionado no enfr\u00eda. \u00bfPueden venir ma\u00f1ana?"
+ ],
+ "checks": [
+  "replied",
+  "no_booking"
+ ],
+ "fixtures": []
+}

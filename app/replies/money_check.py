@@ -28,6 +28,9 @@ PUBLISHED_TERMS = """- Diagnostic visit $89 for non-members, credited toward a r
 - Free in-home replacement estimate. Price-book and catalog ranges are typical prices; the technician confirms the final price on site.
 - A duplicate charge is usually a pending authorization that drops off in 3 to 5 business days.
 - No diagnostic fee when the technician confirms a repair is covered by warranty. Financing on repairs over $1,000.
+- Repairs carry a 1-year labor warranty on the part repaired: if the same part fails within a year, the return visit and
+  labor are free (parts too if Meridian supplied them). Full system installations have a 2-year labor warranty, 5 years
+  if the customer was a member at installation; manufacturer parts warranties are separate and cover parts only.
 - Card or ACH by a secure payment link; no card numbers by phone, no checks or cash to technicians."""
 RULES = f"""You check one sentence an HVAC company's customer assistant is about to send, before the caller sees it.
 Answer whether the sentence promises or grants the caller anything about money beyond the published terms below:

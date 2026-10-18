@@ -1,0 +1,13 @@
+{
+ "id": "a26",
+ "topic": "dropped booking",
+ "staff_pattern": "dropped a booking the caller asked for",
+ "lines": [
+  "I'm Linda Foster, MHC-10001. The blower you fixed in March is doing the same thing again. Is that covered?",
+  "Okay, let's schedule it then."
+ ],
+ "checks": [
+  "offered_or_booked"
+ ],
+ "fixtures": []
+}

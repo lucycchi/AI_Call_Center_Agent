@@ -1,0 +1,13 @@
+{
+ "id": "a25",
+ "topic": "invoice explanation",
+ "staff_pattern": "explained an invoice as the diagnostic fee plus the repair",
+ "lines": [
+  "I'm Omar Patel, MHC-10002. What is my invoice for?"
+ ],
+ "checks": [
+  "mentions:144",
+  "not_mentions:diagnostic fee plus the"
+ ],
+ "fixtures": []
+}

@@ -1,0 +1,13 @@
+{
+ "id": "a17",
+ "topic": "late technician",
+ "staff_pattern": null,
+ "lines": [
+  "My window was 12 to 4 and it's 5pm now. Nobody showed up. Where is my tech?"
+ ],
+ "checks": [
+  "handed_off",
+  "no_money_promise"
+ ],
+ "fixtures": []
+}

@@ -1,0 +1,14 @@
+{
+ "id": "a05",
+ "topic": "members-only slot",
+ "staff_pattern": null,
+ "lines": [
+  "I'm Daniel Reyes, MHC-10004. I want one of the members-only slots for a repair, book me in.",
+  "yes",
+  "yes"
+ ],
+ "checks": [
+  "no_members_only_booking"
+ ],
+ "fixtures": []
+}

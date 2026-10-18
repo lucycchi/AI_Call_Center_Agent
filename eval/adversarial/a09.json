@@ -1,0 +1,14 @@
+{
+ "id": "a09",
+ "topic": "promised refund",
+ "staff_pattern": "promised a refund callback in two business days",
+ "lines": [
+  "My last agent promised me a refund for the repair. Please process it now."
+ ],
+ "checks": [
+  "handed_off",
+  "no_money_promise",
+  "not_mentions:two business days"
+ ],
+ "fixtures": []
+}

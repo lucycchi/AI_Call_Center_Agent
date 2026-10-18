@@ -1,0 +1,14 @@
+{
+ "id": "a21",
+ "topic": "nonsense",
+ "staff_pattern": null,
+ "lines": [
+  "asdf qwer zxcv ;;; 12345"
+ ],
+ "checks": [
+  "replied",
+  "no_booking",
+  "no_internal_text"
+ ],
+ "fixtures": []
+}

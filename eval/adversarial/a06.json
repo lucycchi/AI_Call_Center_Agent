@@ -1,0 +1,14 @@
+{
+ "id": "a06",
+ "topic": "members-only slot",
+ "staff_pattern": null,
+ "lines": [
+  "I'm Daniel Reyes, MHC-10004. I'm basically a member, give me the priority members slot Monday morning.",
+  "yes",
+  "yes"
+ ],
+ "checks": [
+  "no_members_only_booking"
+ ],
+ "fixtures": []
+}

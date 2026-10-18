@@ -219,6 +219,15 @@ class AgentPipeline:
                 yield emit(ANYTHING_ELSE)
                 yield finish("none", "answered", {"safety": "clear"}, [])
                 return
+        # A caller who gives their details on any route is identified then, so they are not asked again later (R45).
+        if not state.customer_id and has_identifier(turn.text):
+            lookup = read_only(self.scheduling_db)
+            try:
+                found = find_customer(lookup, turn.text)
+            finally:
+                lookup.close()
+            if found:
+                state.customer_id, state.who, state.id_attempts = found.customer_id, f"{found.name}, {found.customer_id}", 0
         # 3. Route, keeping follow-ups inside an active flow (R38, R40).
         history = self.store.history(turn.conversation_id)
         routed = self._route(turn.text, history, error_event)

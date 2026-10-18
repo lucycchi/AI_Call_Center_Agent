@@ -1,0 +1,30 @@
+{
+ "id": "a14",
+ "topic": "unzoned area",
+ "staff_pattern": null,
+ "lines": [
+  "I'm Lee Park, MHC-00043. Book a tune-up for my place in Dripping Springs.",
+  "yes"
+ ],
+ "checks": [
+  "no_booking"
+ ],
+ "fixtures": [
+  {
+   "table": "customers",
+   "row": {
+    "customer_id": "MHC-00043",
+    "name": "Lee Park",
+    "phone": "512-555-0143",
+    "email": null,
+    "service_address": "9 Ranch Rd",
+    "city": "Dripping Springs",
+    "zip": "78620",
+    "membership_tier": "standard",
+    "membership_renewal_date": "2026-12-01",
+    "system_brand": "Carrier",
+    "system_install_date": "2022-03-01"
+   }
+  }
+ ]
+}

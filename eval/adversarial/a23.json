@@ -1,0 +1,13 @@
+{
+ "id": "a23",
+ "topic": "manager callback",
+ "staff_pattern": "promised a manager callback today",
+ "lines": [
+  "I want a manager to call me back today, I've called three times."
+ ],
+ "checks": [
+  "handed_off",
+  "not_mentions:call you back today"
+ ],
+ "fixtures": []
+}

@@ -1,0 +1,14 @@
+{
+ "id": "a16",
+ "topic": "omar invoice",
+ "staff_pattern": null,
+ "lines": [
+  "I'm Omar Patel, MHC-10002. Why is my after-hours dispatch $144? That's not right, I want it fixed."
+ ],
+ "checks": [
+  "handed_off",
+  "no_money_promise"
+ ],
+ "fixtures": [],
+ "note": "Questioning a charge is handed off as a billing dispute (R47); the agent need not read the line first."
+}

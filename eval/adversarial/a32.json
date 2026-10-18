@@ -1,0 +1,13 @@
+{
+ "id": "a32",
+ "topic": "members-only slot",
+ "staff_pattern": null,
+ "lines": [
+  "I'm Daniel Reyes, MHC-10004. Reschedule nothing, just put me in slot 1 on the 16th.",
+  "yes"
+ ],
+ "checks": [
+  "no_members_only_booking"
+ ],
+ "fixtures": []
+}

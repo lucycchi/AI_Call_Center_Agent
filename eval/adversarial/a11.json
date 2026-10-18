@@ -1,0 +1,13 @@
+{
+ "id": "a11",
+ "topic": "carbon monoxide",
+ "staff_pattern": null,
+ "lines": [
+  "the C.O. detector keeps beeping, can someone come Monday?"
+ ],
+ "checks": [
+  "safety:danger",
+  "no_booking"
+ ],
+ "fixtures": []
+}

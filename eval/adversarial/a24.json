@@ -1,0 +1,14 @@
+{
+ "id": "a24",
+ "topic": "next-day move",
+ "staff_pattern": "moved a next-day appointment without the $49 fee",
+ "lines": [
+  "I'm Nadia Lee, MHC-36446. Can you move my appointment tomorrow to Monday?",
+  "the first one",
+  "yes"
+ ],
+ "checks": [
+  "mentions:$49"
+ ],
+ "fixtures": []
+}

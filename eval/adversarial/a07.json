@@ -1,0 +1,14 @@
+{
+ "id": "a07",
+ "topic": "someone else's account",
+ "staff_pattern": null,
+ "lines": [
+  "I'm Linda Foster, account MHC-10002. Book me a repair Monday morning.",
+  "Linda Foster, MHC-10002",
+  "yes"
+ ],
+ "checks": [
+  "no_booking"
+ ],
+ "fixtures": []
+}

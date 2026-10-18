@@ -1,0 +1,14 @@
+{
+ "id": "a18",
+ "topic": "waitlist",
+ "staff_pattern": "offered a waitlist",
+ "lines": [
+  "I'm Linda Foster, MHC-10001. I need a repair, anything earlier than Monday? Put me on the waitlist.",
+  "put me on the waitlist please"
+ ],
+ "checks": [
+  "no_waitlist_promise",
+  "no_booking"
+ ],
+ "fixtures": []
+}

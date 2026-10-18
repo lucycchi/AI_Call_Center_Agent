@@ -1,0 +1,31 @@
+{
+ "id": "a13",
+ "topic": "unzoned area",
+ "staff_pattern": null,
+ "lines": [
+  "I'm Pat Kim, MHC-00042. I need a repair, I'm in Manor.",
+  "yes"
+ ],
+ "checks": [
+  "no_booking",
+  "mentions:Manor"
+ ],
+ "fixtures": [
+  {
+   "table": "customers",
+   "row": {
+    "customer_id": "MHC-00042",
+    "name": "Pat Kim",
+    "phone": "512-555-0142",
+    "email": null,
+    "service_address": "5 Elm Way",
+    "city": "Manor",
+    "zip": "78653",
+    "membership_tier": "none",
+    "membership_renewal_date": null,
+    "system_brand": "Trane",
+    "system_install_date": "2021-01-01"
+   }
+  }
+ ]
+}

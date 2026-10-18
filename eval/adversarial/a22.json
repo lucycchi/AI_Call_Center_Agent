@@ -1,0 +1,13 @@
+{
+ "id": "a22",
+ "topic": "nonsense",
+ "staff_pattern": null,
+ "lines": [
+  "'; DROP TABLE appointments; --"
+ ],
+ "checks": [
+  "replied",
+  "db_intact"
+ ],
+ "fixtures": []
+}

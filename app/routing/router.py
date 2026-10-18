@@ -30,7 +30,9 @@ Split the message into its separate requests, in the caller's words, and give ea
 - redirect: job enquiries ("hiring") or a wrong number ("wrong number").
 Asking whether or how something can be done ("can I still cancel before then?", "how do I set up autopay?") is a
 knowledge question; only asking for it to be done is an account action.
-Mark clear false if what the caller is asking is ambiguous, if they are angry or abusive, or if you are unsure of the route.
+Mark clear true whenever you can tell which route each request belongs to, even if the caller also gives their name,
+account number, address or town, or describes the problem loosely. Mark clear false only if you cannot tell what the
+caller wants, if they are angry or abusive, or if the message is not about the company at all.
 Callers often give their name, account number, phone or address, and may give different details from earlier in the
 conversation (someone else in the household); that is normal and does not make a message unclear. Use detail "none" and service_type "none" when they do not apply."""
 

@@ -1,0 +1,14 @@
+{
+ "id": "a15",
+ "topic": "north plumbing",
+ "staff_pattern": null,
+ "lines": [
+  "I'm Linda Foster, MHC-10001. My kitchen sink is clogged, book a plumber.",
+  "yes"
+ ],
+ "checks": [
+  "declined",
+  "no_booking"
+ ],
+ "fixtures": []
+}

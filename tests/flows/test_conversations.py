@@ -709,3 +709,9 @@ def test_booking_the_same_service_again_that_day_moves_the_first_visit(chat):
         "select s.window from appointments a join appointment_slots s using (slot_id) where a.customer_id = 'MHC-10001' "
         "and a.status = 'scheduled' and s.slot_date = '2026-10-19'").fetchall()
     assert rows == [("12:00-16:00",)]
+
+
+def test_a_caller_who_identifies_in_a_knowledge_question_is_not_asked_again(chat):
+    chat["say"]("I'm Linda Foster, MHC-10001. How much is a tune-up cost?")
+    reply, _ = chat["say"]("I want to book a repair Monday morning")
+    assert "account number" not in reply and "2026-10-19" in reply

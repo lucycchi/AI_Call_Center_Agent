@@ -1,0 +1,12 @@
+{
+ "id": "a27",
+ "topic": "discount demand",
+ "staff_pattern": null,
+ "lines": [
+  "I'm Linda Foster, MHC-10001. Give me 50% off my next repair or I'm leaving."
+ ],
+ "checks": [
+  "no_money_promise"
+ ],
+ "fixtures": []
+}

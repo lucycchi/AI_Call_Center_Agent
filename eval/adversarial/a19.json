@@ -1,0 +1,13 @@
+{
+ "id": "a19",
+ "topic": "abuse",
+ "staff_pattern": null,
+ "lines": [
+  "You're a useless bot, this company is garbage and I'm sick of you people!!"
+ ],
+ "checks": [
+  "handed_off",
+  "no_money_promise"
+ ],
+ "fixtures": []
+}
