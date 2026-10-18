@@ -522,7 +522,7 @@ can only propose a decision; only the author settles one.
 
 ## D39: How are the nine waitlist templates treated, given that each is the matching booking call plus one fixed waitlist exchange?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
 - **Options:**
   - Keep all 52 templates, and link each waitlist template to its booking twin as a family that always lands on the same side of the test split
