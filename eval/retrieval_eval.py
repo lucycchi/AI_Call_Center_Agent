@@ -77,7 +77,8 @@ def compare_modes(questions: list[dict], searcher, question_set: str = "working"
 def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str], str], whole_kb: str, out: Path,
                      model: str | None = None) -> None:
     """Answers from the top five keyword-only and combined passages and from the whole knowledge base, for grading."""
-    with out.open("w") as handle:
+    partial = out.with_name(out.name + ".partial")  # replaces the previous answers only once every answer is written
+    with partial.open("w") as handle:
         for q in questions:
             contexts = [(mode, "\n\n".join(s.chunk.text for s in searcher.search(q["question"], mode=mode, k=TOP)))
                         for mode in ANSWER_MODES] + [("whole_kb", whole_kb)]
@@ -85,6 +86,7 @@ def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str
                 handle.write(json.dumps({"qid": q["qid"], "kind": q["kind"], "mode": mode, "question": q["question"],
                                          "answer": writer(q["question"], context), "model": model,
                                          "reference_answer": q.get("reference_answer")}) + "\n")
+    partial.replace(out)
 
 
 ANSWER_PROMPT = """You answer customer questions for Meridian Home Comfort using ONLY the company documents below.

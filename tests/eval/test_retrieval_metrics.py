@@ -190,3 +190,18 @@ def test_the_writer_refuses_to_fall_back_to_the_live_key(monkeypatch):
     monkeypatch.delenv("EVAL_ANTHROPIC_API_KEY", raising=False)
     with pytest.raises(RuntimeError):
         retrieval.sonnet_writer()
+
+
+def test_a_failed_answer_run_leaves_the_previous_answers_in_place(tmp_path):
+    import pytest
+    out = tmp_path / "answers.jsonl"
+    out.write_text("previous answers\n")
+    searcher = FakeSearcher({"combined": [], "keyword": []})
+
+    def failing(question, context):
+        raise RuntimeError("API error")
+
+    with pytest.raises(RuntimeError):
+        answer_both_ways([{"qid": "q1", "question": "fee?", "kind": "answerable", "evidence_spans": [A]}],
+                         searcher, failing, whole_kb="KB", out=out)
+    assert out.read_text() == "previous answers\n"
