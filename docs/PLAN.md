@@ -45,7 +45,7 @@ The author can open the draft findings document (the top call reasons, the human
 - [x] Task 2: load transcripts and group them into templates. Requirements: R1
 - [x] Task 3: label call reasons with Haiku, Codex and Claude Fable 5.1. Requirements: R2, R3, R4
 - [x] Task 4: generate the findings document. Requirements: R5, R6, R7, R8, R56
-- [ ] Task 5: document list, conflict register and format conversion. Requirements: R24, R25, R26
+- [x] Task 5: document list, conflict register and format conversion. Requirements: R24, R25, R26
 
 ### Task 1: Project setup, pinned configuration and the agent-core interface
 

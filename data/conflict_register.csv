@@ -1,0 +1,20 @@
+fact,current_value,conflicting_value,winner,loser,reason
+diagnostic fee,$89 (waived for members),$79,pricing/2026_fee_schedule.pdf,faq/faq_old_copy.md,Current documents agree on $89; the old FAQ copy is undated and stale
+diagnostic credit,Credited toward a repair approved on the same visit,Invoices charge it on top of the repair,faq/customer_faq.md,scheduling database invoices,The documents state the policy; the agent never judges a charge and hands off questioned charges
+after-hours fee,$149 (waived for members),$129; $144 on Omar Patel's invoice,pricing/2026_fee_schedule.pdf,faq/faq_old_copy.md,Current documents agree on $149; the invoice mismatch raises a silent billing-review ticket
+late cancellation notice,Free more than 24 hours ahead; $49 inside 24 hours (also for reschedules),48 hours' notice,faq/customer_faq.md,services/scheduling_guide.md,The FAQ (2026-03-02) is newer than the November 2024 guide
+phone hours,Mon-Fri 7am-7pm; Sat 8am-4pm,Mon-Fri 8am-6pm; Sat 9am-1pm,faq/customer_faq.md,faq/faq_old_copy.md,Dated current FAQ over undated old copy
+appointment windows,"8-12, 12-4, 1-5, and 4-7 on Tue and Thu","8-12 and 12-4 only; ""4-hour blocks""",faq/customer_faq.md,faq/faq_old_copy.md,The FAQ matches the scheduling schema
+membership standard price,$189 a year or $16.99 a month; $99 per extra system; 15% off repairs,$149; $12.99; $79; 10% off,membership/comfort_club_overview.md,archive/comfort_club_overview.md,Effective 2026-01-01 and matches the fee schedule
+membership plus price,$269 a year,$219,membership/comfort_club_overview.md,archive/comfort_club_overview.md,Effective 2026-01-01 and matches the fee schedule
+membership cancellation,Non-refundable once a tune-up is done; prorated refund in the first 60 days if none,Full prorated refund any time,membership/comfort_club_overview.md,archive/comfort_club_overview.md,Current terms
+membership transfer,Stays with the address and transfers to the next homeowner,Moves with the homeowner to a new address,membership/comfort_club_overview.md,archive/comfort_club_overview.md,Current terms
+repair labour warranty,1 year on the repaired part,90 days,warranty/warranty_policy.md,archive/warranty_terms_2023.txt,Effective 2025-06-15 over 2023
+installation labour warranty,2 years; 5 years for members at installation,1 year; 2 years for members,warranty/warranty_policy.md,archive/warranty_terms_2023.txt,Effective 2025-06-15 over 2023
+manufacturer registration,Meridian registers every install within 30 days,Only on request,warranty/warranty_policy.md,archive/warranty_terms_2023.txt,Effective 2025-06-15 over 2023
+service area,Includes Dripping Springs (78620) and Manor (78653),List without Dripping Springs and Manor,policies/service_area.md,faq/customer_faq.md,The later effective date wins: 2026-04-01 over 2026-03-02
+emergencies,Never booked; immediate danger gets leave-and-call instructions,Booked into same-day overflow slots,policies/escalation_and_safety.md,services/scheduling_guide.md,Current safety policy and the scheduling schema
+waitlist,No waitlist,Offered for cancellations,faq/customer_faq.md,services/scheduling_guide.md,No current document or database table supports a waitlist
+supervisor callbacks,Within 1 business day; do not promise outcomes,"""Today"" and ""two business days"" (staff in transcripts)",policies/escalation_and_safety.md,call transcripts,Policy over staff habit
+payments,No card numbers by phone; secure link valid 24 hours; no checks or cash in the field,Checks accepted,faq/customer_faq.md,faq/faq_old_copy.md,Dated current FAQ over undated old copy
+duct cleaning,Third-party partner referral,TODO placeholder,services/service_catalog.md,services/duct_cleaning.md,The placeholder has no content
