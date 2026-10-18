@@ -1,0 +1,64 @@
+{
+ "case_id": "Te8bcef76",
+ "template_id": "Te8bcef76",
+ "family": "Te8bcef76",
+ "calls_weight": 15,
+ "reason": "existing appointment",
+ "sub_reason": "reschedule",
+ "sample_call_id": "CALL-20260711-0063",
+ "caller_script": [
+  "I have a tech coming tomorrow but something came up. Can I move it?",
+  "Yeah, it's MHC-44290.",
+  "Nadia Ali.",
+  "Any afternoon this week.",
+  "Perfect.",
+  "No that's everything."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-92941",
+  "name": "Derek Okafor",
+  "phone": "512-460-5987",
+  "email": "derek.okafor@example.com",
+  "service_address": "9402 Maple St",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Trane",
+  "system_install_date": "2019-03-10",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [
+  {
+   "table": "appointment_slots",
+   "row": {
+    "slot_id": 9044,
+    "slot_date": "2026-10-17",
+    "window": "08:00-12:00",
+    "tech_id": 1,
+    "zone": "north",
+    "service_type": "hvac_repair",
+    "status": "booked"
+   }
+  },
+  {
+   "table": "appointments",
+   "row": {
+    "appointment_id": 5044,
+    "slot_id": 9044,
+    "customer_id": "MHC-92941",
+    "issue_description": "test appointment",
+    "created_at": "2026-10-10",
+    "status": "scheduled",
+    "is_warranty_visit": 0
+   }
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

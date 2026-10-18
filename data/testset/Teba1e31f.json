@@ -1,0 +1,36 @@
+{
+ "case_id": "Teba1e31f",
+ "template_id": "Teba1e31f",
+ "family": "Teba1e31f",
+ "calls_weight": 5,
+ "reason": "commercial",
+ "sub_reason": "commercial",
+ "sample_call_id": "CALL-20260728-0089",
+ "caller_script": [
+  "I manage a 12-unit strip center and I need a quote on replacing four rooftop units.",
+  "Sure. Angela Smith, 512-367-4166.",
+  "No that's everything."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-33796",
+  "name": "Daniel Cruz",
+  "phone": "512-615-3447",
+  "email": "daniel.cruz@example.com",
+  "service_address": "8891 Sunset Terrace",
+  "city": "Pflugerville",
+  "zip": "78660",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-10-02",
+  "system_brand": "Rheem",
+  "system_install_date": "2020-10-29",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "commercial",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

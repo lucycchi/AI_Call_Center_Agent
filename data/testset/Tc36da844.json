@@ -1,0 +1,69 @@
+{
+ "case_id": "Tc36da844",
+ "template_id": "Tc36da844",
+ "family": "Tc36da844",
+ "calls_weight": 7,
+ "reason": "warranty",
+ "sub_reason": "claim",
+ "sample_call_id": "CALL-20260709-0315",
+ "caller_script": [
+  "My Trane compressor died and the system is only three years old. Is that under warranty?",
+  "Patricia Hernandez, 1075 Oak Hollow Dr, Pflugerville.",
+  "How much is labor on a compressor?",
+  "Sorry, I'm driving, one sec.",
+  "Okay. Let's schedule it then.",
+  "Nope, that covers it."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-99694",
+  "name": "Jordan Rivera",
+  "phone": "512-555-0199",
+  "email": "jordan.rivera@example.com",
+  "service_address": "100 Test Lane",
+  "city": "Round Rock",
+  "zip": "78600",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Trane",
+  "system_install_date": "2023-01-01",
+  "zone": "north",
+  "synthetic": true
+ },
+ "fixtures": [
+  {
+   "table": "customers",
+   "row": {
+    "customer_id": "MHC-99694",
+    "name": "Jordan Rivera",
+    "phone": "512-555-0199",
+    "email": "jordan.rivera@example.com",
+    "service_address": "100 Test Lane",
+    "city": "Round Rock",
+    "zip": "78600",
+    "membership_tier": "none",
+    "membership_renewal_date": null,
+    "system_brand": "Trane",
+    "system_install_date": "2023-01-01"
+   }
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "If the unit is registered, the manufacturer covers the compressor part for 10 years. The 2-year Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable; compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",
+ "evidence_spans": [
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "Manufacturer parts warranty (residential, when registered)",
+   "start_line": 14,
+   "end_line": 26
+  },
+  {
+   "file": "pricing__repair_price_book_2026.md",
+   "heading": "HVAC repair",
+   "start_line": 5,
+   "end_line": 17
+  }
+ ],
+ "must_not": []
+}

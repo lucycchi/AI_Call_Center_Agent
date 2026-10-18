@@ -1,0 +1,40 @@
+{
+ "case_id": "T9e29febc",
+ "template_id": "T9e29febc",
+ "family": "T9e29febc",
+ "calls_weight": 4,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260710-0081",
+ "caller_script": [
+  "Two things. My AC is blowing warm and I want to get someone out, and I want to know if joining the maintenance plan would save me money on this.",
+  "Michael Nguyen, 5701 Pecan Grove Rd, Leander.",
+  "So it pays for itself basically.",
+  "Yeah, add it and book the visit.",
+  "Book it.",
+  "Can you hear me okay?",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-82491",
+  "name": "Priya Martinez",
+  "phone": "512-312-3645",
+  "email": "priya.martinez@example.com",
+  "service_address": "4390 Oak Hollow Dr",
+  "city": "Pflugerville",
+  "zip": "78660",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Carrier",
+  "system_install_date": "2021-04-12",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "action gap",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

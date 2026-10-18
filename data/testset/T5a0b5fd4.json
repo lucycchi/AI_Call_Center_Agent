@@ -1,0 +1,38 @@
+{
+ "case_id": "T5a0b5fd4",
+ "template_id": "T5a0b5fd4",
+ "family": "T5a0b5fd4",
+ "calls_weight": 14,
+ "reason": "membership",
+ "sub_reason": "autopay",
+ "sample_call_id": "CALL-20260709-0347",
+ "caller_script": [
+  "I want to set up autopay for my membership.",
+  "Yeah, it's MHC-98487.",
+  "Derek Lopez.",
+  "Send the link.",
+  "That's all, thank you so much."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-31132",
+  "name": "Derek Martinez",
+  "phone": "512-317-9695",
+  "email": "derek.martinez@example.com",
+  "service_address": "895 Lakeshore Blvd",
+  "city": "Hutto",
+  "zip": "78634",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-01-15",
+  "system_brand": "Goodman",
+  "system_install_date": "2020-09-12",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "action gap",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

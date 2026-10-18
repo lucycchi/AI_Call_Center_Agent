@@ -1,0 +1,38 @@
+{
+ "case_id": "Ta3b7b18f",
+ "template_id": "Ta3b7b18f",
+ "family": "Ta3b7b18f",
+ "calls_weight": 5,
+ "reason": "complaint or manager",
+ "sub_reason": "complaint or manager",
+ "sample_call_id": "CALL-20260710-0335",
+ "caller_script": [
+  "Your technician told my wife the system needed a $4,000 replacement and I got a second opinion and it was a $200 capacitor. I want to speak to someone in charge.",
+  "Yeah, it's MHC-23315.",
+  "Victor Rivera.",
+  "Today. Not next week.",
+  "No that's everything."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-30349",
+  "name": "Sofia Diaz",
+  "phone": "512-490-3371",
+  "email": "sofia.diaz@example.com",
+  "service_address": "817 Sunset Terrace",
+  "city": "Kyle",
+  "zip": "78640",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-07-01",
+  "system_brand": "American Standard",
+  "system_install_date": "2023-04-11",
+  "zone": "south",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "complaint",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

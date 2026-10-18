@@ -1,0 +1,37 @@
+{
+ "case_id": "T0ad82d45",
+ "template_id": "T0ad82d45",
+ "family": "T0ad82d45",
+ "calls_weight": 6,
+ "reason": "membership",
+ "sub_reason": "upgrade",
+ "sample_call_id": "CALL-20260713-0314",
+ "caller_script": [
+  "Can I upgrade from the regular plan to the Plus plan mid-year?",
+  "Aisha Johnson, 2712 Brookside Ct, Pflugerville.",
+  "Let's do it.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-83707",
+  "name": "Luis Cruz",
+  "phone": "512-599-8466",
+  "email": "luis.cruz@example.com",
+  "service_address": "9112 Windcrest Ave",
+  "city": "Round Rock",
+  "zip": "78664",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-04-04",
+  "system_brand": "American Standard",
+  "system_install_date": "2023-12-27",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "action gap",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

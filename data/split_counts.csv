@@ -1,0 +1,12 @@
+reason,corpus_calls,corpus_templates,working_calls,working_templates,held_out_calls,held_out_templates
+new booking,136,20,89,14,47,6
+billing,77,6,51,4,26,2
+membership,71,7,51,5,20,2
+warranty,45,5,31,3,14,2
+existing appointment,38,4,29,3,9,1
+complaint or manager,16,3,11,2,5,1
+replacement estimate,12,1,12,1,0,0
+safety emergency,9,3,8,2,1,1
+hiring,6,1,6,1,0,0
+commercial,5,1,5,1,0,0
+wrong number,5,1,5,1,0,0

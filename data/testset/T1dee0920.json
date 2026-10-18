@@ -1,0 +1,39 @@
+{
+ "case_id": "T1dee0920",
+ "template_id": "T1dee0920",
+ "family": "T1dee0920",
+ "calls_weight": 7,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260716-0367",
+ "caller_script": [
+  "Um, hey, so my AC isn't cooling. What's the soonest you can get a tech out?",
+  "Sure, it's Maria Murphy, 512-318-7661.",
+  "Monday if possible, 12 to 4.",
+  "Yeah, that works.",
+  "I think so, it's whatever was there when we moved in.",
+  "Nope, that covers it."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-47959",
+  "name": "Priya Smith",
+  "phone": "512-773-3961",
+  "email": "priya.smith@example.com",
+  "service_address": "1788 Ridgeline Pass",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Rheem",
+  "system_install_date": "2019-09-16",
+  "zone": "central",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

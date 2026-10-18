@@ -1,0 +1,44 @@
+{
+ "case_id": "Tf7d382d9",
+ "template_id": "Tf7d382d9",
+ "family": "Tf7d382d9",
+ "calls_weight": 10,
+ "reason": "warranty",
+ "sub_reason": "registration",
+ "sample_call_id": "CALL-20260707-0053",
+ "caller_script": [
+  "Did you guys register my new unit with the, uh, manufacturer? I never got anything.",
+  "Raj Garcia, 5385 Maple St, Pflugerville.",
+  "Thanks.",
+  "That's all, thank you so much."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-67178",
+  "name": "Marcus Thompson",
+  "phone": "512-979-7554",
+  "email": "marcus.thompson@example.com",
+  "service_address": "9179 Sunset Terrace",
+  "city": "Georgetown",
+  "zip": "78626",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-05-28",
+  "system_brand": "Carrier",
+  "system_install_date": "2025-12-23",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "Meridian registers every installed unit with the manufacturer within 30 days of installation; registration is required for the full parts warranty term.",
+ "evidence_spans": [
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "New system installation warranty",
+   "start_line": 9,
+   "end_line": 13
+  }
+ ],
+ "must_not": []
+}

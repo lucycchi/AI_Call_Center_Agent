@@ -1,0 +1,63 @@
+{
+ "case_id": "Ta049acca",
+ "template_id": "Ta049acca",
+ "family": "Ta049acca",
+ "calls_weight": 6,
+ "reason": "existing appointment",
+ "sub_reason": "cancel appointment",
+ "sample_call_id": "CALL-20260707-0002",
+ "caller_script": [
+  "Um, i need to cancel my appointment. My brother-in-law ended up fixing it.",
+  "Yeah, it's MHC-93886.",
+  "Elena Murphy.",
+  "Great.",
+  "That's all, thank you so much."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-72198",
+  "name": "James Reyes",
+  "phone": "512-985-7631",
+  "email": "james.reyes@example.com",
+  "service_address": "766 Pecan Grove Rd",
+  "city": "Kyle",
+  "zip": "78640",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Trane",
+  "system_install_date": "2012-08-07",
+  "zone": "south",
+  "synthetic": false
+ },
+ "fixtures": [
+  {
+   "table": "appointment_slots",
+   "row": {
+    "slot_id": 9030,
+    "slot_date": "2026-10-21",
+    "window": "08:00-12:00",
+    "tech_id": 3,
+    "zone": "south",
+    "service_type": "hvac_repair",
+    "status": "booked"
+   }
+  },
+  {
+   "table": "appointments",
+   "row": {
+    "appointment_id": 5030,
+    "slot_id": 9030,
+    "customer_id": "MHC-72198",
+    "issue_description": "test appointment",
+    "created_at": "2026-10-10",
+    "status": "scheduled",
+    "is_warranty_visit": 0
+   }
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

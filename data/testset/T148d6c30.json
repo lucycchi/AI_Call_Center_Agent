@@ -1,0 +1,58 @@
+{
+ "case_id": "T148d6c30",
+ "template_id": "T148d6c30",
+ "family": "T148d6c30",
+ "calls_weight": 11,
+ "reason": "billing",
+ "sub_reason": "charged twice",
+ "sample_call_id": "CALL-20260709-0129",
+ "caller_script": [
+  "I think I got charged twice. There are two $1240 charges on my card from you guys.",
+  "Hannah Brown, 8561 Ridgeline Pass, Georgetown.",
+  "So I'm not actually paying twice?",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-73231",
+  "name": "Maria Ali",
+  "phone": "512-891-9021",
+  "email": "maria.ali@example.com",
+  "service_address": "4865 Sunset Terrace",
+  "city": "Leander",
+  "zip": "78641",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2026-12-10",
+  "system_brand": "Lennox",
+  "system_install_date": "2021-09-29",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [
+  {
+   "table": "invoices",
+   "row": {
+    "invoice_id": "INV-900002",
+    "customer_id": "MHC-73231",
+    "appointment_id": null,
+    "issued_date": "2026-10-02",
+    "due_date": "2026-11-01",
+    "amount_cents": 124000,
+    "balance_cents": 124000,
+    "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 115100}]"
+   }
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "One of the two charges is usually a pending authorization that drops off in 3 to 5 business days. If both charges post, Meridian opens a case with its payment processor.",
+ "evidence_spans": [
+  {
+   "file": "faq__customer_faq.md",
+   "heading": "Duplicate charges",
+   "start_line": 26,
+   "end_line": 27
+  }
+ ],
+ "must_not": []
+}

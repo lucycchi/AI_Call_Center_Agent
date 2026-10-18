@@ -1,0 +1,35 @@
+{
+ "case_id": "T1d504a74",
+ "template_id": "T1d504a74",
+ "family": "T1d504a74",
+ "calls_weight": 5,
+ "reason": "safety emergency",
+ "sub_reason": "gas, carbon monoxide or sparks",
+ "sample_call_id": "CALL-20260721-0093",
+ "caller_script": [
+  "My carbon monoxide detector is going off.",
+  "Okay, we're going outside."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-57632",
+  "name": "David Lopez",
+  "phone": "512-452-4370",
+  "email": "david.lopez@example.com",
+  "service_address": "3428 Cedar Ridge Ln",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-05-05",
+  "system_brand": "Trane",
+  "system_install_date": "2024-03-23",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "emergency",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

@@ -1,0 +1,40 @@
+{
+ "case_id": "Td1e329a6",
+ "template_id": "Td1e329a6",
+ "family": "Td1e329a6",
+ "calls_weight": 10,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260707-0170",
+ "caller_script": [
+  "Yeah, I need to schedule a service call. My thermostat is blank.",
+  "Yeah, it's MHC-14782.",
+  "Marcus Murphy.",
+  "Next Tuesday if possible, 4 to 7, after work.",
+  "Yeah, that works.",
+  "Um, yep, same one.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-36446",
+  "name": "Nadia Lee",
+  "phone": "512-496-8302",
+  "email": "nadia.lee@example.com",
+  "service_address": "8293 Maple St",
+  "city": "Leander",
+  "zip": "78641",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Lennox",
+  "system_install_date": "2022-01-04",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

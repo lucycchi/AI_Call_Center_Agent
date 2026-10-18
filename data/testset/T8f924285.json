@@ -1,0 +1,36 @@
+{
+ "case_id": "T8f924285",
+ "template_id": "T8f924285",
+ "family": "T8f924285",
+ "calls_weight": 6,
+ "reason": "hiring",
+ "sub_reason": "hiring",
+ "sample_call_id": "CALL-20260712-0067",
+ "caller_script": [
+  "Hi, are you guys hiring HVAC techs? I saw a posting.",
+  "Okay, I'll apply online.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-95921",
+  "name": "Tom Kim",
+  "phone": "512-859-1635",
+  "email": "tom.kim@example.com",
+  "service_address": "2119 Lakeshore Blvd",
+  "city": "Georgetown",
+  "zip": "78626",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2027-03-03",
+  "system_brand": "American Standard",
+  "system_install_date": "2021-06-02",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "redirect",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

@@ -1,0 +1,42 @@
+{
+ "case_id": "Tf0d9c2f5",
+ "template_id": "Tf0d9c2f5",
+ "family": "Tfc7d7be8",
+ "calls_weight": 4,
+ "reason": "new booking",
+ "sub_reason": "tune-up",
+ "sample_call_id": "CALL-20260721-0110",
+ "caller_script": [
+  "Hi, I need my annual tune-up and I'd like to get someone out to look at it.",
+  "Sure, it's Wei Smith, 512-933-8006.",
+  "Um, this Saturday if possible, first thing in the morning.",
+  "Um, can you do anything earlier?",
+  "Okay, do that. And book the slot.",
+  "Yep, same one.",
+  "Nope, that covers it."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-51416",
+  "name": "Robert Foster",
+  "phone": "512-885-5960",
+  "email": "robert.foster@example.com",
+  "service_address": "2104 Maple St",
+  "city": "Georgetown",
+  "zip": "78626",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "American Standard",
+  "system_install_date": "2021-11-09",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [
+  "promise a waitlist"
+ ]
+}

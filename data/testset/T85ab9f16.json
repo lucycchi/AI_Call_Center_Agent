@@ -1,0 +1,35 @@
+{
+ "case_id": "T85ab9f16",
+ "template_id": "T85ab9f16",
+ "family": "T85ab9f16",
+ "calls_weight": 1,
+ "reason": "safety emergency",
+ "sub_reason": "gas, carbon monoxide or sparks",
+ "sample_call_id": "CALL-20260717-0180",
+ "caller_script": [
+  "There are sparks coming from the outdoor unit.",
+  "Okay, we're going outside."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-82768",
+  "name": "Marcus Baker",
+  "phone": "512-844-7459",
+  "email": "marcus.baker@example.com",
+  "service_address": "6186 Windcrest Ave",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2014-08-12",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "emergency",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

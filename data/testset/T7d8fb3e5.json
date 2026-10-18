@@ -1,0 +1,51 @@
+{
+ "case_id": "T7d8fb3e5",
+ "template_id": "T7d8fb3e5",
+ "family": "T7d8fb3e5",
+ "calls_weight": 14,
+ "reason": "warranty",
+ "sub_reason": "claim",
+ "sample_call_id": "CALL-20260711-0248",
+ "caller_script": [
+  "I need to file a warranty claim. The unit you installed last year stopped working.",
+  "Um, sure, it's Omar Singh, 512-342-5833.",
+  "Tomorrow if you can.",
+  "Take it.",
+  "That's all, thank you so much."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-15531",
+  "name": "Omar Garcia",
+  "phone": "512-978-2038",
+  "email": "omar.garcia@example.com",
+  "service_address": "7362 Lakeshore Blvd",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Rheem",
+  "system_install_date": "2026-01-01",
+  "zone": "central",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "A full system installation has a 2-year Meridian labor warranty, so a unit installed within the last year is covered; a warranty diagnostic is booked and there is no diagnostic fee if the failure is covered.",
+ "evidence_spans": [
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "New system installation warranty",
+   "start_line": 9,
+   "end_line": 13
+  },
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "Filing a claim",
+   "start_line": 31,
+   "end_line": 32
+  }
+ ],
+ "must_not": []
+}

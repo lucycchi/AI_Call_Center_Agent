@@ -1,0 +1,51 @@
+{
+ "case_id": "T3c30d716",
+ "template_id": "T3c30d716",
+ "family": "T3c30d716",
+ "calls_weight": 8,
+ "reason": "billing",
+ "sub_reason": "refund",
+ "sample_call_id": "CALL-20260710-0136",
+ "caller_script": [
+  "I want a full refund on the repair. It didn't fix anything and I had to call another company.",
+  "Um, sure, it's Michael Lee, 512-798-8140.",
+  "I'd better.",
+  "Nope, that covers it."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-52727",
+  "name": "Sofia Clark",
+  "phone": "512-773-1930",
+  "email": "sofia.clark@example.com",
+  "service_address": "4171 Brookside Ct",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Lennox",
+  "system_install_date": "2024-03-31",
+  "zone": "central",
+  "synthetic": false
+ },
+ "fixtures": [
+  {
+   "table": "invoices",
+   "row": {
+    "invoice_id": "INV-900014",
+    "customer_id": "MHC-52727",
+    "appointment_id": null,
+    "issued_date": "2026-10-02",
+    "due_date": "2026-11-01",
+    "amount_cents": 24500,
+    "balance_cents": 24500,
+    "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 15600}]"
+   }
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "dispute",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

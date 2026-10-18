@@ -1,0 +1,52 @@
+{
+ "case_id": "Tb9afdda4",
+ "template_id": "Tb9afdda4",
+ "family": "Tb9afdda4",
+ "calls_weight": 13,
+ "reason": "billing",
+ "sub_reason": "what an invoice is for",
+ "sample_call_id": "CALL-20260710-0373",
+ "caller_script": [
+  "I got an invoice, INV-292142, for $245 and I'm not sure what it's for.",
+  "Hold on, my dog is barking.",
+  "Sure, it's Raj Okafor, 512-658-6601.",
+  "Oh okay. Can you email me an itemized copy?",
+  "No that's everything."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-18700",
+  "name": "Kim Murphy",
+  "phone": "512-494-3705",
+  "email": "kim.murphy@example.com",
+  "service_address": "3722 Cedar Ridge Ln",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Lennox",
+  "system_install_date": "2015-08-06",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [
+  {
+   "table": "invoices",
+   "row": {
+    "invoice_id": "INV-900036",
+    "customer_id": "MHC-18700",
+    "appointment_id": null,
+    "issued_date": "2026-10-02",
+    "due_date": "2026-11-01",
+    "amount_cents": 24500,
+    "balance_cents": 24500,
+    "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 15600}]"
+   }
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "action gap",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

@@ -1,0 +1,40 @@
+{
+ "case_id": "Tf995585c",
+ "template_id": "Tf995585c",
+ "family": "Tf995585c",
+ "calls_weight": 11,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260715-0061",
+ "caller_script": [
+  "Yeah, I need to schedule a service call. There's water pooling around the indoor unit.",
+  "Sure, it's Victor Ali, 512-567-4087.",
+  "Monday if possible, 8 to 12.",
+  "Yeah, that works.",
+  "Sorry, you cut out for a second.",
+  "Yes.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-94268",
+  "name": "Beth Johnson",
+  "phone": "512-564-4650",
+  "email": "beth.johnson@example.com",
+  "service_address": "8825 Sunset Terrace",
+  "city": "Leander",
+  "zip": "78641",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Rheem",
+  "system_install_date": "2022-11-18",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

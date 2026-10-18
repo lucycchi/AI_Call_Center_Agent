@@ -1,0 +1,43 @@
+{
+ "case_id": "Td12bdf25",
+ "template_id": "Td12bdf25",
+ "family": "Td1e329a6",
+ "calls_weight": 3,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260723-0172",
+ "caller_script": [
+  "Hi, my thermostat is blank and I'd like to get someone out to look at it.",
+  "Tom Reyes, 3156 Brookside Ct, Georgetown.",
+  "Next Tuesday if possible, the afternoon.",
+  "Can you do anything earlier?",
+  "Okay, do that. And book the slot.",
+  "Hold on, my dog is barking.",
+  "Yes.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-72227",
+  "name": "Jennifer Hernandez",
+  "phone": "512-872-9110",
+  "email": "jennifer.hernandez@example.com",
+  "service_address": "9044 Pecan Grove Rd",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-09-18",
+  "system_brand": "Rheem",
+  "system_install_date": "2016-12-07",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [
+  "promise a waitlist"
+ ]
+}

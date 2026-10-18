@@ -1,0 +1,62 @@
+{
+ "case_id": "T33be9400",
+ "template_id": "T33be9400",
+ "family": "T33be9400",
+ "calls_weight": 9,
+ "reason": "existing appointment",
+ "sub_reason": "technician late",
+ "sample_call_id": "CALL-20260721-0261",
+ "caller_script": [
+  "Um, my window was 12 to 4 and it's 4:30. Nobody's here and nobody's called.",
+  "Sure, it's Sofia Lee, 512-887-5212.",
+  "Okay. I just need to know if I should wait.",
+  "That's all, thank you so much."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-94339",
+  "name": "Sofia Rivera",
+  "phone": "512-678-4597",
+  "email": "sofia.rivera@example.com",
+  "service_address": "1642 Pecan Grove Rd",
+  "city": "Pflugerville",
+  "zip": "78660",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2023-07-20",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [
+  {
+   "table": "appointment_slots",
+   "row": {
+    "slot_id": 9011,
+    "slot_date": "2026-10-16",
+    "window": "12:00-16:00",
+    "tech_id": 1,
+    "zone": "north",
+    "service_type": "hvac_repair",
+    "status": "booked"
+   }
+  },
+  {
+   "table": "appointments",
+   "row": {
+    "appointment_id": 5011,
+    "slot_id": 9011,
+    "customer_id": "MHC-94339",
+    "issue_description": "test appointment",
+    "created_at": "2026-10-10",
+    "status": "scheduled",
+    "is_warranty_visit": 0
+   }
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "late technician",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

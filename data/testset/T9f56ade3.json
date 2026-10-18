@@ -1,0 +1,40 @@
+{
+ "case_id": "T9f56ade3",
+ "template_id": "T9f56ade3",
+ "family": "T9f56ade3",
+ "calls_weight": 6,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260713-0320",
+ "caller_script": [
+  "Yeah, I need to schedule a service call. The AC is making a loud grinding noise.",
+  "Yeah, it's MHC-82246.",
+  "Hannah Cruz.",
+  "Friday if possible, 12 to 4.",
+  "Sure, let's do that.",
+  "Yep, same one.",
+  "Nope, that covers it."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-57204",
+  "name": "Michael Foster",
+  "phone": "512-294-5440",
+  "email": "michael.foster@example.com",
+  "service_address": "4170 Pecan Grove Rd",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2021-10-13",
+  "zone": "central",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

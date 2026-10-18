@@ -1,0 +1,52 @@
+{
+ "case_id": "Taca6d958",
+ "template_id": "Taca6d958",
+ "family": "Taca6d958",
+ "calls_weight": 14,
+ "reason": "billing",
+ "sub_reason": "pay an invoice",
+ "sample_call_id": "CALL-20260708-0115",
+ "caller_script": [
+  "I need to pay invoice INV-263891. Can I do it over the phone?",
+  "Yeah, it's MHC-27627.",
+  "Maria Patel.",
+  "Got it. Thanks.",
+  "No that's everything."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-73972",
+  "name": "Tom Ali",
+  "phone": "512-304-6613",
+  "email": "tom.ali@example.com",
+  "service_address": "4437 Harbor View Way",
+  "city": "Buda",
+  "zip": "78610",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "American Standard",
+  "system_install_date": "2023-05-25",
+  "zone": "south",
+  "synthetic": false
+ },
+ "fixtures": [
+  {
+   "table": "invoices",
+   "row": {
+    "invoice_id": "INV-900034",
+    "customer_id": "MHC-73972",
+    "appointment_id": null,
+    "issued_date": "2026-10-02",
+    "due_date": "2026-11-01",
+    "amount_cents": 24500,
+    "balance_cents": 24500,
+    "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 15600}]"
+   }
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "action gap",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

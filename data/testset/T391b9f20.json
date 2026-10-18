@@ -1,0 +1,42 @@
+{
+ "case_id": "T391b9f20",
+ "template_id": "T391b9f20",
+ "family": "T9bb3779a",
+ "calls_weight": 2,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260714-0178",
+ "caller_script": [
+  "I'm calling to book a repair, the AC runs but the air is warm.",
+  "Sure, it's Aisha Hernandez, 512-213-6777.",
+  "Tomorrow if possible, 12 to 4.",
+  "Can you do anything earlier?",
+  "Okay, do that. And book the slot.",
+  "Um, yes.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-36446",
+  "name": "Nadia Lee",
+  "phone": "512-496-8302",
+  "email": "nadia.lee@example.com",
+  "service_address": "8293 Maple St",
+  "city": "Leander",
+  "zip": "78641",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Lennox",
+  "system_install_date": "2022-01-04",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [
+  "promise a waitlist"
+ ]
+}

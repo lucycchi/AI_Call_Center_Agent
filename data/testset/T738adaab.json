@@ -1,0 +1,37 @@
+{
+ "case_id": "T738adaab",
+ "template_id": "T738adaab",
+ "family": "T738adaab",
+ "calls_weight": 14,
+ "reason": "membership",
+ "sub_reason": "renewal date",
+ "sample_call_id": "CALL-20260707-0096",
+ "caller_script": [
+  "I got an email saying my membership is renewing. When does it actually charge?",
+  "Elena Diaz, 1376 Ridgeline Pass, Buda.",
+  "And I can still cancel before then?",
+  "No that's everything."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-96313",
+  "name": "Jennifer Nguyen",
+  "phone": "512-488-1067",
+  "email": "jennifer.nguyen@example.com",
+  "service_address": "2486 Pecan Grove Rd",
+  "city": "Buda",
+  "zip": "78610",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-01-22",
+  "system_brand": "Rheem",
+  "system_install_date": "2020-09-25",
+  "zone": "south",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

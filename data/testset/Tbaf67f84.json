@@ -1,0 +1,45 @@
+{
+ "case_id": "Tbaf67f84",
+ "template_id": "Tbaf67f84",
+ "family": "Tbaf67f84",
+ "calls_weight": 12,
+ "reason": "membership",
+ "sub_reason": "what it includes or price",
+ "sample_call_id": "CALL-20260707-0148",
+ "caller_script": [
+  "What does the Comfort Club membership actually include?",
+  "And how much is it?",
+  "Does it cover plumbing?",
+  "Okay, let me think about it.",
+  "No that's everything."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-91552",
+  "name": "Nadia Rivera",
+  "phone": "512-490-3651",
+  "email": "nadia.rivera@example.com",
+  "service_address": "8638 Maple St",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Trane",
+  "system_install_date": "2018-10-28",
+  "zone": "central",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "The Comfort Club costs $189 a year per system or $16.99 a month (12-month minimum), $99 per additional system. It includes two seasonal tune-ups a year, priority scheduling, the $89 diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is $269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off plumbing repairs.",
+ "evidence_spans": [
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Plans",
+   "start_line": 6,
+   "end_line": 26
+  }
+ ],
+ "must_not": []
+}

@@ -1,0 +1,39 @@
+{
+ "case_id": "Tfc7d7be8",
+ "template_id": "Tfc7d7be8",
+ "family": "Tfc7d7be8",
+ "calls_weight": 12,
+ "reason": "new booking",
+ "sub_reason": "tune-up",
+ "sample_call_id": "CALL-20260711-0109",
+ "caller_script": [
+  "Hey, so I need my annual tune-up. What's the soonest you can get a tech out?",
+  "Nate Lopez, 2973 Maple St, Pflugerville.",
+  "Friday if possible, first thing in the morning.",
+  "That's fine.",
+  "Um, yep, same one.",
+  "Nope, that covers it."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-21608",
+  "name": "Grace Martinez",
+  "phone": "512-470-2993",
+  "email": "grace.martinez@example.com",
+  "service_address": "7534 Oak Hollow Dr",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-02-11",
+  "system_brand": "Lennox",
+  "system_install_date": "2025-02-18",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

@@ -1,0 +1,40 @@
+{
+ "case_id": "T28588235",
+ "template_id": "T28588235",
+ "family": "T28588235",
+ "calls_weight": 11,
+ "reason": "new booking",
+ "sub_reason": "burning smell",
+ "sample_call_id": "CALL-20260706-0101",
+ "caller_script": [
+  "Yeah, I need to schedule a service call. I smell something burning from the vents.",
+  "Yeah, it's MHC-35307.",
+  "Linda Foster.",
+  "Thursday if possible, 8 to 12.",
+  "Um, that's fine.",
+  "I think so, it's whatever was there when we moved in.",
+  "Nope, that covers it."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-14512",
+  "name": "Beth Cruz",
+  "phone": "512-494-8817",
+  "email": "beth.cruz@example.com",
+  "service_address": "1736 Maple St",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-09-09",
+  "system_brand": "Trane",
+  "system_install_date": "2012-06-12",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "burning smell",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

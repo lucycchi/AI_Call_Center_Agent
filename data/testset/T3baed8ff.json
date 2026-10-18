@@ -1,0 +1,42 @@
+{
+ "case_id": "T3baed8ff",
+ "template_id": "T3baed8ff",
+ "family": "T3baed8ff",
+ "calls_weight": 12,
+ "reason": "new booking",
+ "sub_reason": "plumbing",
+ "sample_call_id": "CALL-20260718-0360",
+ "caller_script": [
+  "Um, i'm calling to book a repair, my kitchen sink is backing up.",
+  "Yeah, it's MHC-40814.",
+  "Grace Nguyen.",
+  "Can you hear me okay?",
+  "Monday if possible, first thing in the morning.",
+  "Can you hear me okay?",
+  "Sure, let's do that.",
+  "I think so, it's whatever was there when we moved in.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-68866",
+  "name": "Kim Martinez",
+  "phone": "512-926-6729",
+  "email": "kim.martinez@example.com",
+  "service_address": "3665 Oak Hollow Dr",
+  "city": "Round Rock",
+  "zip": "78664",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Lennox",
+  "system_install_date": "2013-04-04",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "clean_decline",
+ "expected_handoff_reason": "no plumbing capacity in north zone",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

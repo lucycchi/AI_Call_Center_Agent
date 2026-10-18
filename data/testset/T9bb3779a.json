@@ -1,0 +1,39 @@
+{
+ "case_id": "T9bb3779a",
+ "template_id": "T9bb3779a",
+ "family": "T9bb3779a",
+ "calls_weight": 9,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260728-0050",
+ "caller_script": [
+  "Hey, so the AC runs but the air is warm. What's the soonest you can get a tech out?",
+  "Sure, it's Omar Cruz, 512-400-9954.",
+  "As soon as possible if possible, 8 to 12.",
+  "That's fine.",
+  "Yep, same one.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-86554",
+  "name": "Grace Diaz",
+  "phone": "512-336-6909",
+  "email": "grace.diaz@example.com",
+  "service_address": "1818 Pecan Grove Rd",
+  "city": "Georgetown",
+  "zip": "78626",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2025-09-09",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

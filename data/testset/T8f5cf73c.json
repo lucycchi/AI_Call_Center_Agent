@@ -1,0 +1,41 @@
+{
+ "case_id": "T8f5cf73c",
+ "template_id": "T8f5cf73c",
+ "family": "T8f5cf73c",
+ "calls_weight": 4,
+ "reason": "new booking",
+ "sub_reason": "plumbing",
+ "sample_call_id": "CALL-20260802-0016",
+ "caller_script": [
+  "Yeah, I need to schedule a service call. The water heater pilot light keeps going out.",
+  "Sure, it's Maria Thompson, 512-257-5806.",
+  "Sorry, I'm driving, one sec.",
+  "Friday if possible, 12 to 4.",
+  "That's fine.",
+  "Yep, same one.",
+  "Sorry, I'm driving, one sec.",
+  "That's all, thank you so much."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-65616",
+  "name": "Nadia Rivera",
+  "phone": "512-935-7890",
+  "email": "nadia.rivera@example.com",
+  "service_address": "6036 Pecan Grove Rd",
+  "city": "Georgetown",
+  "zip": "78626",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Carrier",
+  "system_install_date": "2019-01-17",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "clean_decline",
+ "expected_handoff_reason": "no plumbing capacity in north zone",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

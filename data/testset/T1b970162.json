@@ -1,0 +1,43 @@
+{
+ "case_id": "T1b970162",
+ "template_id": "T1b970162",
+ "family": "T3baed8ff",
+ "calls_weight": 6,
+ "reason": "new booking",
+ "sub_reason": "plumbing",
+ "sample_call_id": "CALL-20260709-0365",
+ "caller_script": [
+  "I'm calling to book a repair, my kitchen sink is backing up.",
+  "Yeah, it's MHC-25306.",
+  "Robert Martinez.",
+  "Thursday if possible, 4 to 7, after work.",
+  "Can you do anything earlier?",
+  "Okay, do that. And book the slot.",
+  "Yep, same one.",
+  "Um, no, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-70158",
+  "name": "Robert Clark",
+  "phone": "512-415-2222",
+  "email": "robert.clark@example.com",
+  "service_address": "9626 Cedar Ridge Ln",
+  "city": "Buda",
+  "zip": "78610",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2027-05-07",
+  "system_brand": "Carrier",
+  "system_install_date": "2021-12-03",
+  "zone": "south",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [
+  "promise a waitlist"
+ ]
+}

@@ -1,0 +1,40 @@
+{
+ "case_id": "Tb456e16e",
+ "template_id": "Tb456e16e",
+ "family": "Tb456e16e",
+ "calls_weight": 16,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260709-0103",
+ "caller_script": [
+  "I'm calling to book a repair, the furnace won't kick on.",
+  "Yeah, it's MHC-85936.",
+  "Wei Garcia.",
+  "Tomorrow if possible, 12 to 4.",
+  "That's fine.",
+  "Um, yes.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-41927",
+  "name": "Nate Smith",
+  "phone": "512-348-5419",
+  "email": "nate.smith@example.com",
+  "service_address": "6685 Windcrest Ave",
+  "city": "Buda",
+  "zip": "78610",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Trane",
+  "system_install_date": "2012-04-24",
+  "zone": "south",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

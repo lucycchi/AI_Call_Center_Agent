@@ -1,0 +1,43 @@
+{
+ "case_id": "T9f473de6",
+ "template_id": "T9f473de6",
+ "family": "T9f473de6",
+ "calls_weight": 8,
+ "reason": "warranty",
+ "sub_reason": "transfer",
+ "sample_call_id": "CALL-20260722-0161",
+ "caller_script": [
+  "We just bought a house and the previous owner had a system installed by you. Does the warranty transfer?",
+  "It's 4682 Maple St, Leander.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-65616",
+  "name": "Nadia Rivera",
+  "phone": "512-935-7890",
+  "email": "nadia.rivera@example.com",
+  "service_address": "6036 Pecan Grove Rd",
+  "city": "Georgetown",
+  "zip": "78626",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Carrier",
+  "system_install_date": "2019-01-17",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "Manufacturer parts warranties can transfer once to a new homeowner, usually within 90 days of the sale, with a manufacturer transfer fee of $50 to $100. Meridian's labor warranty does not transfer.",
+ "evidence_spans": [
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "Warranty transfer",
+   "start_line": 27,
+   "end_line": 30
+  }
+ ],
+ "must_not": []
+}

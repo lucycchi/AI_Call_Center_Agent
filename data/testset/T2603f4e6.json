@@ -1,0 +1,50 @@
+{
+ "case_id": "T2603f4e6",
+ "template_id": "T2603f4e6",
+ "family": "T2603f4e6",
+ "calls_weight": 4,
+ "reason": "membership",
+ "sub_reason": "member discount on a new system",
+ "sample_call_id": "CALL-20260713-0285",
+ "caller_script": [
+  "Sorry, I'm driving, one sec.",
+  "I'm a member. Do I get a discount on a new system?",
+  "Okay good to know.",
+  "Um, that's all, thank you so much."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-31160",
+  "name": "Marcus Nguyen",
+  "phone": "512-350-9899",
+  "email": "marcus.nguyen@example.com",
+  "service_address": "543 Sunset Terrace",
+  "city": "Georgetown",
+  "zip": "78626",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2027-07-18",
+  "system_brand": "Lennox",
+  "system_install_date": "2018-07-07",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "Comfort Club members (Standard and Plus) get $500 off a full system replacement. Replacements start with a free in-home estimate.",
+ "evidence_spans": [
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Plans",
+   "start_line": 6,
+   "end_line": 26
+  },
+  {
+   "file": "services__service_catalog.md",
+   "heading": "System replacement",
+   "start_line": 26,
+   "end_line": 30
+  }
+ ],
+ "must_not": []
+}

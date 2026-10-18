@@ -1,0 +1,47 @@
+{
+ "case_id": "Tbc5df324",
+ "template_id": "Tbc5df324",
+ "family": "Tbc5df324",
+ "calls_weight": 12,
+ "reason": "replacement estimate",
+ "sub_reason": "replacement estimate",
+ "sample_call_id": "CALL-20260709-0134",
+ "caller_script": [
+  "My system is 18 years old and I'm thinking about replacing it. What would that cost?",
+  "Ballpark?",
+  "Yeah, let's do that.",
+  "Yeah, it's MHC-10256.",
+  "Um, david Foster.",
+  "Works.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-47959",
+  "name": "Priya Smith",
+  "phone": "512-773-3961",
+  "email": "priya.smith@example.com",
+  "service_address": "1788 Ridgeline Pass",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Rheem",
+  "system_install_date": "2019-09-16",
+  "zone": "central",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "clean_decline",
+ "expected_handoff_reason": "no estimate capacity in central zone",
+ "needs_documents": true,
+ "reference_answer": "Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, and the technician or advisor confirms the price.",
+ "evidence_spans": [
+  {
+   "file": "services__service_catalog.md",
+   "heading": "System replacement",
+   "start_line": 26,
+   "end_line": 30
+  }
+ ],
+ "must_not": []
+}

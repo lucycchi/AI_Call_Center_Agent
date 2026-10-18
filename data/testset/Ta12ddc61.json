@@ -1,0 +1,38 @@
+{
+ "case_id": "Ta12ddc61",
+ "template_id": "Ta12ddc61",
+ "family": "Ta12ddc61",
+ "calls_weight": 13,
+ "reason": "membership",
+ "sub_reason": "cancel",
+ "sample_call_id": "CALL-20260710-0364",
+ "caller_script": [
+  "I want to cancel my Comfort Club membership.",
+  "Yeah, it's MHC-18489.",
+  "Jennifer Lee.",
+  "That's fine, just make sure it doesn't renew.",
+  "No that's everything."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-67688",
+  "name": "Omar Kim",
+  "phone": "512-344-8757",
+  "email": "omar.kim@example.com",
+  "service_address": "2071 Sunset Terrace",
+  "city": "Round Rock",
+  "zip": "78664",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-01-05",
+  "system_brand": "Trane",
+  "system_install_date": "2022-10-06",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "action gap",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

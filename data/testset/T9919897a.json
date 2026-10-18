@@ -1,0 +1,44 @@
+{
+ "case_id": "T9919897a",
+ "template_id": "T9919897a",
+ "family": "T9919897a",
+ "calls_weight": 6,
+ "reason": "warranty",
+ "sub_reason": "repeat repair",
+ "sample_call_id": "CALL-20260712-0007",
+ "caller_script": [
+  "Does the labor warranty cover a repeat repair? You fixed my blower in March and it's doing the same thing.",
+  "Sure, it's Beth Patel, 512-681-4644.",
+  "Good. Can you get someone out?",
+  "No that's everything."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-73231",
+  "name": "Maria Ali",
+  "phone": "512-891-9021",
+  "email": "maria.ali@example.com",
+  "service_address": "4865 Sunset Terrace",
+  "city": "Leander",
+  "zip": "78641",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2026-12-10",
+  "system_brand": "Lennox",
+  "system_install_date": "2021-09-29",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "Repairs carry a 1-year labor warranty on the specific part repaired; if the same part fails within a year, the return visit and labor are free.",
+ "evidence_spans": [
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "Repair warranty (Meridian labor warranty)",
+   "start_line": 4,
+   "end_line": 8
+  }
+ ],
+ "must_not": []
+}

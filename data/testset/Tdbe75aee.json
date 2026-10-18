@@ -1,0 +1,51 @@
+{
+ "case_id": "Tdbe75aee",
+ "template_id": "Tdbe75aee",
+ "family": "Tdbe75aee",
+ "calls_weight": 15,
+ "reason": "billing",
+ "sub_reason": "current balance",
+ "sample_call_id": "CALL-20260708-0255",
+ "caller_script": [
+  "What's my current balance?",
+  "Sure, it's James Smith, 512-399-7854.",
+  "Okay, I'll pay it through the portal.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-95520",
+  "name": "Nadia Clark",
+  "phone": "512-582-6434",
+  "email": "nadia.clark@example.com",
+  "service_address": "7348 Maple St",
+  "city": "Buda",
+  "zip": "78610",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Trane",
+  "system_install_date": "2018-02-19",
+  "zone": "south",
+  "synthetic": false
+ },
+ "fixtures": [
+  {
+   "table": "invoices",
+   "row": {
+    "invoice_id": "INV-900043",
+    "customer_id": "MHC-95520",
+    "appointment_id": null,
+    "issued_date": "2026-10-02",
+    "due_date": "2026-11-01",
+    "amount_cents": 24500,
+    "balance_cents": 24500,
+    "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 15600}]"
+   }
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

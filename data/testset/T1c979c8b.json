@@ -1,0 +1,44 @@
+{
+ "case_id": "T1c979c8b",
+ "template_id": "T1c979c8b",
+ "family": "Tb456e16e",
+ "calls_weight": 3,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260825-0370",
+ "caller_script": [
+  "I'm calling to book a repair, the furnace won't kick on.",
+  "Tom Murphy, 1077 Maple St, Pflugerville.",
+  "Um, thursday if possible, 8 to 12.",
+  "Sorry, you cut out for a second.",
+  "Um, can you do anything earlier?",
+  "Okay, do that. And book the slot.",
+  "Hold on, my dog is barking.",
+  "Yes.",
+  "That's all, thank you so much."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-50341",
+  "name": "Nate Okafor",
+  "phone": "512-343-7630",
+  "email": "nate.okafor@example.com",
+  "service_address": "5794 Oak Hollow Dr",
+  "city": "Georgetown",
+  "zip": "78626",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Carrier",
+  "system_install_date": "2012-05-13",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [
+  "promise a waitlist"
+ ]
+}

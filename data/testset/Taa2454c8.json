@@ -1,0 +1,37 @@
+{
+ "case_id": "Taa2454c8",
+ "template_id": "Taa2454c8",
+ "family": "Taa2454c8",
+ "calls_weight": 6,
+ "reason": "complaint or manager",
+ "sub_reason": "complaint or manager",
+ "sample_call_id": "CALL-20260718-0062",
+ "caller_script": [
+  "I want to talk to a manager. The tech who came out yesterday was rude, tracked mud through my house, and left without explaining anything.",
+  "Sure, it's Beth Patel, 512-497-6901.",
+  "Today. Not next week.",
+  "Nope, that covers it."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-75925",
+  "name": "Victor Lopez",
+  "phone": "512-458-2219",
+  "email": "victor.lopez@example.com",
+  "service_address": "4450 Brookside Ct",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2026-11-23",
+  "system_brand": "American Standard",
+  "system_install_date": "2016-01-01",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "complaint",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

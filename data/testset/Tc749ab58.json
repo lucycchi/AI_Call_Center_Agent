@@ -1,0 +1,35 @@
+{
+ "case_id": "Tc749ab58",
+ "template_id": "Tc749ab58",
+ "family": "Tc749ab58",
+ "calls_weight": 5,
+ "reason": "wrong number",
+ "sub_reason": "wrong number",
+ "sample_call_id": "CALL-20260813-0031",
+ "caller_script": [
+  "Is this Meridian Dental?",
+  "Oh, sorry. Wrong number."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-13342",
+  "name": "Robert Okafor",
+  "phone": "512-555-6966",
+  "email": "robert.okafor@example.com",
+  "service_address": "7868 Cedar Ridge Ln",
+  "city": "Kyle",
+  "zip": "78640",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Trane",
+  "system_install_date": "2020-12-20",
+  "zone": "south",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "redirect",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

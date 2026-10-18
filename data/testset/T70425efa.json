@@ -1,0 +1,42 @@
+{
+ "case_id": "T70425efa",
+ "template_id": "T70425efa",
+ "family": "T9f56ade3",
+ "calls_weight": 3,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260721-0242",
+ "caller_script": [
+  "Yeah, I need to schedule a service call. The AC is making a loud grinding noise.",
+  "Sure, it's Patricia Nguyen, 512-790-1721.",
+  "Tomorrow if possible, the afternoon.",
+  "Can you do anything earlier?",
+  "Okay, do that. And book the slot.",
+  "I think so, it's whatever was there when we moved in.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-17357",
+  "name": "Derek Lopez",
+  "phone": "512-654-9480",
+  "email": "derek.lopez@example.com",
+  "service_address": "8174 Brookside Ct",
+  "city": "Hutto",
+  "zip": "78634",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Carrier",
+  "system_install_date": "2013-08-27",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [
+  "promise a waitlist"
+ ]
+}

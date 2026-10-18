@@ -1,0 +1,62 @@
+{
+ "case_id": "T2d967470",
+ "template_id": "T2d967470",
+ "family": "T2d967470",
+ "calls_weight": 8,
+ "reason": "existing appointment",
+ "sub_reason": "confirm",
+ "sample_call_id": "CALL-20260710-0124",
+ "caller_script": [
+  "Um, just wanted to confirm I still have someone coming Thursday.",
+  "James Nguyen, 317 Maple St, Buda.",
+  "Okay, thanks.",
+  "No that's everything."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-73972",
+  "name": "Tom Ali",
+  "phone": "512-304-6613",
+  "email": "tom.ali@example.com",
+  "service_address": "4437 Harbor View Way",
+  "city": "Buda",
+  "zip": "78610",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "American Standard",
+  "system_install_date": "2023-05-25",
+  "zone": "south",
+  "synthetic": false
+ },
+ "fixtures": [
+  {
+   "table": "appointment_slots",
+   "row": {
+    "slot_id": 9010,
+    "slot_date": "2026-10-22",
+    "window": "12:00-16:00",
+    "tech_id": 3,
+    "zone": "south",
+    "service_type": "hvac_repair",
+    "status": "booked"
+   }
+  },
+  {
+   "table": "appointments",
+   "row": {
+    "appointment_id": 5010,
+    "slot_id": 9010,
+    "customer_id": "MHC-73972",
+    "issue_description": "test appointment",
+    "created_at": "2026-10-10",
+    "status": "scheduled",
+    "is_warranty_visit": 0
+   }
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

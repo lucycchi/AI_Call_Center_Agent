@@ -1,0 +1,38 @@
+{
+ "case_id": "T19162cee",
+ "template_id": "T19162cee",
+ "family": "T19162cee",
+ "calls_weight": 5,
+ "reason": "complaint or manager",
+ "sub_reason": "complaint or manager",
+ "sample_call_id": "CALL-20260724-0391",
+ "caller_script": [
+  "I've called three times about the same problem and nobody has called me back. I'm done.",
+  "Yeah, it's MHC-80890.",
+  "Um, maria Singh.",
+  "Today. Not next week.",
+  "That's all, thank you so much."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-93419",
+  "name": "Michael Johnson",
+  "phone": "512-255-9256",
+  "email": "michael.johnson@example.com",
+  "service_address": "6290 Maple St",
+  "city": "Hutto",
+  "zip": "78634",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-07-09",
+  "system_brand": "Trane",
+  "system_install_date": "2024-10-31",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "complaint",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": []
+}

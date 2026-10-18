@@ -1,0 +1,44 @@
+{
+ "case_id": "T0a995037",
+ "template_id": "T0a995037",
+ "family": "T0a995037",
+ "calls_weight": 8,
+ "reason": "membership",
+ "sub_reason": "what it includes or price",
+ "sample_call_id": "CALL-20260712-0104",
+ "caller_script": [
+  "How much is the maintenance plan?",
+  "I thought it was $149?",
+  "Hm. Okay.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-31337",
+  "name": "Sofia Brown",
+  "phone": "512-547-7902",
+  "email": "sofia.brown@example.com",
+  "service_address": "3307 Lakeshore Blvd",
+  "city": "Pflugerville",
+  "zip": "78660",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-07-11",
+  "system_brand": "Lennox",
+  "system_install_date": "2017-07-27",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "The Comfort Club costs $189 a year per system or $16.99 a month (12-month minimum), $99 per additional system. It includes two seasonal tune-ups a year, priority scheduling, the $89 diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is $269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off plumbing repairs.",
+ "evidence_spans": [
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Plans",
+   "start_line": 6,
+   "end_line": 26
+  }
+ ],
+ "must_not": []
+}

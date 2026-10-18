@@ -1,0 +1,42 @@
+{
+ "case_id": "T81429224",
+ "template_id": "T81429224",
+ "family": "Tf995585c",
+ "calls_weight": 5,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": "CALL-20260819-0245",
+ "caller_script": [
+  "Um, hey, so there's water pooling around the indoor unit. What's the soonest you can get a tech out?",
+  "Um, sure, it's Linda Foster, 512-358-2258.",
+  "Next Tuesday if possible, 8 to 12.",
+  "Um, can you do anything earlier?",
+  "Okay, do that. And book the slot.",
+  "Um, yes.",
+  "No, that's it. Thanks."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-93743",
+  "name": "David Rivera",
+  "phone": "512-777-1976",
+  "email": "david.rivera@example.com",
+  "service_address": "3474 Harbor View Way",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "American Standard",
+  "system_install_date": "2025-03-21",
+  "zone": "north",
+  "synthetic": false
+ },
+ "fixtures": [],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [
+  "promise a waitlist"
+ ]
+}
