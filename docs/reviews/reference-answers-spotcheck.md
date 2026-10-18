@@ -349,3 +349,12 @@ Code checks these directly (bookings in the database copy, handoffs by their rea
 - **Working-set case:** a test case used while tuning the agent.
 - **Evidence span:** the exact lines of a document that support a reference answer.
 - **Action gap:** a request the agent hands off because it needs an action on money or membership.
+
+## Added after the milestone 2 gate (2026-10-18)
+
+The author checked these against their cited document lines and confirmed all correct:
+
+- Comfort Club savings (T9e29febc, working): `membership/comfort_club_overview.md` lines 9 to 15; the documents do not say whether benefits apply on the day of joining, so a team member confirms.
+- Upgrade mid-year (T0ad82d45, held out): `membership/comfort_club_overview.md` line 40.
+- Cancel before renewal (T738adaab, working): `membership/comfort_club_overview.md` lines 34 and 28.
+- Replacement estimate, reworded (Tbc5df324, working): `services/service_catalog.md` lines 27 and 28.
