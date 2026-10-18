@@ -576,7 +576,7 @@ can only propose a decision; only the author settles one.
 
 ## D43: How are money promises in replies and money or membership action requests detected, after three review rounds showed word patterns failing in both directions?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
 - **Options:**
   - A Haiku check on every reply sentence that touches money, plus fixed code rules, failing closed; the router decides action requests, with a code backstop only for unmistakable requests
