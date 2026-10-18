@@ -69,7 +69,7 @@ def test_lookups_cannot_write(db):
 
 @pytest.mark.parametrize("text", ["send me a payment link", "set up autopay", "cancel my auto-renew", "upgrade to Plus",
                                   "I want to cancel my Comfort Club membership", "can I get a refund", "please waive the fee",
-                                  "sign me up for the maintenance plan", "Can I pay it over the phone?",
+                                  "sign me up for the maintenance plan",
                                   "I need to pay invoice INV-263891.", "I want to pay my balance"])
 def test_money_and_membership_actions_are_recognised(text):
     assert is_action_request(text)
@@ -77,6 +77,27 @@ def test_money_and_membership_actions_are_recognised(text):
 
 @pytest.mark.parametrize("text", ["what's my balance", "I need to cancel my appointment", "what does the Comfort Club include",
                                   "when does my membership renew", "I'm a Comfort Club member",
-                                  "Okay, I'll pay it through the portal."])
+                                  "Okay, I'll pay it through the portal.", "Can I pay it over the phone?"])
 def test_questions_are_not_action_requests(text):
+    assert not is_action_request(text)
+
+
+# The backstop catches explicit requests only; questions about the same subjects stay questions (R48).
+@pytest.mark.parametrize("text", [
+    "I want to set up autopay", "Can you set up autopay on my plan?", "send me a payment link", "Can I get a payment link?",
+    "please cancel my Comfort Club membership", "turn off my auto-renew", "I want to cancel my auto-renew",
+    "sign me up for the Comfort Club", "I'd like to join the maintenance plan", "upgrade me to Plus",
+    "I want to upgrade to Plus", "I want a refund", "refund me the $89", "can I get a refund", "please waive the fee",
+    "can you waive the after-hours fee?", "I want to pay my bill", "I need to pay invoice INV-263891."])
+def test_explicit_money_and_membership_requests_are_action_requests(text):
+    assert is_action_request(text)
+
+
+@pytest.mark.parametrize("text", [
+    "How much does it cost to join the Comfort Club?", "What's your refund policy?", "What do I get if I upgrade to Plus?",
+    "Can you sign me up for a tune-up next week?", "Cancel my Comfort Club tune-up on Thursday",
+    "cancel my appointment, I plan to be away", "book me in, I want to upgrade my old furnace",
+    "can I pay the technician on the day?", "Can I pay by card over the phone?", "Is the diagnostic fee waived for members?",
+    "Does the membership auto-renew?", "Can I upgrade from the regular plan to Plus mid-year?"])
+def test_questions_about_money_and_membership_are_not_action_requests(text):
     assert not is_action_request(text)

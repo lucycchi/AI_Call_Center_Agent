@@ -30,8 +30,10 @@ def test_eight_words_of_an_internal_document_fail_even_across_sentences():
     from pathlib import Path
     text = (Path(__file__).resolve().parents[2] / "call_data" / "knowledge_base" / "internal" / "agent_discretion_notes.md").read_text()
     import re
-    words = re.findall(r"[A-Za-z0-9']+", text.split("\n", 3)[-1])[:12]
-    first, second = " ".join(words[:5]) + ".", " ".join(words[5:9]) + "."
+    words = re.findall(r"[A-Za-z0-9']+", text.split("\n", 3)[-1])
+    concession = re.compile(r"waiv|refund|credit|discount|fee|charge|off", re.I)
+    start = next(i for i in range(len(words) - 9) if not any(concession.search(w) for w in words[i:i + 9]))
+    first, second = " ".join(words[start:start + 5]) + ".", " ".join(words[start + 5:start + 9]) + "."
     assert check_sentence(first, "").ok
     result = check_sentence(second, first)
     assert (result.ok, result.rule) == (False, "internal_text")
@@ -155,3 +157,26 @@ def test_published_wording_from_the_documents_passes(sentence):
 def test_real_promises_fail(sentence, rule):
     result = check_sentence(sentence, "")
     assert (result.ok, result.rule) == (False, rule)
+
+
+# Deny by default: a concession is blocked unless it is an approved published term.
+@pytest.mark.parametrize("sentence", [
+    "Since you're a member, the late fee will be waived this time.", "The fee will be waived automatically for you this once.",
+    "Your fee will be waived within 2 days.", "We'll knock the trip charge off.", "That one's on us, no charge.",
+    "I'll give you a 10% discount since you've been waiting."])
+def test_concessions_that_are_not_published_terms_fail(sentence):
+    assert not check_sentence(sentence, "").ok
+
+
+def test_a_concession_split_over_two_sentences_fails():
+    assert not check_sentence("It will be waived for you.", "The diagnostic fee is $89.").ok
+
+
+@pytest.mark.parametrize("sentence", [
+    "We take Visa, Mastercard and Amex for your invoice.", "I can take you through the charges on your invoice.",
+    "We'll take a look at that charge for you.", "We remove the old unit, and the charge for haul-away is listed on the invoice.",
+    "We credit the $89 diagnostic fee toward the repair if you approve it.", "We refund unused membership months, prorated.",
+    "Members get a 15% discount on repairs.", "It's waived for members.", "Comfort Club members get $500 off a replacement."])
+def test_ordinary_and_published_sentences_pass(sentence):
+    previous = "The diagnostic fee is $89." if sentence.startswith("It's") else ""
+    assert check_sentence(sentence, previous).ok, check_sentence(sentence, previous).rule

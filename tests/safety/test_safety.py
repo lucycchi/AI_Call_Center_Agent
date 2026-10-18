@@ -110,3 +110,13 @@ def test_a_gas_appliance_or_a_negated_smell_is_not_danger(text):
                                   "I smell gas.", "Gas smell, near the furnace."])
 def test_punctuation_inside_or_around_a_trigger_still_matches(text):
     assert check(text, []).kind == "danger"
+
+
+@pytest.mark.parametrize("text", ["It's not breaker B. I smell gas in the basement", "not plan a. i smell gas",
+                                  "the c. o. detector is beeping"])
+def test_sentence_ends_are_never_joined_as_abbreviations(text):
+    assert check(text, []).kind == "danger"
+
+
+def test_a_tripped_breaker_long_after_a_burning_smell_is_danger():
+    assert check("the breaker just tripped", [], burning_before=True).kind == "danger"

@@ -22,7 +22,8 @@ class ConversationState:
     notes: list[str] = field(default_factory=list)
     reviewed_invoices: list[str] = field(default_factory=list)  # silent billing reviews already opened
     burning_mentioned: bool = False  # for the whole conversation: never advise resetting a breaker (R36)
-    tags_opened: list[str] = field(default_factory=list)  # ticket reasons already opened in this conversation  # constraints for any ticket, such as a disputed fee
+    tags_opened: list[str] = field(default_factory=list)  # ticket reasons already opened in this conversation
+    pending_tickets: list[dict] = field(default_factory=list)  # staff tickets whose save failed, retried each message  # constraints for any ticket, such as a disputed fee
 
     def flow_state(self) -> dict:
         data = asdict(self)

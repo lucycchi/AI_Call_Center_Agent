@@ -14,7 +14,7 @@ from app.flows.protocol import FlowResult
 from app.handoff.flow import confirm_booking
 from app.scheduling import transactions as tx
 from app.scheduling.dates import parse_request
-from app.scheduling.eligibility import SERVICE_NAMES, Slot, offer
+from app.scheduling.eligibility import SERVICE_NAMES, Slot, offer, spoken_when
 
 # Only a plain yes confirms a change (R52); anything hedged gets the read-back again.
 AFFIRMATIVE = re.compile(r"^\W*(?:(?:um|uh|oh)\W+)?(yes|yeah|yep|yup|sure|ok|okay|correct|that works|sounds good|book it|"
@@ -36,6 +36,20 @@ class _PlainYes:
     def search(self, text: str) -> bool:
         rest = AFFIRMATIVE.sub("", text, count=1)
         return bool(AFFIRMATIVE.search(text)) and not HEDGE.search(rest) and not NAMES_A_TIME.search(rest)
+
+
+def confirms(text: str, slot_date: str, window: str, now) -> bool:
+    """A clear yes to this read-back: no hedge, and any day or time it names is the one read back (R52)."""
+    if not AFFIRMATIVE.search(text) or HEDGE.search(AFFIRMATIVE.sub("", text, count=1)):
+        return False
+    if not NAMES_A_TIME.search(AFFIRMATIVE.sub("", text, count=1)):
+        return True
+    wanted = parse_request(text, now)
+    if wanted is None:
+        return False
+    return (wanted.date is None or wanted.date.isoformat() == slot_date) and \
+        (wanted.window is None or wanted.window == window) and \
+        (wanted.part is None or (window == "08:00-12:00") == (wanted.part == "morning"))
 
 
 YES = _PlainYes()
@@ -81,13 +95,26 @@ def _numbered(text: str, choices: list[dict]) -> dict | None:
 
 
 def _pick(text: str, choices: list[dict], now, key_date="slot_date") -> dict | None:
-    """Slot numbers, then dates and windows ("the Tuesday one", "October 22 in the morning"), then other ordinals."""
+    """A named day or date narrows the choices first ("the Tuesday one", "first thing on Tuesday"); then a slot
+    number or ordinal picks among them; then the window or part of day."""
     if len(choices) == 1 and YES.search(text):
         return choices[0]
-    numbered = _numbered(text, choices)
-    if numbered:
-        return numbered
+    names_a_day = re.search(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|january|february|"
+                            r"march|april|may|june|july|august|september|october|november|december|\d{1,2}/\d{1,2})\b", text, re.I)
+    if NTH_WITH_NOUN.search(text) and not names_a_day:  # "the 2nd one" is a slot, not 2 November
+        return _numbered(text, choices)
     wanted = parse_request(text, now)
+    if wanted and wanted.date:
+        pool = [c for c in choices if c[key_date] == wanted.date.isoformat()]
+        if len(pool) > 1:
+            numbered = _numbered(text, pool)
+            if numbered:
+                return numbered
+        choices = pool
+    else:
+        numbered = _numbered(text, choices)
+        if numbered:
+            return numbered
     if wanted and (wanted.date or wanted.window or wanted.part):
         for choice in choices:
             if (wanted.date is None or choice[key_date] == wanted.date.isoformat()) and \
@@ -174,7 +201,7 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
         flow["chosen"] = chosen
         return _read_back(flow, f"{SERVICE_NAMES[chosen['service_type']]} on {_when(chosen['slot_date'], chosen['window'])}")
     # Read-back: book only on a clear yes.
-    if YES.search(text):
+    if confirms(text, flow["chosen"]["slot_date"], flow["chosen"]["window"], now):
         chosen = flow["chosen"]
         if _deadline_passed():
             raise deadline.DeadlinePassed("not booking after the message deadline")
@@ -194,7 +221,12 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
                                     f"booked appointment {booked.appointment_id} as a normal visit",
                                     "warranty not verifiable from the database", "", "warranty review", booked.appointment_id)
             except Exception as error:
-                log.error("warranty review for appointment %s not saved: %s", booked.appointment_id, error)
+                log.error("warranty review for appointment %s not saved, kept to retry: %s", booked.appointment_id, error)
+                state.pending_tickets.append({"conversation_id": None, "who": f"{customer.name}, {customer.customer_id}",
+                                              "wants": f"{claim} claim: {flow.get('issue', '')}",
+                                              "tried": f"booked appointment {booked.appointment_id} as a normal visit",
+                                              "constraints": "warranty not verifiable from the database", "mood": "",
+                                              "reason_tag": "warranty review", "appointment_id": booked.appointment_id})
             return FlowResult(confirmed.facts + [NO_FEE_IF_COVERED], "confirmation", db_actions=confirmed.db_actions)
         return confirmed
     if NO.search(text):
@@ -240,24 +272,26 @@ def _existing(db, seed_db, customer, state, text, now) -> FlowResult:
         return FlowResult(["Ask what day and time the caller would like instead."], "booking offer")
     # Read-back for a cancel or reschedule.
     appointment = flow["appointment"]
-    if YES.search(text):
+    target = flow.get("chosen") or appointment
+    if confirms(text, target["slot_date"], target["window"], now):
         if _deadline_passed():
             raise deadline.DeadlinePassed("not changing an appointment after the message deadline")
         if kind == "cancel":
             result = tx.cancel(db, customer, appointment["appointment_id"], flow["confirmation_id"], now, seed_db)
-            what = f"Cancelled the {_when(appointment['slot_date'], appointment['window'])} visit"
+            what = f"Cancelled: your visit on {spoken_when(appointment['slot_date'], appointment['window'])}"
         else:
             chosen = flow["chosen"]
             result = tx.reschedule(db, customer, appointment["appointment_id"], chosen["slot_id"], flow["confirmation_id"],
                                    now, seed_db)
-            what = f"Moved the visit to {_when(chosen['slot_date'], chosen['window'])}"
+            what = f"Moved: your visit is now on {spoken_when(chosen['slot_date'], chosen['window'])}"
         if result.status == "taken":
             flow["step"] = "new_date"
             return _make_offer(db, customer, flow, "", now, "That slot was just taken. Offer these instead:")
         state.flow, state.active_flow = {}, None
         if result.status == "not found":
-            return FlowResult(["That appointment had already changed, so nothing was changed. Offer to check the caller's "
-                               "appointments again."], "confirmation", db_actions=[f"no change to appointment {appointment['appointment_id']}"])
+            return FlowResult(["That appointment had already changed, so nothing was changed. Would you like me to check "
+                               "your appointments again?"], "confirmation",
+                              db_actions=[f"no change to appointment {appointment['appointment_id']}"])
         state.tried.append(f"{result.status} appointment {appointment['appointment_id']}")
         fee = " A $49 late fee applies." if result.late_fee_cents else ""
         return FlowResult([f"{what}.{fee}"], "confirmation", db_actions=[f"{result.status} appointment {appointment['appointment_id']}"])

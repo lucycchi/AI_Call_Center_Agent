@@ -29,6 +29,21 @@ class Offer:
     decline_reason: str | None
 
 
+def spoken_window(window: str) -> str:
+    """ "08:00-12:00" as "8am to 12pm"."""
+    def hour(text: str) -> str:
+        h = int(text[:2])
+        return f"{h % 12 or 12}{'am' if h < 12 else 'pm'}"
+    start, end = window.split("-")
+    return f"{hour(start)} to {hour(end)}"
+
+
+def spoken_when(slot_date: str, window: str) -> str:
+    """ "2026-10-19", "08:00-12:00" as "Monday, October 19, 8am to 12pm"."""
+    day = datetime.fromisoformat(slot_date)
+    return f"{day:%A}, {day:%B} {day.day}, {spoken_window(window)}"
+
+
 def _overlaps(a: str, b: str) -> bool:
     (a1, a2), (b1, b2) = a.split("-"), b.split("-")
     return a1 < b2 and b1 < a2

@@ -7,36 +7,36 @@ Reviews of this milestone compare against `tortoise/milestone-2`, the last appro
 **Passed:** `python -m pytest` finished with exit code 0.
 
 ```
-============================= test session starts ==============================
-platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.7.0
 rootdir: /home/lucyc/gauntlet/AI_Call_Center_Agent
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.15.1, langsmith-0.14.11
-collected 358 items
+collected 397 items
 
-tests/accounts/test_accounts.py .............................            [  8%]
-tests/core/test_engine.py ..............                                 [ 12%]
-tests/eval/test_cases.py ...........................................     [ 24%]
-tests/eval/test_retrieval_metrics.py ..................                  [ 29%]
-tests/flows/test_conversations.py ...................................... [ 39%]
-..                                                                       [ 40%]
+tests/accounts/test_accounts.py .............................            [  7%]
+tests/core/test_engine.py ................                               [ 11%]
+tests/eval/test_cases.py ...........................................     [ 22%]
+tests/eval/test_retrieval_metrics.py ..................                  [ 26%]
+tests/flows/test_conversations.py ...................................... [ 36%]
+................                                                         [ 40%]
 tests/flows/test_knowledge.py ....                                       [ 41%]
-tests/handoff/test_handoff.py ..........                                 [ 44%]
-tests/knowledge/test_search.py ..............                            [ 48%]
-tests/ops/test_store.py .........                                        [ 50%]
-tests/pipeline/test_documents.py .......                                 [ 52%]
-tests/pipeline/test_findings.py .....................                    [ 58%]
-tests/pipeline/test_labels.py ..............                             [ 62%]
-tests/pipeline/test_templates.py .........                               [ 64%]
-tests/replies/test_checks.py ................................            [ 73%]
-tests/safety/test_safety.py .........................................    [ 85%]
-tests/scheduling/test_eligibility.py .........................           [ 92%]
-tests/scheduling/test_transactions.py ..............                     [ 96%]
+tests/handoff/test_handoff.py ..........                                 [ 43%]
+tests/knowledge/test_search.py ..............                            [ 47%]
+tests/ops/test_store.py ...........                                      [ 50%]
+tests/pipeline/test_documents.py .........                               [ 52%]
+tests/pipeline/test_findings.py .....................                    [ 57%]
+tests/pipeline/test_labels.py ..............                             [ 61%]
+tests/pipeline/test_templates.py .........                               [ 63%]
+tests/replies/test_checks.py ........................................... [ 74%]
+                                                                         [ 74%]
+tests/safety/test_safety.py ............................................ [ 85%]
+..                                                                       [ 85%]
+tests/scheduling/test_eligibility.py ...........................         [ 92%]
+tests/scheduling/test_transactions.py ...............                    [ 96%]
 tests/test_config.py ..........                                          [ 98%]
 tests/test_engine_interface.py ....                                      [100%]
 
-============================= 358 passed in 16.01s =============================
+============================= 397 passed in 14.86s =============================
 ```
 
 ## Requirement coverage
@@ -140,3 +140,28 @@ Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent reviewed `git dif
 | Tests miss each of the above | yes | yes |
 
 **Author's choices on the review of the fixes:** fix everything recommended (items 1 to 21): safety before the closed check, abbreviations before clause marks, a lasting burning-smell flag; the deadline checked inside the transaction before commit; confirmations of committed changes as fixed sentences; a yes naming another day does not count; slot numbers and "the Nth one" pick slots; no handoff after a finished reply; "all set" is not a goodbye; sentence checks retuned and tested against every customer-document sentence; the document list quoted; the street denylist only for the word after the number, tested on every seeded address; message and time saved together; billing review marked after its ticket; a failed state save is an operations failure; billing notes only on billing tickets and one earlier-slot ticket; plain receipt labels; only a bare yes or no is a confirmation; the action backstop on scheduling and unambiguous knowledge requests; past dates told as passed; each model attempt gets half the time left.
+
+## Second review of the fixes
+
+Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent reviewed `git diff 2cb2201..HEAD`. Claude ran all 397 tests and compared probes against the code before this round; Codex probed in memory. Most of the 21 items are fixed; these remain or are new, several of them regressions.
+
+| Finding | Codex | Claude |
+|---|---|---|
+| The abbreviation joiner joins across sentences: "It's not breaker B. I smell gas" is now clear (regression) | | yes (top) |
+| The action backstop hands off questions and bookings ("how much does it cost to join", "what's your refund policy", "sign me up for a tune-up") (regression) | | yes (top) |
+| Strict mode drops imperative payment requests ("I want to pay my bill") | yes (top) | |
+| Promise checks: a published-terms word excuses a real waiver ("since you're a member, the late fee will be waived this time"); split sentences escape ("The fee is $89." "It will be waived for you."); ordinary sentences are blocked ("we take Visa ... for your invoice") | yes (top) | yes (top) |
+| The writer is no longer bounded by the deadline (the check between sentences was removed) | yes (unclear) | yes (top) |
+| Slot numbers beat dates ("first thing in the morning on Tuesday" picks Monday's first slot) (regression) | | yes (top) |
+| "Yes, please confirm it" routed as a confirm request drops the booking; "Yes, Monday morning is fine" at a Monday read-back does not book; "yes, 12-4 works" books whatever was read back | yes | yes |
+| A failed warranty-review ticket is lost after the booking commits | yes (top) | |
+| Receipt writes still fail silently | yes (top) | |
+| Membership action-gap tickets receive invoice notes | yes | |
+| The per-attempt timeout's 0.5-second floor can exceed the time left | yes | |
+| The burning-smell flag is not used by the burning-plus-breaker danger rule; the closed path reads 200 messages and the main path 20 | | yes |
+| A writer instruction reaches the caller word for word ("Offer to check the caller's appointments again."); fixed confirmations show ISO dates and 24-hour windows | | yes |
+| "I'm good" no longer ends a chat (regression); only the first tag of a combined ticket is remembered | | yes |
+| Small: a race between the status read and the message insert; "3 the way it went down" masked as a street; confirmations skip the sentence checks | | yes (low) |
+| Tests miss each of the above | yes | yes |
+
+**Author's choices on the second review:** fix everything recommended (items 1 to 14), changing approach for two parts: the promise checks become deny by default (any concession word is blocked unless it matches an approved published term from the documents, judged with the sentence before it), and the action backstop catches only explicit requests on any route, leaving questions to the router; plus known-abbreviation joining only, the deadline checked before each later sentence, dates narrowing slot choices before ordinals, read-back yes rules, a retried warranty-review ticket, a retried receipt write, invoice notes only on dispute and billing tickets, no timeout floor, the burning flag in the danger rule, caller-facing fixed text, "I'm good" restored and every combined-ticket tag remembered. Left as they are: the narrow status-read race and one street over-mask.

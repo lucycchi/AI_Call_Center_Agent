@@ -269,3 +269,23 @@ def test_each_model_attempt_gets_half_the_time_left():
     finally:
         deadline.DEADLINE.reset(token)
     assert 4.0 < client.calls[0]["timeout"] <= 5.0
+
+
+def test_each_model_attempt_never_gets_more_than_the_time_left():
+    import time
+
+    from app.core import deadline
+    token = deadline.start(0.1)
+    try:
+        assert deadline.per_attempt() <= 0.05
+    finally:
+        deadline.DEADLINE.reset(token)
+
+
+def test_a_tripped_breaker_many_messages_after_a_burning_smell_is_an_emergency(world):
+    engine = world["engine"]
+    say(engine, "I smell something burning from the vents", conversation="b1")
+    for n in range(25):
+        say(engine, f"what does the membership include {n}", conversation="b1")
+    sentences, done = say(engine, "the breaker just tripped", conversation="b1")
+    assert done.outcome == "safety" and sentences[0] == fixed_reply("danger")[0]

@@ -16,14 +16,14 @@ def _burning_in(texts: list[str]) -> bool:
     return any(p.found(p.BURNING, p.normalise(t)) for t in texts)
 
 
-def check(text: str, history: list[str]) -> SafetyResult:
+def check(text: str, history: list[str], burning_before: bool = False) -> SafetyResult:
     said = p.normalise(text)
     kinds = set()
     if p.found(p.DANGER, said):
         kinds.add("danger")
     burning_now = p.found(p.BURNING, said)
     # An electrical burning smell with a tripped breaker is immediate danger, even across messages.
-    if p.found(p.BREAKER, said) and (burning_now or _burning_in(history)):
+    if p.found(p.BREAKER, said) and (burning_now or burning_before or _burning_in(history)):
         kinds.add("danger")
     if burning_now:
         kinds.add("burning")

@@ -24,7 +24,7 @@ from app.flows.identify import ASK, find_customer, has_identifier
 from app.flows.knowledge import answer
 from app.flows.protocol import FlowResult
 from app.handoff.flow import add_to_open_ticket, hand_off, safe
-from app.replies.checks import CheckedStream
+from app.replies.checks import CheckedStream, check_sentence
 from app.routing.router import Request, RouteResult
 from app.safety.check import breaker_advice_allowed, check
 from app.safety.replies import fixed_reply
@@ -45,12 +45,13 @@ NEW_CUSTOMER = re.compile(r"\b(i'?m new|i am new|new customer|first time (callin
 # A bare acknowledgement with nothing in progress needs no routing; a goodbye ends the chat (R82).
 ACKNOWLEDGEMENT = re.compile(r"^\W*(yes|yeah|yep|ok|okay|thanks|thank you|great|perfect|got it|cool)\W*$", re.I)
 ENDING = re.compile(r"^\W*(?:(?:no|nope|um|uh|ok|okay|thanks|thank you|great)\W+)*(that'?s (it|all|everything)|that covers it|"
-                    r"bye|goodbye|nothing else)(\W+(thanks|thank you( so much)?|bye))*\W*$", re.I)
+                    r"bye|goodbye|nothing else|i'?m good)(\W+(thanks|thank you( so much)?|bye))*\W*$", re.I)
 ANYTHING_ELSE = "Is there anything else I can help you with?"
 GOODBYE = "Thanks for contacting Meridian Home Comfort. Have a great day."
 NOT_YOURS = "I can't open that conversation. Please start a new one."
 SCHEDULING_ACTIONS = ("book", "reschedule", "cancel", "confirm")
-BILLING_TAGS = ("dispute", "action gap", "billing review")  # tickets that carry the billing notes
+BILLING_TAGS = ("dispute", "billing review")  # tickets that carry the invoice notes
+OTHER_ACTION = re.compile(r"\b(cancel|reschedule|move|book|change)\b", re.I)
 BARE_REPLY = re.compile(r"^\W*(?:(?:um|uh|oh)\W+)?(yes|yeah|yep|yup|no|nope|sure|ok|okay|correct)\W*(?:please|thanks)?\W*$", re.I)
 
 
@@ -127,16 +128,21 @@ class AgentPipeline:
             yield SentenceEvent(NOT_YOURS)
             yield DoneEvent(route="none", ticket=None, outcome="forbidden")
             return
+        state = ConversationState.load(self.store, turn.conversation_id, turn.visitor_id)
+        earlier = [m["content"] for m in self.store.history(turn.conversation_id, 20) if m["role"] == "caller"]
         if row and row["status"] != "open":
             # Safety still runs: a gas report after a goodbye reopens the conversation for the safety reply.
-            history_texts = [m["content"] for m in self.store.history(turn.conversation_id, 200) if m["role"] == "caller"]
-            if check(turn.text, history_texts).kind == "clear":
+            if check(turn.text, earlier, state.burning_mentioned).kind == "clear":
                 yield SentenceEvent(CLOSED)
                 yield DoneEvent(route="none", ticket=None, outcome="closed")
                 return
             self.store.reopen(turn.conversation_id)
-        state = ConversationState.load(self.store, turn.conversation_id, turn.visitor_id)
-        earlier = [m["content"] for m in self.store.history(turn.conversation_id, 20) if m["role"] == "caller"]
+        for pending in list(state.pending_tickets):  # staff tickets whose save failed earlier
+            try:
+                self.store.create_ticket(**pending)
+                state.pending_tickets.remove(pending)
+            except Exception as error:
+                log.error("pending %s ticket still not saved: %s", pending["reason_tag"], error)
         caller_message = self.store.log_message(turn.conversation_id, "caller", turn.text, turn.message_id)
         if state.ticket_id:
             add_to_open_ticket({"store": self.store, "ticket_id": state.ticket_id}, caller_message)
@@ -170,16 +176,18 @@ class AgentPipeline:
                    tags: list[str] = ()) -> DoneEvent:
             state.save(self.store)  # not quiet: without the state the conversation cannot continue (R59)
             self._quietly(self.store.log_agent_message, agent_message, " ".join(released))
-            self._quietly(self.store.log_receipt, agent_message, receipt.get("safety", "clear"), label or route,
-                          receipt.get("passages", []), receipt.get("excluded", []), "; ".join(db_actions) or None,
-                          _plain_label(outcome, list(tags), receipt.get("passages", []), db_actions))
+            receipt_row = (agent_message, receipt.get("safety", "clear"), label or route, receipt.get("passages", []),
+                           receipt.get("excluded", []), "; ".join(db_actions) or None,
+                           _plain_label(outcome, list(tags), receipt.get("passages", []), db_actions))
+            if not self._quietly(self.store.log_receipt, *receipt_row):
+                self.store.log_receipt(*receipt_row)  # retried once; a second failure is an operations failure (R59)
             return DoneEvent(route=route, ticket=turn_tickets[-1] if turn_tickets else None, receipt=receipt,
                              outcome=outcome, db_actions=db_actions)
 
         # 1. Safety, before anything else, even mid-flow or over a limit (R34 to R37). The advice goes out first.
         if not breaker_advice_allowed([turn.text]):
             state.burning_mentioned = True  # kept for the whole conversation
-        safety = check(turn.text, earlier)
+        safety = check(turn.text, earlier, state.burning_mentioned)
         if safety.kind != "clear":
             state.flow, state.active_flow, state.pending = {}, None, []  # emergencies are never booked
             for sentence in fixed_reply(safety.kind, turn.text):
@@ -243,9 +251,12 @@ class AgentPipeline:
                 continue
             if result.reply_type == "confirmation":
                 # A committed change is confirmed in code, so nothing after it (the writer, the deadline, a ticket
-                # write) can hide it from the caller.
+                # write) can hide it from the caller. The fixed text still passes the sentence checks (R60).
                 for sentence in result.facts:
-                    yield emit(sentence)
+                    if check_sentence(sentence, " ".join(released)).ok:
+                        yield emit(sentence)
+                    else:
+                        log.error("fixed confirmation failed a check: %s", sentence)
                 continue
             if result.handoff_reason and not (result.handoff_reason == "earlier slot" and "earlier slot" in state.tags_opened):
                 handoffs.append((result.handoff_reason, "", turn.text))
@@ -261,7 +272,10 @@ class AgentPipeline:
             burning = state.burning_mentioned or not breaker_advice_allowed(earlier + [turn.text])
             try:
                 stream = CheckedStream(self.writer(written[0].reply_type, facts, history), burning_mentioned=burning)
-                for sentence in stream:
+                for count_released, sentence in enumerate(stream):
+                    # The deadline is checked before each later sentence, so a slow reply is cut off (R59).
+                    if count_released and deadline.passed():
+                        raise deadline.DeadlinePassed("the reply passed the message deadline")
                     yield emit(sentence)
                 if stream.blocked_rule:
                     self._quietly(self.store.log_event, "blocked sentence",
@@ -276,6 +290,7 @@ class AgentPipeline:
             tags = [tag for tag, _, _ in handoffs]
             fixed += ticket(tags[0], "; ".join(c for _, c, _ in handoffs if c),
                             "; ".join(dict.fromkeys(w for _, _, w in handoffs)))
+            state.tags_opened += [tag for tag in tags[1:] if tag not in state.tags_opened]
             outcome = "declined" if tags[0] == "decline" else "handed_off"
         for sentence in fixed:
             yield emit(sentence)
@@ -305,9 +320,12 @@ class AgentPipeline:
             new_topic = routed.clear and routed.route != state.active_flow and not answering_id_prompt and not confirming
             # A different scheduling action (book, then cancel another appointment) is a new topic too,
             # even after a leading "no" or "yes" ("no, cancel my other appointment instead").
+            # At an offer or a read-back, a reply starting with yes or no answers it, unless it names another action.
+            answers_read_back = state.flow.get("step") in ("offer", "readback", "which") \
+                and (scheduling.AFFIRMATIVE.search(text) or scheduling.NO.search(text)) and not OTHER_ACTION.search(text)
             switched_action = routed.clear and state.active_flow == "scheduling" and first is not None \
                 and first.route == "scheduling" and first.detail in SCHEDULING_ACTIONS \
-                and first.detail != state.flow.get("kind") and not BARE_REPLY.match(text)
+                and first.detail != state.flow.get("kind") and not BARE_REPLY.match(text) and not answers_read_back
             if asked_for_person or switched_action:
                 state.flow, state.active_flow = {}, None
                 return routed.requests, False
@@ -322,12 +340,10 @@ class AgentPipeline:
     @staticmethod
     def _action(request: Request) -> bool:
         """Money or membership actions are the action gap, whether the router or the code check spots them (R48).
-        On the knowledge route only unambiguous actions count: "can I pay by card?" is a question the FAQ answers."""
+        Only explicit requests count, on any route: "can I pay by card?" is a question the FAQ answers."""
         if request.route == "account" and request.detail == "action":
             return True
-        if request.route in ("account", "scheduling"):
-            return is_action_request(request.text)
-        return request.route == "knowledge" and is_action_request(request.text, strict=True)
+        return request.route in ("account", "scheduling", "knowledge") and is_action_request(request.text)
 
     def _flow(self, request: Request) -> FlowResult:
         if self._action(request):
