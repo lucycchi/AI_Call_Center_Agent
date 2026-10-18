@@ -60,10 +60,21 @@ def test_search_and_database_errors_become_a_handoff(error):
     assert "team member" in result.facts[0]
 
 
-def test_a_step_past_the_deadline_becomes_a_handoff():
-    started = time.monotonic()
-    result = safe(lambda: time.sleep(2) or FlowResult(["late"], "policy answer"), deadline_s=0.2)
-    assert result.handoff_reason == "error" and time.monotonic() - started < 1.0
+def test_a_step_that_finds_the_deadline_passed_becomes_a_handoff_without_its_change():
+    from app.core import deadline
+    changes, errors = [], []
+
+    def step():
+        deadline.check()
+        changes.append("committed")
+        return FlowResult(["done"], "confirmation")
+    token = deadline.start(0.01)
+    try:
+        time.sleep(0.02)
+        result = safe(step, on_error=errors.append)
+    finally:
+        deadline.DEADLINE.reset(token)
+    assert result.handoff_reason == "error" and changes == [] and "deadline" in errors[0]
 
 
 def test_a_step_inside_the_deadline_passes_through():

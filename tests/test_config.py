@@ -76,5 +76,5 @@ def test_rate_limits_and_test_run_limits_are_pinned():
     assert SETTINGS.site_messages_per_minute == 60
     assert SETTINGS.eval_writer_max_tokens == 800
     assert SETTINGS.eval_simulator_max_tokens == 300
-    assert SETTINGS.router_max_tokens == 200
+    assert SETTINGS.router_max_tokens == 2000  # Haiku returns no structured answer at 200 (milestone 1)
     assert SETTINGS.eval_retries == 1

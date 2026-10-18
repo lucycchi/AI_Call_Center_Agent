@@ -1,5 +1,9 @@
 """One conversation's state, kept in the operations database so it survives a restart (R82)."""
 
+
+class NotYourConversation(PermissionError):
+    """The conversation belongs to a different visitor."""
+
 from dataclasses import asdict, dataclass, field
 
 
@@ -15,6 +19,8 @@ class ConversationState:
     id_attempts: int = 0
     ticket_id: int | None = None
     tried: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    reviewed_invoices: list[str] = field(default_factory=list)  # silent billing reviews already opened  # constraints for any ticket, such as a disputed fee
 
     def flow_state(self) -> dict:
         data = asdict(self)
@@ -29,6 +35,8 @@ class ConversationState:
         if row is None:
             store.open_conversation(visitor_id, conversation_id)
             return cls(conversation_id, visitor_id)
+        if row["visitor_id"] != visitor_id:
+            raise NotYourConversation(conversation_id)
         return cls(conversation_id, row["visitor_id"], row["customer_id"], active_flow=row["active_flow"],
                    **json.loads(row["flow_state"] or "{}"))
 

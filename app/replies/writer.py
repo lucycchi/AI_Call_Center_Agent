@@ -5,6 +5,7 @@ import re
 from collections.abc import Iterator
 
 from app.config import SETTINGS
+from app.core import deadline
 from app.replies.types import REPLY_TYPES
 
 RULES = """You write the replies of Meridian Home Comfort's customer assistant.
@@ -35,6 +36,8 @@ def write(reply_type: str, facts: list[str], history: list[dict], client) -> Ite
     prompt = (f"Recent conversation:\n{recent or '(none)'}\n\nReply type: {reply_type}. {REPLY_TYPES[reply_type]}\n\n"
               "Facts:\n" + "\n".join(f"- {f}" for f in facts))
     messages = [{"role": "user", "content": prompt}]
-    with client.messages.stream(model=SETTINGS.writer_model, max_tokens=SETTINGS.eval_writer_max_tokens, system=RULES,
+    deadline.check()
+    left = deadline.remaining()
+    with client.messages.stream(**({"timeout": max(left, 0.5)} if left is not None else {}), model=SETTINGS.writer_model, max_tokens=SETTINGS.eval_writer_max_tokens, system=RULES,
                                 messages=messages, output_config={"effort": "low"}) as stream:
         yield from split_sentences(stream.text_stream)

@@ -107,3 +107,12 @@ def test_served_areas_without_a_zone_and_unserved_cities_are_declined_differentl
     linda = customer(db, "Linda Foster", "MHC-10001")
     assert offer(db, replace(linda, city="Manor"), "hvac_repair", None, NOW).decline_reason == "served area without a scheduling zone"
     assert offer(db, replace(linda, city="San Marcos"), "hvac_repair", None, NOW).decline_reason == "outside the service area"
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("October 22", DateRequest(date(2026, 10, 22))), ("Oct 28 in the morning", DateRequest(date(2026, 10, 28), "morning")),
+    ("the 22nd", DateRequest(date(2026, 10, 22))), ("10/22", DateRequest(date(2026, 10, 22))),
+    ("how about the 3rd", DateRequest(date(2026, 11, 3))),
+])
+def test_calendar_dates(text, expected):
+    assert parse_request(text, NOW) == expected

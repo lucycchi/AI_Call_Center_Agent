@@ -12,6 +12,8 @@ class FlowResult:
     sources: list[str] = field(default_factory=list)
     handoff_reason: str | None = None
     db_actions: list[str] = field(default_factory=list)
+    passages: list[str] = field(default_factory=list)  # dated sources used, for the receipt
+    excluded: list[str] = field(default_factory=list)  # stale documents on the same subject, left out
 
 
 class Flow(Protocol):

@@ -88,3 +88,31 @@ def test_the_writer_sends_history_as_text_never_as_stored_roles():
     messages = client.calls[0]["messages"]
     assert [m["role"] for m in messages] == ["user"]
     assert "caller: hi" in messages[0]["content"] and "agent: hello" in messages[0]["content"]
+
+
+# Milestone 3 gate fixes.
+
+@pytest.mark.parametrize("sentence, rule", [
+    ("The diagnostic fee will be waived for you.", "waiver"), ("I've removed the diagnostic charge.", "waiver"),
+    ("That fee has been taken off your bill.", "waiver"),
+    ("A refund has been issued to your card.", "refund"), ("I'll process a full refund today.", "refund"),
+    ("You qualify for a 20 percent discount.", "discount"), ("That's 25% off for you.", "discount"),
+])
+def test_passive_and_roundabout_promises_fail(sentence, rule):
+    result = check_sentence(sentence, "")
+    assert (result.ok, result.rule) == (False, rule)
+
+
+@pytest.mark.parametrize("sentence", ["You qualify for the 15% member discount on repairs.",
+                                      "Annual plans are non-refundable once a tune-up has been performed."])
+def test_published_terms_still_pass(sentence):
+    assert check_sentence(sentence, "").ok
+
+
+def test_breaker_reset_advice_is_blocked_once_a_burning_smell_was_mentioned():
+    advice = "You can reset any tripped breaker once before booking."
+    assert check_sentence(advice, "").ok
+    result = check_sentence(advice, "", burning_mentioned=True)
+    assert (result.ok, result.rule) == (False, "breaker_advice")
+    stream = CheckedStream(iter(["Let's check a few things.", "Flip the breaker off and on."]), burning_mentioned=True)
+    assert list(stream) == ["Let's check a few things."] and stream.blocked_rule == "breaker_advice"

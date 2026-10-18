@@ -145,3 +145,9 @@ def test_a_failed_reschedule_leaves_both_slots_unchanged(db, monkeypatch):
         tx.reschedule(db, caller, 159, 56, "c-rf", NOW)
     assert slot_status(db, 56) == "open" and slot_status(db, 159) == "booked"
     assert db.execute("select slot_id from appointments where appointment_id = 159").fetchone()[0] == 159
+
+
+def test_the_warranty_flag_is_only_for_hvac_repair_visits(db):
+    grace = who(db, "Grace Okafor", "MHC-10003")
+    slot = next(s for s in tx.eligible_slots(db, grace, "plumbing", NOW))
+    assert tx.book(db, grace, slot.slot_id, "sink", "c-gp", NOW).warranty_visit is False

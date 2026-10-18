@@ -116,7 +116,9 @@ def book(db: sqlite3.Connection, customer, slot_id: int, issue: str, confirmatio
         if not _bookable(db, customer, slot_id, now):
             return BookingResult("taken", None, None, False, False)
         review = claim in REVIEW_CLAIMS
-        warranty = not review and _warranty_visit(db, customer.customer_id, now)
+        (service,) = db.execute("select service_type from appointment_slots where slot_id = ?", (slot_id,)).fetchone()
+        # The 2-year installation labour warranty covers repairs to the installed system, not other work.
+        warranty = not review and service == "hvac_repair" and _warranty_visit(db, customer.customer_id, now)
         db.execute("update appointment_slots set status = 'booked' where slot_id = ?", (slot_id,))
         cursor = db.execute("insert into appointments (slot_id, customer_id, issue_description, created_at, status, "
                             "is_warranty_visit) values (?, ?, ?, ?, 'scheduled', ?)",

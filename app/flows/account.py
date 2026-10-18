@@ -35,8 +35,10 @@ def account_answer(db, customer, detail: str | None, state, store) -> FlowResult
         facts.append(f"Invoice {invoice.invoice_id}: balance {_money(invoice.balance_cents)}, due {due.day} {due:%B %Y}; "
                      f"lines as recorded: {lines}.")
         # A fixed fee that differs from the current schedule opens a silent review for staff (R47).
-        reviewed = state.flow.setdefault("reviewed_invoices", [])
+        reviewed = state.reviewed_invoices
         mismatches = fee_mismatches(invoice)
+        state.tried.append(f"read the invoice lines for {invoice.invoice_id}")
+        state.notes += [f"fee differs from schedule: {m}" for m in mismatches if f"fee differs from schedule: {m}" not in state.notes]
         if mismatches and invoice.invoice_id not in reviewed:
             reviewed.append(invoice.invoice_id)
             store.create_ticket(None, f"{customer.name}, {customer.customer_id}", f"fee check on {invoice.invoice_id}",

@@ -79,7 +79,7 @@ def load_settings() -> Settings:
         visitor_messages_per_10_min=20,
         visitor_messages_per_day=100,
         site_messages_per_minute=60,
-        router_max_tokens=200,
+        router_max_tokens=2000,  # Haiku returns no structured answer at 200 (milestone 1)
         eval_writer_max_tokens=800,
         eval_simulator_max_tokens=300,
         eval_retries=1,

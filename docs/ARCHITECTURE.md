@@ -6,7 +6,7 @@
 
 **The approach.** One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.
 
-**Where the project stands.** The intent (`docs/DESIGN.md`), the specification (`docs/SPEC.md`, 86 numbered requirements), this architecture and the plan (`docs/PLAN.md`) are approved, with the decisions recorded in `docs/DECISIONS.md`; the technology stack is its own decision (technology stack (D35)). Milestones 1 and 2 of 6 are built: configuration and the agent-core interface, transcript templates and labels, the findings document (`docs/FINDINGS.md`) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results. The later milestones are planned.
+**Where the project stands.** The intent (`docs/DESIGN.md`), the specification (`docs/SPEC.md`, 86 numbered requirements), this architecture and the plan (`docs/PLAN.md`) are approved, with the decisions recorded in `docs/DECISIONS.md`; the technology stack is its own decision (technology stack (D35)). Milestones 1 to 3 of 6 are built: configuration and the agent-core interface, transcript templates and labels, the findings document (`docs/FINDINGS.md`) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results; then the agent core: identification and account lookups, slot eligibility and booking transactions, the safety check, the operations store, the knowledge, account, scheduling and handoff flows, the router and the engine pipeline, with a terminal chat (`python -m app.cli`). Milestones 4 to 6 are planned.
 
 ## 1. System overview
 
@@ -51,13 +51,13 @@ flowchart TB
 1. The browser sends each message as an ordinary request; the web layer checks that the conversation belongs to the signed visitor and opens a stream for that message's sentences.
 2. The safety check runs first on every message, even mid-flow and even for a visitor over budget; an emergency gets its fixed reply, which costs nothing.
 3. Only then are the spending and rate limits applied.
-4. The router runs on every remaining message. With no flow active, its route picks the flow; with a flow active, its result is used only to detect a clear change of topic.
-5. The active or chosen flow runs its code-owned steps.
+4. With nothing in progress, a bare acknowledgement ("ok", "thanks") gets a plain "anything else?" and a goodbye ("no, that's it") ends the chat; neither is routed. The router runs on every other message. It splits a message into its requests, each with a route, a detail (such as balance, book or dispute) and a service type. With no flow active, the routes pick the flows; with a flow active, its result is used only to detect a clear change of topic, which includes a different scheduling action (booking, then cancelling another appointment).
+5. The active or chosen flows run their code-owned steps. Account and scheduling requests wait together for the caller to be identified, then run in turn; a message naming a different customer switches the conversation to that account and drops the previous customer's booking in progress. Every handoff in one message goes into one ticket.
 6. The flow hands the writer the facts and a reply type.
-7. Each sentence is checked before release. If a sentence fails, generation stops, the sentences already shown stay, the rest becomes a handoff message with a ticket, and a "blocked" event is logged.
-8. Every step records events and model calls in the operations store.
+7. Each sentence is checked before release. If a sentence fails, generation stops, the sentences already shown stay, the rest becomes a handoff message with a ticket, and a "blocked sentence" event is logged. Once the conversation has mentioned a burning smell, breaker-reset advice is blocked too.
+8. Every step records events and model calls in the operations store. One 15-second deadline covers the whole message: the router and writer calls get only the time left, and each booking change checks it just before committing, so nothing is committed after the caller has been told it was passed on.
 
-The engine guarantees exactly one done event, always last: if the pipeline stops without one it adds an "incomplete" done event, and if the pipeline raises it adds an "error" done event; the handoff flow turns both into a handoff message.
+The engine guarantees exactly one done event, always last. If the pipeline raises (for example, the operations database is unavailable, so no ticket can be saved), the engine releases a plain message asking the caller to phone the office, logs the failure to the server log and ends with an "error" done event; if the pipeline stops without a done event, it releases a plain handoff message and ends with "incomplete". A message for a conversation that belongs to another visitor gets a plain refusal ("forbidden"), and one for a closed or abandoned conversation asks the caller to start a new one.
 
 | Part | What it does | Where its rules come from |
 |---|---|---|
@@ -68,7 +68,7 @@ The engine guarantees exactly one done event, always last: if the pipeline stops
 | Knowledge search | Combined keyword and meaning-based search over current documents: the top result of each list is always kept (keyword search's only when some word matches), then the top 10 of each list are merged by reciprocal-rank fusion; five results returned (combined search keeps each list's top result (D41)) | Document search (R24 to R32) |
 | Scheduling and account store | Read-only lookups and booking transactions on the scheduling database | Booking rules (R45 to R56), data rules (D29) |
 | Reply writer | Sonnet 5.5 turns facts chosen by code into wording, as structured reply types | Pricing and internal-text rules (R42, R43) |
-| Reply checks | Checks every sentence for promises, refunds, waivers and internal text before release | Sentence release (R60) |
+| Reply checks | Checks every sentence for waivers, refunds, discounts, firm totals, waitlist promises, breaker advice after a burning smell and internal text before release | Sentence release (R60) |
 | Spending and rate limits | Per-visitor, site-wide and reviewer-reserve budgets; message limits | Guards (R61, R62), spending budgets with a reviewer reserve (D30) |
 | Operations store | Logs, tickets, receipts, metrics, alerts, nightly reset, log purge | Monitoring and operations (R73 to R77), retention (D31) |
 
@@ -139,6 +139,11 @@ erDiagram
         TEXT status "scheduled, completed, cancelled or no_show"
         INTEGER is_warranty_visit "1 means no diagnostic fee"
     }
+    AGENT_CONFIRMATIONS {
+        TEXT confirmation_id PK "one-time id from the read-back"
+        TEXT result "first result, as JSON text"
+        TEXT created_at "real time it was written"
+    }
     INVOICES {
         TEXT invoice_id PK "invoice number, e.g. INV-204411"
         TEXT customer_id FK "who is billed"
@@ -151,7 +156,7 @@ erDiagram
     }
 ```
 
-*The five provided tables: customers book appointments in technicians' slots and receive invoices.*
+*The five provided tables, plus the agent's confirmations table: customers book appointments in technicians' slots and receive invoices; each booking change stores its first result under its confirmation id.*
 
 How the tables link, in words: each appointment belongs to exactly one customer and takes exactly one slot; each slot belongs to exactly one technician and may have several appointments over time (cancelled ones stay as history) but at most one with status scheduled, which the booking code enforces inside its transaction because the provided database has no such rule; each invoice belongs to exactly one customer and may refer to one appointment. The agent writes only to `appointment_slots.status`, `appointments`, and one small table it adds, `agent_confirmations` (confirmation id, result, time), which is written in the same transaction as each booking change so a repeated "yes" can never book twice; the provided tables are untouched and the nightly reset recreates `agent_confirmations` empty (architecture refinements (D36)). It never writes customers or invoices.
 
@@ -226,7 +231,7 @@ erDiagram
         TEXT passages "dated sources used, as JSON text"
         TEXT excluded "stale documents left out"
         TEXT db_action "lookup or transaction done"
-        TEXT outcome_label "supported, not enough evidence, handoff required"
+        TEXT outcome_label "engine outcome: answered, handed_off, declined, redirect, safety, limit, ended"
     }
     TICKETS {
         INTEGER ticket_id PK "ticket number shown to the caller"
@@ -410,11 +415,12 @@ sequenceDiagram
     D-->>E: one appointment, 22 Oct 08:00-12:00
     E-->>B: 3. state any 24-hour fee, offer new slots
     B->>E: 4. picks a new slot and confirms
-    E->>SC: 5. original status of the old slot
-    SC-->>E: reserved_members
-    E->>D: 6. one transaction: book new, free old
+    E->>D: 5. one transaction: recheck and book new
+    D->>SC: 6. read old slot's original status
+    SC-->>D: reserved_members
+    D->>D: 7. move appointment and restore old slot
     D-->>E: done
-    E-->>B: 7. confirmation and proof receipt
+    E-->>B: 8. confirmation and proof receipt
 ```
 
 *How moving an appointment keeps the database consistent and restores the old slot correctly.*
@@ -423,9 +429,10 @@ sequenceDiagram
 2. The engine reads the caller's scheduled appointments; if there are several it asks which one, reading back only date, window, service and technician.
 3. If the window starts within 24 hours of "now", the agent states the $49 fee before the caller confirms; a waiver request would hand off.
 4. The caller picks one of the offered slots and confirms.
-5. The engine reads the old slot's status in the seed copy; if the seed shows it as booked (a seeded appointment), the slot will be freed to open.
-6. One write-locked transaction rechecks the new slot's eligibility, books it, updates the appointment and returns the old slot to its seed status (here members-only, not open). Cancelling is the same without the new booking. Both carry a confirmation id, so a repeat returns the first result.
-7. The agent confirms with a proof receipt.
+5. One write-locked transaction rechecks the new slot's eligibility and books it.
+6. Inside it, the old slot's status is read from the seed copy; if the seed shows it as booked (a seeded appointment), the slot is freed to open.
+7. The appointment moves and the old slot returns to its seed status (here members-only, not open). Cancelling is the same without the new booking. Both carry a confirmation id, so a repeat returns the first result; if the appointment changed after the read-back, the caller is told plainly that nothing was changed.
+8. The agent confirms with a proof receipt.
 
 ### 5.4 An account question with a fee mismatch
 
@@ -682,6 +689,10 @@ Rollback runbook (in the README, practised once): roll back to the previous Fly.
 ```mermaid
 flowchart TB
     WEB["web: routes, pages, stream, staff auth"] -->|"calls"| CORE["core: conversation engine"]
+    CORE -->|"calls"| FLOWS["flows: identify, account, knowledge, scheduling"]
+    FLOWS -->|"call"| KNOW
+    FLOWS -->|"call"| ACCT
+    FLOWS -->|"call"| SCHED
     CORE -->|"calls"| SAFE["safety"]
     CORE -->|"calls"| ROUTE["routing"]
     CORE -->|"calls"| KNOW["knowledge"]
@@ -700,7 +711,8 @@ flowchart TB
 | Folder | Contents |
 |---|---|
 | `app/web/` | Page routes, the chat stream, the Staff view, cookie and staff-password handling |
-| `app/core/` | Conversation engine, conversation state, the pipeline order |
+| `app/core/` | Conversation engine, conversation state, the pipeline order, the per-message deadline and the model-call recorder (`model_log.py`) |
+| `app/flows/` | Shared flow protocol and the identify, account, knowledge and scheduling flows the engine calls |
 | `app/safety/` | Emergency patterns, normalisation, fixed safety replies |
 | `app/routing/` | Haiku router call and its structured result |
 | `app/knowledge/` | Index loading, keyword and meaning search, rank fusion keeping each list's top result, threshold |
@@ -710,6 +722,7 @@ flowchart TB
 | `app/replies/` | Sonnet writer, reply types, sentence checks, internal-text match |
 | `app/ops/` | Operations database, logging and masking, spending and rate limits, alerts, nightly reset, purge |
 | `app/config.py` | Pinned model IDs, fixed "now", thresholds and limits |
+| `app/cli.py` | A terminal chat on fresh database copies |
 | `pipeline/` | Transcript loading and template grouping (with families), Haiku, Codex and Fable labeling and the blind-third sheet, label agreement, staff policy-error checks, zone capacity counts, the document list, conflict register and format conversion, index build, and the findings document `docs/FINDINGS.md`; it uses the app's zone map (`app/scheduling/zones.py`) and settings |
 | `eval/` | Test-set builder (caller cards, fixtures), simulator, Codex grader, metrics and reports |
 | `data/` | Document list, conflict register, converted documents (`data/kb_text/`), the hand transcription of the holiday-hours image, templates, labels, built index, test set, results |

@@ -49,15 +49,16 @@ class OpsStore:
         self._write("update conversations set customer_id = ?, active_flow = ?, flow_state = ? where conversation_id = ?",
                     (customer_id, active_flow, json.dumps(flow_state), conversation_id))
 
-    def close_idle(self, minutes: int = 30) -> list[str]:
-        """Close every open conversation with no message for that many minutes of real time (R82)."""
+    def close_idle(self, minutes: int = 30) -> None:
+        """After that many minutes of real time with no message, a conversation closes, or is abandoned if a flow was
+        in progress (R82). One statement, so a message arriving during the sweep keeps its conversation open."""
         cutoff = (self._clock() - timedelta(minutes=minutes)).isoformat(timespec="seconds")
-        idle = [r["conversation_id"] for r in self._rows("select conversation_id from conversations where status = 'open' "
-                                                         "and last_message_at < ?", (cutoff,))]
-        for conversation_id in idle:
-            self._write("update conversations set status = 'closed', closed_at = ? where conversation_id = ?",
-                        (self._now(), conversation_id))
-        return idle
+        self._write("update conversations set status = case when active_flow is null then 'closed' else 'abandoned' end, "
+                    "closed_at = ? where status = 'open' and last_message_at < ?", (self._now(), cutoff))
+
+    def end_conversation(self, conversation_id: str) -> None:
+        self._write("update conversations set status = 'closed', closed_at = ? where conversation_id = ?",
+                    (self._now(), conversation_id))
 
     def history(self, conversation_id: str, limit: int = 6) -> list[dict]:
         rows = self._rows("select role, text_masked from messages where conversation_id = ? and text_masked != '' "

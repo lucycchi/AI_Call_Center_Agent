@@ -2,9 +2,10 @@
 
 Handoff messages are fixed text written in code, so the ticket number and what happens next are always exact."""
 
-import concurrent.futures
 import logging
+import time
 
+from app.core.deadline import DeadlinePassed
 from app.flows.protocol import FlowResult
 
 log = logging.getLogger("meridian.handoff")
@@ -12,7 +13,6 @@ OFFICE_HOURS = "Monday to Friday 7am to 7pm, or Saturday 8am to 4pm"
 ERROR_MESSAGE = "I couldn't finish that just now, so I'm passing it to a team member to follow up."
 NO_TICKET_MESSAGE = ("I'm sorry, I couldn't record your request just now. Please phone our office "
                      f"({OFFICE_HOURS}) and they can help you directly.")
-_steps = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="flow-step")
 
 
 def _message(ticket_id: int, reason_tag: str) -> str:
@@ -48,23 +48,31 @@ def add_to_open_ticket(state: dict, message_id: int) -> None:
         state["store"].append_to_ticket(state["ticket_id"], message_id)
 
 
-def safe(step, deadline_s: float = 15) -> FlowResult:
-    """Run one flow step; any model, search or database error, or running past the deadline, becomes a handoff."""
-    future = _steps.submit(step)
+def safe(step, on_error=None) -> FlowResult:
+    """Run one flow step; any model, search or database error, or passing the message deadline, becomes a handoff.
+    The step runs in this thread and checks the deadline itself, so nothing carries on after the handoff."""
     try:
-        return future.result(timeout=deadline_s)
-    except concurrent.futures.TimeoutError:
-        log.error("flow step passed the %s-second deadline", deadline_s)
+        return step()
+    except DeadlinePassed as error:
+        detail = f"message deadline passed: {error}"
     except Exception as error:
-        log.error("flow step failed: %s", error)
+        detail = f"flow step failed: {type(error).__name__}: {error}"
+    log.error(detail)
+    if on_error:
+        on_error(detail)
     return FlowResult([ERROR_MESSAGE], "handoff", handoff_reason="error")
 
 
 def confirm_booking(state: dict, booked, slot_date: str, window: str, service_type: str) -> FlowResult:
     """The booking has committed, so the caller is told even if logging it fails."""
     facts = [f"Booked: {service_type.replace('_', ' ')} on {slot_date}, {window}, with {booked.technician}."]
-    try:
-        state["store"].log_event("booking", f"appointment {booked.appointment_id} booked", state.get("conversation_id"))
-    except Exception as error:
-        log.error("appointment %s booked but not logged: %s", booked.appointment_id, error)
+    for attempt in (1, 2):  # the booking has committed; retry the log write once
+        try:
+            state["store"].log_event("booking", f"appointment {booked.appointment_id} booked", state.get("conversation_id"))
+            break
+        except Exception as error:
+            if attempt == 2:
+                log.error("appointment %s booked but not logged: %s", booked.appointment_id, error)
+            else:
+                time.sleep(0.05)
     return FlowResult(facts, "confirmation", db_actions=[f"booked appointment {booked.appointment_id}"])

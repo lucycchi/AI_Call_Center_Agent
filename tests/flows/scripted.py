@@ -51,9 +51,10 @@ class ScriptedClient:
     def create(self, **kwargs):
         self.calls.append(("create", kwargs))
         message = kwargs["messages"][-1]["content"].split("New message: ", 1)[1]
-        for key, value in self.routes.items():
+        # The longest matching key wins, so a specific script line beats a general one.
+        for key in sorted(self.routes, key=len, reverse=True):
             if key in message.lower():
-                return Response(json.dumps(value))
+                return Response(json.dumps(self.routes[key]))
         return Response(json.dumps({"clear": False, "requests": [request(message, "handoff", "other")]}))
 
     def stream(self, **kwargs):

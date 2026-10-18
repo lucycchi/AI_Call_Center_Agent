@@ -13,8 +13,10 @@ from pathlib import Path
 
 from app.accounts.lookups import read_only
 from app.config import SETTINGS, real_now
+from app.accounts.lookups import is_action_request
+from app.core import deadline
 from app.core.model_log import SINK
-from app.core.state import ConversationState
+from app.core.state import ConversationState, NotYourConversation
 from app.core.types import DoneEvent, Event, SentenceEvent, Turn
 from app.flows import scheduling
 from app.flows.account import account_answer
@@ -24,7 +26,7 @@ from app.flows.protocol import FlowResult
 from app.handoff.flow import add_to_open_ticket, hand_off, safe
 from app.replies.checks import CheckedStream
 from app.routing.router import Request, RouteResult
-from app.safety.check import check
+from app.safety.check import breaker_advice_allowed, check
 from app.safety.replies import fixed_reply
 
 log = logging.getLogger("meridian.pipeline")
@@ -40,10 +42,14 @@ SAFETY_TAGS = {"danger": "emergency", "burning": "burning smell", "urgent": "eme
 ANGRY = re.compile(r"\b(ridiculous|unacceptable|furious|angry|done with|worst|terrible|sick of)\b|!{2,}", re.I)
 OFFER_RETURN = "Offer to return to the booking afterwards."
 NEW_CUSTOMER = re.compile(r"\b(i'?m new|i am new|new customer|first time (calling|customer)|don'?t have an account)\b", re.I)
-# A bare acknowledgement or goodbye with nothing in progress needs no routing.
-ACKNOWLEDGEMENT = re.compile(r"^\W*(yes|yeah|yep|ok|okay|thanks|thank you|great|perfect|got it|cool|nope|no)"
-                             r"(\W+(that'?s (it|all|everything)|thanks|thank you( so much)?))*\W*$", re.I)
+# A bare acknowledgement with nothing in progress needs no routing; a goodbye ends the chat (R82).
+ACKNOWLEDGEMENT = re.compile(r"^\W*(yes|yeah|yep|ok|okay|thanks|thank you|great|perfect|got it|cool)\W*$", re.I)
+ENDING = re.compile(r"^\W*(?:(?:no|nope|um|uh|ok|okay|thanks|thank you|great)\W+)*(that'?s (it|all|everything)|that covers it|"
+                    r"bye|goodbye|all set|i'?m good|nothing else)(\W+(thanks|thank you( so much)?|bye))*\W*$", re.I)
 ANYTHING_ELSE = "Is there anything else I can help you with?"
+GOODBYE = "Thanks for contacting Meridian Home Comfort. Have a great day."
+NOT_YOURS = "I can't open that conversation. Please start a new one."
+SCHEDULING_ACTIONS = ("book", "reschedule", "cancel", "confirm")
 
 
 def _decline_sentence(reason: str, city: str, service: str) -> str:
@@ -76,21 +82,35 @@ class AgentPipeline:
 
         def record(purpose, model_id, sdk_version, settings, input_tokens, output_tokens, ms, microdollars):
             spent[0] += microdollars
-            self.store.log_model_call(agent_ref[0], purpose, model_id, sdk_version, settings, input_tokens, output_tokens,
-                                      ms, microdollars)
-        token = SINK.set(record)
+            self._quietly(self.store.log_model_call, agent_ref[0], purpose, model_id, sdk_version, settings,
+                          input_tokens, output_tokens, ms, microdollars)
+        sink, clock = SINK.set(record), deadline.start(self.deadline_s)
         try:
-            yield from self._turn(turn, started, spent, first_ms, lambda m: agent_ref.__setitem__(0, m))
+            yield from self._turn(turn, started, first_ms, lambda m: agent_ref.__setitem__(0, m))
         finally:
-            SINK.reset(token)
+            SINK.reset(sink)
+            deadline.DEADLINE.reset(clock)
             if agent_ref[0] is not None:
-                self.store.set_reply_stats(agent_ref[0], first_ms[0] if first_ms else None,
-                                           round((time.monotonic() - started) * 1000), spent[0])
+                self._quietly(self.store.set_reply_stats, agent_ref[0], first_ms[0] if first_ms else None,
+                              round((time.monotonic() - started) * 1000), spent[0])
 
-    def _turn(self, turn: Turn, started: float, spent: list, first_ms: list, remember) -> Iterator[Event]:
+    def _quietly(self, write, *args) -> bool:
+        """A logging write that must not stop the reply (for example, after a booking has committed)."""
+        try:
+            write(*args)
+            return True
+        except Exception as error:
+            log.error("operations write failed (%s): %s", getattr(write, "__name__", "write"), error)
+            return False
+
+    def _turn(self, turn: Turn, started: float, first_ms: list, remember) -> Iterator[Event]:
         self.store.close_idle()
         row = self.store.conversation(turn.conversation_id)
-        if row and row["status"] == "closed":
+        if row and row["visitor_id"] != turn.visitor_id:
+            yield SentenceEvent(NOT_YOURS)
+            yield DoneEvent(route="none", ticket=None, outcome="forbidden")
+            return
+        if row and row["status"] != "open":
             yield SentenceEvent(CLOSED)
             yield DoneEvent(route="none", ticket=None, outcome="closed")
             return
@@ -108,31 +128,36 @@ class AgentPipeline:
             if not first_ms:
                 first_ms.append(round((time.monotonic() - started) * 1000))
             released.append(sentence)
-            self.store.log_sentence(agent_message, sentence)
+            self._quietly(self.store.log_sentence, agent_message, sentence)
             return SentenceEvent(sentence)
+
+        def error_event(detail: str) -> None:
+            self._quietly(self.store.log_event, "error", detail, turn.conversation_id)
 
         def ticket(reason_tag: str, constraints: str, wants: str) -> list[str]:
             context = {"store": self.store, "conversation_id": turn.conversation_id, "who": state.who, "wants": wants,
                        "tried": "; ".join(state.tried), "mood": _mood(turn.text)}
-            result = hand_off(context, reason_tag, constraints)
+            result = hand_off(context, reason_tag, "; ".join(c for c in [constraints, *state.notes] if c))
             if context.get("ticket_id"):
                 state.ticket_id = context["ticket_id"]
                 turn_tickets.append(context["ticket_id"])
             return result.facts
 
-        def finish(route: str, outcome: str, receipt: dict, db_actions: list[str]) -> DoneEvent:
-            state.save(self.store)
-            self.store.log_agent_message(agent_message, " ".join(released))
-            self.store.log_receipt(agent_message, receipt.get("safety", "clear"), route, receipt.get("sources", []), [],
-                                   "; ".join(db_actions) or None, outcome)
+        def finish(route: str, outcome: str, receipt: dict, db_actions: list[str], label: str | None = None) -> DoneEvent:
+            self._quietly(state.save, self.store)
+            self._quietly(self.store.log_agent_message, agent_message, " ".join(released))
+            self._quietly(self.store.log_receipt, agent_message, receipt.get("safety", "clear"), label or route,
+                          receipt.get("passages", []), receipt.get("excluded", []), "; ".join(db_actions) or None, outcome)
             return DoneEvent(route=route, ticket=turn_tickets[-1] if turn_tickets else None, receipt=receipt,
                              outcome=outcome, db_actions=db_actions)
 
-        # 1. Safety, before anything else, even mid-flow or over a limit (R34 to R37).
+        # 1. Safety, before anything else, even mid-flow or over a limit (R34 to R37). The advice goes out first.
         safety = check(turn.text, earlier)
         if safety.kind != "clear":
-            state.flow, state.active_flow = {}, None  # emergencies are never booked
-            for sentence in fixed_reply(safety.kind, turn.text) + ticket(SAFETY_TAGS[safety.kind], safety.kind, turn.text):
+            state.flow, state.active_flow, state.pending = {}, None, []  # emergencies are never booked
+            for sentence in fixed_reply(safety.kind, turn.text):
+                yield emit(sentence)
+            for sentence in ticket(SAFETY_TAGS[safety.kind], safety.kind, turn.text):
                 yield emit(sentence)
             yield finish("safety", "safety", {"safety": safety.kind}, [])
             return
@@ -142,78 +167,116 @@ class AgentPipeline:
             yield emit(LIMIT)
             yield finish("limit", "limit", {"limit": limit}, [])
             return
-        if not state.active_flow and ACKNOWLEDGEMENT.match(turn.text):
-            yield emit(ANYTHING_ELSE)
-            yield finish("none", "answered", {"safety": "clear"}, [])
+        if ENDING.match(turn.text):  # a clear goodbye ends the chat, even with a flow open
+            state.flow, state.active_flow, state.pending = {}, None, []
+            yield emit(GOODBYE)
+            done = finish("none", "ended", {"safety": "clear"}, [])
+            self._quietly(self.store.end_conversation, turn.conversation_id)
+            yield done
             return
+        if not state.active_flow and not state.pending:
+            if ACKNOWLEDGEMENT.match(turn.text):
+                yield emit(ANYTHING_ELSE)
+                yield finish("none", "answered", {"safety": "clear"}, [])
+                return
         # 3. Route, keeping follow-ups inside an active flow (R38, R40).
         history = self.store.history(turn.conversation_id)
-        routed = self._route(turn.text, history)
+        routed = self._route(turn.text, history, error_event)
         flow_before = state.active_flow
         requests, offer_return = self._requests(state, turn.text, routed)
         route_label = flow_before if requests and requests[0].route == "continue" else routed.route
-        # 4. Flows.
+        # 4. Flows. Account and scheduling requests wait for identification together, then run in turn (R39).
+        results: list[FlowResult] = []
+        queued = False
+        for request in requests:
+            if request.route in ("account", "scheduling") and not self._action(request) or request.route == "continue":
+                if request.route != "continue":
+                    state.pending.append({"route": request.route, "detail": request.detail,
+                                          "service_type": request.service_type, "text": request.text})
+                queued = True
+                continue
+            results.append(safe(lambda r=request: self._flow(r), error_event))
+        if queued:
+            continuing = any(r.route == "continue" for r in requests)
+            results += self._advance_safely(state, turn.text, error_event, continuing)
         written: list[FlowResult] = []
         handoffs: list[tuple[str, str, str]] = []  # reason tag, constraints, what the caller wants
         fixed: list[str] = []
         db_actions: list[str] = []
         outcome = "answered"
-        for request in requests:
-            result = safe(lambda r=request: self._flow(state, r, turn.text), self.deadline_s)
+        for result in results:
             db_actions += result.db_actions
             if result.reply_type == "redirect":
                 fixed += result.facts
                 outcome = "redirect" if outcome == "answered" else outcome
-            elif result.handoff_reason:
-                if result.reply_type == "decline":
-                    fixed.append(_decline_sentence(*result.facts))
-                handoffs.append((result.handoff_reason, result.facts[0] if result.reply_type == "decline" else "",
-                                 request.text))
-            else:
+                continue
+            if result.reply_type == "decline":
+                fixed.append(_decline_sentence(*result.facts))
+                handoffs.append(("decline", result.facts[0], turn.text))
+                continue
+            if result.handoff_reason:
+                handoffs.append((result.handoff_reason, "", turn.text))
+            if result.facts and result.reply_type != "handoff":
                 written.append(result)
         if offer_return and written:
-            written[-1] = FlowResult(written[-1].facts + [OFFER_RETURN], written[-1].reply_type, written[-1].sources)
-        # 5. Writer and checks: each sentence is released only once it passes (R42, R43, R60).
+            last = written[-1]
+            written[-1] = FlowResult(last.facts + [OFFER_RETURN], last.reply_type, last.sources, passages=last.passages,
+                                     excluded=last.excluded)
+        # 5. Writer and checks: each sentence is released only once it passes (R36, R42, R43, R60).
         if written:
             facts = [fact for result in written for fact in result.facts]
+            burning = not breaker_advice_allowed(earlier + [turn.text])
             try:
-                stream = CheckedStream(self.writer(written[0].reply_type, facts, history))
+                stream = CheckedStream(self.writer(written[0].reply_type, facts, history), burning_mentioned=burning)
                 for sentence in stream:
                     yield emit(sentence)
+                    if deadline.passed():
+                        raise deadline.DeadlinePassed("the reply passed the message deadline")
                 if stream.blocked_rule:
-                    self.store.log_event("blocked sentence", f"{stream.blocked_rule}: {stream.blocked_sentence}",
-                                         turn.conversation_id)
+                    self._quietly(self.store.log_event, "blocked sentence",
+                                  f"{stream.blocked_rule}: {stream.blocked_sentence}", turn.conversation_id)
                     handoffs.append(("blocked reply", stream.blocked_rule, turn.text))
             except Exception as error:
                 log.error("writer failed: %s", error)
-                handoffs.append(("error", "the reply could not be written", turn.text))
+                error_event(f"writer failed: {type(error).__name__}: {error}")
+                handoffs.append(("error", "the reply could not be finished", turn.text))
         # 6. Everything handed off this turn goes in one ticket (R39).
         if handoffs:
             tags = [tag for tag, _, _ in handoffs]
-            for sentence in ticket(tags[0], "; ".join(c for _, c, _ in handoffs if c), "; ".join(w for _, _, w in handoffs)):
-                fixed.append(sentence)
+            fixed += ticket(tags[0], "; ".join(c for _, c, _ in handoffs if c),
+                            "; ".join(dict.fromkeys(w for _, _, w in handoffs)))
             outcome = "declined" if tags[0] == "decline" else "handed_off"
         for sentence in fixed:
             yield emit(sentence)
-        sources = [s for result in written for s in result.sources]
-        yield finish(route_label, outcome, {"safety": "clear", "clear": routed.clear, "sources": sources}, db_actions)
+        receipt = {"safety": "clear", "clear": routed.clear,
+                   "sources": [s for r in written for s in r.sources],
+                   "passages": [p for r in written for p in r.passages],
+                   "excluded": list(dict.fromkeys(e for r in written for e in r.excluded))}
+        label = f"{route_label}, {'clear' if routed.clear or route_label == flow_before else 'unclear'}"
+        yield finish(route_label, outcome, receipt, db_actions, label)
 
     # -- routing ----------------------------------------------------------------------------------------
-    def _route(self, text: str, history: list[dict]) -> RouteResult:
+    def _route(self, text: str, history: list[dict], error_event) -> RouteResult:
         try:
             return self.route_fn(text, history)
         except Exception as error:
             log.error("router failed: %s", error)
+            error_event(f"router failed: {type(error).__name__}: {error}")
             return RouteResult("handoff", False, [Request(text, "handoff", "other")])
 
     def _requests(self, state: ConversationState, text: str, routed: RouteResult) -> tuple[list[Request], bool]:
         """The requests to handle this turn, and whether to offer a return to an interrupted flow."""
         if state.active_flow:
+            first = routed.requests[0] if routed.requests else None
             asked_for_person = routed.clear and routed.route == "handoff" and any(r.detail == "person" for r in routed.requests)
             answering_id_prompt = has_identifier(text) and not state.customer_id
-            new_topic = routed.clear and routed.route != state.active_flow and not answering_id_prompt \
-                and not scheduling.YES.search(text) and not scheduling.NO.search(text)
-            if asked_for_person:
+            confirming = scheduling.YES.search(text) or scheduling.NO.search(text)
+            new_topic = routed.clear and routed.route != state.active_flow and not answering_id_prompt and not confirming
+            # A different scheduling action (book, then cancel another appointment) is a new topic too.
+            switched_action = routed.clear and state.active_flow == "scheduling" and first is not None \
+                and first.route == "scheduling" and first.detail in SCHEDULING_ACTIONS \
+                and first.detail != state.flow.get("kind") and not confirming
+            if asked_for_person or switched_action:
                 state.flow, state.active_flow = {}, None
                 return routed.requests, False
             if new_topic:
@@ -224,60 +287,78 @@ class AgentPipeline:
         return routed.requests, False
 
     # -- flows ------------------------------------------------------------------------------------------
-    def _flow(self, state: ConversationState, request: Request, text: str) -> FlowResult:
+    @staticmethod
+    def _action(request: Request) -> bool:
+        """Money or membership actions are the action gap, whether the router or the code check spots them (R48)."""
+        return request.route == "account" and (request.detail == "action" or is_action_request(request.text))
+
+    def _flow(self, request: Request) -> FlowResult:
         if request.route == "knowledge" or request.detail == "charged twice":
             return answer(request.text, self.searcher, self.threshold)
         if request.route == "redirect":
             return FlowResult([REDIRECTS.get(request.detail, REDIRECTS["wrong number"])], "redirect")
-        if request.route == "handoff":
-            tag = "unclear" if request.detail == "unclear" else HANDOFF_TAGS.get(request.detail or "other", "other")
-            return FlowResult([], "handoff", handoff_reason=tag)
-        if request.route == "account" and request.detail == "action":
+        if self._action(request):
             return FlowResult([], "handoff", handoff_reason="action gap")
-        if request.route in ("account", "scheduling"):
-            state.pending.append({"route": request.route, "detail": request.detail, "service_type": request.service_type,
-                                  "text": request.text})
-            state.active_flow = request.route
-        return self._advance(state, text)
+        tag = "unclear" if request.detail == "unclear" else HANDOFF_TAGS.get(request.detail or "other", "other")
+        return FlowResult([], "handoff", handoff_reason=tag)
 
-    def _advance(self, state: ConversationState, text: str) -> FlowResult:
-        """Identify the caller if needed, then work through the pending requests or the active flow."""
+    def _advance_safely(self, state: ConversationState, text: str, error_event, continuing: bool) -> list[FlowResult]:
+        holder: list[list[FlowResult]] = []
+        result = safe(lambda: holder.append(self._advance(state, text, continuing)) or FlowResult([], "none"), error_event)
+        return holder[0] if holder else [result]
+
+    def _advance(self, state: ConversationState, text: str, continuing: bool = True) -> list[FlowResult]:
+        """Identify the caller if needed, then answer every waiting account request and run the scheduling flow.
+        The open flow only reads this message when the message is a follow-up to it (continuing)."""
         db = sqlite3.connect(self.scheduling_db)
         try:
             customer = self._customer(db, state)
             named = find_customer(db, text) if has_identifier(text) else None
             if named and (customer is None or named.customer_id != customer.customer_id):
                 customer = None  # a message naming a different customer switches to that account
+                state.flow = {}  # the previous customer's booking is not carried over
             if customer is None:
                 found = named or find_customer(db, text)
                 if found:
                     customer, state.customer_id = found, found.customer_id
                     state.who = f"{found.name}, {found.customer_id}"
-                    state.id_attempts = 0
-                elif NEW_CUSTOMER.search(text):
-                    state.flow, state.active_flow, state.pending = {}, None, []
-                    return FlowResult([], "handoff", handoff_reason="new customer")
-                elif has_identifier(text):
-                    state.id_attempts += 1
-                    if state.id_attempts >= 2:
-                        state.flow, state.active_flow, state.pending = {}, None, []
-                        return FlowResult([], "handoff", handoff_reason="not identified")
-                    return FlowResult(["No account matched those details. " + ASK], "account answer")
+                    state.id_attempts, state.notes = 0, []
                 else:
-                    return FlowResult([ASK], "account answer")
-            if state.pending:
+                    state.active_flow = state.active_flow or "account"
+                    if NEW_CUSTOMER.search(text):
+                        state.flow, state.active_flow, state.pending = {}, None, []
+                        return [FlowResult([], "handoff", handoff_reason="new customer")]
+                    if has_identifier(text):
+                        state.id_attempts += 1
+                        if state.id_attempts >= 2:
+                            state.flow, state.active_flow, state.pending = {}, None, []
+                            return [FlowResult([], "handoff", handoff_reason="not identified")]
+                        return [FlowResult(["No account matched those details. " + ASK], "account answer")]
+                    return [FlowResult([ASK], "account answer")]
+            results: list[FlowResult] = []
+            # Account questions are answered first, so a question asked mid-booking does not wait behind it.
+            for request in [r for r in state.pending if r["route"] == "account"]:
+                state.pending.remove(request)
+                results.append(account_answer(read_only(self.scheduling_db), customer, request["detail"], state, self.store))
+            flow_text = text if continuing or not state.flow else None
+            while True:
+                if state.flow and flow_text is not None:
+                    results.append(scheduling.step(db, self.seed_db, customer, state, flow_text, self.now, self.store))
+                    if state.flow:
+                        break
+                    flow_text = ""
+                elif state.flow:
+                    break  # an open flow waits; the caller was offered a return to it
+                if not state.pending:
+                    break
                 request = state.pending.pop(0)
-                if request["route"] == "account":
-                    state.active_flow = "scheduling" if state.flow else None
-                    return account_answer(read_only(self.scheduling_db), customer, request["detail"], state, self.store)
-                state.flow = {"kind": request["detail"] or "book", "step": "start", "issue": request["text"]}
+                state.flow = {"kind": request["detail"] if request["detail"] in SCHEDULING_ACTIONS else "book",
+                              "step": "start", "issue": request["text"]}
                 if request["service_type"]:
                     state.flow["service"] = request["service_type"]
-                state.active_flow = "scheduling"
-            if not state.flow:
-                state.active_flow = None
-                return FlowResult(["Ask how else you can help."], "policy answer")
-            return scheduling.step(db, self.seed_db, customer, state, text, self.now, self.store)
+                flow_text = request["text"] if flow_text == "" else text
+            state.active_flow = "scheduling" if state.flow else None
+            return results or [FlowResult(["Ask how else you can help."], "policy answer")]
         finally:
             db.close()
 

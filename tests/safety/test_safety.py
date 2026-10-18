@@ -89,3 +89,18 @@ def test_fixed_replies_never_copy_eight_words_of_an_internal_document():
     for kind, situation in (("danger", ""), ("burning", ""), ("urgent", "leak"), ("urgent", "no heat"), ("urgent", "no cooling")):
         words = _words(joined(kind, situation))
         assert not {tuple(words[i:i + 8]) for i in range(len(words) - 7)} & grams, (kind, situation)
+
+
+# Milestone 3 gate fixes.
+
+@pytest.mark.parametrize("text", ["No, but I smell gas", "I'm not sure, I smell gas", "not really. i smell gas now",
+                                  "I smell natural gas near the furnace", "There is a gas odor in the basement",
+                                  "smells of natural gas", "nope, but there's smoke coming out of the vent"])
+def test_danger_is_not_cancelled_by_a_negation_in_another_clause_and_gas_synonyms_count(text):
+    assert check(text, []).kind == "danger"
+
+
+@pytest.mark.parametrize("text", ["my natural gas furnace won't light", "I don't smell gas, just want a tune-up",
+                                  "no gas smell, it just clicks"])
+def test_a_gas_appliance_or_a_negated_smell_is_not_danger(text):
+    assert check(text, []).kind == "clear"

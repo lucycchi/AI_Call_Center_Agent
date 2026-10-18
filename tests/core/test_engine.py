@@ -208,3 +208,35 @@ def test_a_message_naming_a_different_customer_switches_the_account(world):
     say(engine, "I'm Linda Foster, MHC-10001. I need a repair Monday morning", conversation="c5")
     sentences, done = say(engine, "What's my balance? I'm Omar Patel, MHC-10002", conversation="c5")
     assert "invoice lookup MHC-10002" in done.db_actions and any("$478.00" in s for s in sentences)
+
+
+def test_breaker_advice_from_the_writer_is_blocked_after_a_burning_smell(world, tmp_path):
+    db = tmp_path / "s2.sqlite"
+    shutil.copy(SEED, db)
+
+    def troubleshooting_writer(reply_type, facts, history):
+        yield "Let's try a couple of checks."
+        yield "Reset any tripped breaker once."
+    pipeline = AgentPipeline(store=OpsStore(tmp_path / "ops2.sqlite"), scheduling_db=db, seed_db=SEED,
+                             searcher=FakeSearcher(), route_fn=world["router"], writer=troubleshooting_writer,
+                             threshold=0.4)
+    engine = Engine(pipeline)
+    say(engine, "I smell something burning from the vents")
+    sentences, done = say(engine, "what does the membership include")
+    assert "Reset any tripped breaker once." not in sentences and done.outcome == "handed_off"
+    assert pipeline.store.tickets()[-1]["reason_tag"] == "blocked reply"
+
+
+def test_a_writer_that_promises_a_waiver_is_stopped_before_the_promise(world, tmp_path):
+    db = tmp_path / "s3.sqlite"
+    shutil.copy(SEED, db)
+
+    def rogue_writer(reply_type, facts, history):
+        yield "The Comfort Club is $189 a year."
+        yield "The diagnostic fee will be waived for you."
+    pipeline = AgentPipeline(store=OpsStore(tmp_path / "ops3.sqlite"), scheduling_db=db, seed_db=SEED,
+                             searcher=FakeSearcher(), route_fn=world["router"], writer=rogue_writer, threshold=0.4)
+    sentences, done = say(Engine(pipeline), "what does the membership include")
+    assert sentences[0] == "The Comfort Club is $189 a year." and not any("waived" in s for s in sentences)
+    events = pipeline.store._rows("select kind, detail from events")
+    assert any(e["kind"] == "blocked sentence" and e["detail"].startswith("waiver") for e in events)

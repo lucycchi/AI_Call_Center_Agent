@@ -8,15 +8,31 @@ import uuid
 from dataclasses import asdict
 from datetime import date
 
+from app.core import deadline
 from app.flows.protocol import FlowResult
 from app.handoff.flow import confirm_booking
 from app.scheduling import transactions as tx
 from app.scheduling.dates import parse_request
 from app.scheduling.eligibility import SERVICE_NAMES, Slot, offer
 
-YES = re.compile(r"^\W*(yes|yeah|yep|yup|sure|ok|okay|correct|that works|sounds good|book it|do it|please do|perfect|go ahead)\b", re.I)
+# Only a plain yes confirms a change (R52); anything hedged gets the read-back again.
+AFFIRMATIVE = re.compile(r"^\W*(?:(?:um|uh|oh)\W+)?(yes|yeah|yep|yup|sure|ok|okay|correct|that works|sounds good|book it|"
+                         r"do it|please do|perfect|go ahead|take it|works|let'?s do (?:it|that)|do that|great)\b", re.I)
+HEDGE = re.compile(r"\?|\b(but|wait|actually|instead|hold on|not|no|nope|hmm|maybe|unless|first|which|what|how)\b", re.I)
 NO = re.compile(r"^\W*(no|nope|neither|none of)\b", re.I)
-ORDINALS = [r"\b(first|1st|one|1)\b", r"\b(second|2nd|two|2)\b", r"\b(third|3rd|three|3)\b"]
+EARLIER = re.compile(r"\b(earlier|sooner|anything before|any earlier)\b", re.I)
+# Ordinal words only: a bare "one" or "1" is too often part of a date or window ("the Tuesday one", "1 to 5").
+ORDINALS = [r"\b(first|1st|option (?:1|one)|number (?:1|one)|#1)\b", r"\b(second|2nd|option (?:2|two)|number (?:2|two)|#2)\b",
+            r"\b(third|3rd|option (?:3|three)|number (?:3|three)|#3)\b"]
+
+
+class _PlainYes:
+    def search(self, text: str) -> bool:
+        return bool(AFFIRMATIVE.search(text)) and not HEDGE.search(AFFIRMATIVE.sub("", text, count=1))
+
+
+YES = _PlainYes()
+_deadline_passed = deadline.passed  # replaced in tests
 # Warranty claims the database cannot verify are booked as normal visits for staff review (R53).
 REPEAT_REPAIR = re.compile(r"\b(same thing|same problem|again|came back|repeat repair|you fixed)\b", re.I)
 MEMBER_INSTALL = re.compile(r"\bmember when (it was|you|we)\b.*\binstall|\b5-year\b", re.I)
@@ -39,18 +55,20 @@ def _offer_facts(slots: list[dict], lead: str = "Offer these slots and ask which
 
 
 def _pick(text: str, choices: list[dict], now, key_date="slot_date") -> dict | None:
+    """Dates and windows first ("the Tuesday one", "October 22 in the morning"), then ordinal words."""
     if len(choices) == 1 and YES.search(text):
         return choices[0]
-    for index, pattern in enumerate(ORDINALS[:len(choices)]):
-        if re.search(pattern, text, re.I):
-            return choices[index]
     wanted = parse_request(text, now)
-    if wanted:
+    if wanted and (wanted.date or wanted.window or wanted.part):
         for choice in choices:
             if (wanted.date is None or choice[key_date] == wanted.date.isoformat()) and \
                     (wanted.window is None or choice["window"] == wanted.window) and \
                     (wanted.part is None or (choice["window"] == "08:00-12:00") == (wanted.part == "morning")):
                 return choice
+        return None
+    for index, pattern in enumerate(ORDINALS[:len(choices)]):
+        if re.search(pattern, text, re.I):
+            return choices[index]
     return None
 
 
@@ -64,12 +82,37 @@ def _read_back(flow: dict, what: str, fee_cents: int = 0) -> FlowResult:
 def _make_offer(db, customer, flow: dict, text: str, now, lead: str | None = None) -> FlowResult:
     result = offer(db, customer, flow["service"], parse_request(text, now), now)
     if result.decline_reason:
+        service = SERVICE_NAMES[flow["service"]]
         flow.clear()
-        return FlowResult([result.decline_reason, customer.city, SERVICE_NAMES[flow.get("service", "hvac_repair")]],
-                          "decline", handoff_reason="decline")
+        return FlowResult([result.decline_reason, customer.city, service], "decline", handoff_reason="decline")
     flow["offered"] = [asdict(s) for s in result.slots]
     flow["step"] = "offer"
     return FlowResult(_offer_facts(flow["offered"], lead or "Offer these slots and ask which one suits:"), "booking offer")
+
+
+def _with_fee(db, flow: dict, now, result: FlowResult) -> FlowResult:
+    """A reschedule offer says whether moving the appointment carries the late fee."""
+    if result.reply_type != "booking offer":
+        return result
+    fee = tx.late_fee_preview(db, flow["appointment"]["appointment_id"], now)
+    note = ("A $49 late fee applies because the current appointment is within 24 hours." if fee
+            else "There is no late fee for moving this appointment, as it is more than 24 hours away.")
+    return FlowResult(result.facts + [note], result.reply_type, db_actions=result.db_actions)
+
+
+def _earlier(db, customer, flow: dict, now) -> FlowResult:
+    """Offer anything earlier than what was offered; if there is nothing, a ticket marked "wants an earlier slot" (R44)."""
+    soonest = offer(db, customer, flow["service"], None, now)
+    offered = {(s["slot_date"], s["window"]) for s in flow.get("offered", [])}
+    earliest_offered = min(offered) if offered else None
+    sooner = [s for s in soonest.slots if earliest_offered is None or (s.slot_date, s.window) < earliest_offered]
+    if sooner:
+        flow["offered"] = [asdict(s) for s in sooner]
+        flow["step"] = "offer"
+        return FlowResult(_offer_facts(flow["offered"], "These are the earliest open slots; ask which one suits:"),
+                          "booking offer")
+    return FlowResult(["The slots offered are the earliest available; the caller can still take one of them."],
+                      "booking offer", handoff_reason="earlier slot")
 
 
 def step(db, seed_db, customer, state, text: str, now, store) -> FlowResult:
@@ -89,6 +132,8 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
         return _make_offer(db, customer, flow, text, now)
     if flow["step"] == "offer":
         chosen = _pick(text, flow["offered"], now)
+        if chosen is None and EARLIER.search(text):
+            return _earlier(db, customer, flow, now)
         if chosen is None:
             if parse_request(text, now):
                 return _make_offer(db, customer, flow, text, now)
@@ -99,6 +144,8 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
     # Read-back: book only on a clear yes.
     if YES.search(text):
         chosen = flow["chosen"]
+        if _deadline_passed():
+            raise deadline.DeadlinePassed("not booking after the message deadline")
         booked = tx.book(db, customer, chosen["slot_id"], flow.get("issue", ""), flow["confirmation_id"], now,
                          claim=flow.get("claim"))
         if booked.status == "taken":
@@ -148,12 +195,19 @@ def _existing(db, seed_db, customer, state, text, now) -> FlowResult:
             fee = tx.late_fee_preview(db, flow["appointment"]["appointment_id"], now)
             return _read_back(flow, f"moving the {SERVICE_NAMES[chosen['service_type']]} visit to "
                                     f"{_when(chosen['slot_date'], chosen['window'])}", fee)
-        if parse_request(text, now) or flow["step"] == "offer":
-            return _make_offer(db, customer, flow, text, now)
+        if parse_request(text, now):
+            return _with_fee(db, flow, now, _make_offer(db, customer, flow, text, now))
+        if EARLIER.search(text):
+            return _earlier(db, customer, flow, now)
+        if flow["step"] == "offer":
+            return _with_fee(db, flow, now, FlowResult(_offer_facts(flow["offered"], "Ask which of these slots suits, or what "
+                                                                    "other time works:"), "booking offer"))
         return FlowResult(["Ask what day and time the caller would like instead."], "booking offer")
     # Read-back for a cancel or reschedule.
     appointment = flow["appointment"]
     if YES.search(text):
+        if _deadline_passed():
+            raise deadline.DeadlinePassed("not changing an appointment after the message deadline")
         if kind == "cancel":
             result = tx.cancel(db, customer, appointment["appointment_id"], flow["confirmation_id"], now, seed_db)
             what = f"Cancelled the {_when(appointment['slot_date'], appointment['window'])} visit"
@@ -165,9 +219,11 @@ def _existing(db, seed_db, customer, state, text, now) -> FlowResult:
         if result.status == "taken":
             flow["step"] = "new_date"
             return _make_offer(db, customer, flow, "", now, "That slot was just taken. Offer these instead:")
-        if result.status != "not found":
-            state.tried.append(f"{result.status} appointment {appointment['appointment_id']}")
         state.flow, state.active_flow = {}, None
+        if result.status == "not found":
+            return FlowResult(["That appointment had already changed, so nothing was changed. Offer to check the caller's "
+                               "appointments again."], "confirmation", db_actions=[f"no change to appointment {appointment['appointment_id']}"])
+        state.tried.append(f"{result.status} appointment {appointment['appointment_id']}")
         fee = " A $49 late fee applies." if result.late_fee_cents else ""
         return FlowResult([f"{what}.{fee}"], "confirmation", db_actions=[f"{result.status} appointment {appointment['appointment_id']}"])
     if NO.search(text):
