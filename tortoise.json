@@ -28,13 +28,19 @@
       "date": "2026-10-18",
       "tag": "tortoise/milestone-1",
       "milestone": 1
+    },
+    {
+      "stage": "gate",
+      "date": "2026-10-18",
+      "tag": "tortoise/milestone-2",
+      "milestone": 2
     }
   ],
-  "milestone": 1,
+  "milestone": 2,
   "milestones": 6,
   "last_gate": {
-    "milestone": 1,
+    "milestone": 2,
     "passed": true,
-    "fingerprint": "dd12cb17bb86b969c20e7ad0871f353f07d4e43e"
+    "fingerprint": "7179c50dfa5913bd7f95e789bbbf97e94f1942a3"
   }
 }

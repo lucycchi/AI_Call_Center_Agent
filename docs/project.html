@@ -48,21 +48,21 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <main>
 <header>
 <h1>AI Call Center Agent</h1>
-<p class="stage">Current stage: Milestone gate, milestone 1 of 6 (needs your approval before moving on)</p>
+<p class="stage">Current stage: Milestone gate, milestone 2 of 6 (needs your approval before moving on)</p>
 </header>
 <section id="summary">
 <h2>Summary</h2>
 <p><strong>The problem.</strong> Meridian Home Comfort, a fictional heating, cooling and plumbing company in the Austin area, cannot keep up with its calls. The challenge (<code>docs/PRD.md</code>) is to build, in four working days, a chat agent at a public web address that answers routine calls from the company's documents, reads callers' accounts, books and changes appointments in a provided SQLite database, hands everything else to a human with full context, and proves its performance with numbers measured on held-out data.</p>
 <p><strong>The approach.</strong> One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.</p>
-<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestone 1 of 6 is built: configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>), and the prepared documents. The later milestones are planned.</p>
+<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestones 1 and 2 of 6 are built: configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results. The later milestones are planned.</p>
 </section>
 <h3>Key decisions</h3>
 <ul>
-<li>What status does a freed slot get when the seed copy itself shows it as booked? When an appointment is cancelled or moved, its slot returns to the seed copy&#x27;s status if that was open or members-only. If the seed copy shows the slot as booked (a seeded appointment), the slot is freed to open, which is what the schema&#x27;s &#x27;free the old slot (open)&#x27; rule says. Refines the freed-slot rule in the data rules (D29).</li>
 <li>Which protections are added to booking confirmations, the reviewer link and downtime alerts? (1) Each read-back carries a confirmation ID; a repeated or retried confirmation returns the first result instead of changing the database again. (2) The secret reviewer link is used once to start a signed reviewer session, then redirects to a clean address, and the token is never logged. (3) A free outside uptime monitor checks the health endpoint and alerts the author when the site is down.</li>
 <li>Which technology stack does the system use? Python 3.12; FastAPI with one worker process; each caller message is an ordinary request and its checked sentences stream back as server-sent events tied to that message; server-rendered HTML with a little plain JavaScript; the provided scheduling SQLite file plus a separate operations SQLite file, both in write-ahead logging mode on the attached disk; the search index built offline and shipped inside each release; an in-app scheduler with an app-wide gate that messages hold shared and the nightly reset holds exclusively; alerts through a webhook; Anthropic and Voyage SDKs pinned.</li>
 <li>Which architecture refinements does the plan review require? (1) Confirmation ids are stored in a new agent_confirmations table inside the scheduling database, written in the same transaction as the booking change; the provided tables are untouched and the nightly reset recreates the new table empty. (2) The engine yields typed events: one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions. (3) Each message and its released sentences are saved; the stream replays saved sentences on reconnect, and a message left unfinished by a restart becomes a handoff. (4) Timeouts: Anthropic 20 seconds, Voyage 5 seconds, alert webhook 5 seconds, and a 15-second deadline per message after which it hands off. (5) Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation, one retry, a separate test key, and an $8 stop per run. (6) The reviewer token sits after a # in the link, which browsers never send to servers; the page sends it once and clears it. (7) The final-run freeze covers only the agent-behaviour files and the search index, recorded as a hash. (8) The keyword index is rebuilt at startup from the shipped chunks.</li>
 <li>Who labels the blind third of the templates that checks the Codex labels? Codex, set to an OpenAI frontier model on the author&#x27;s subscription, labels every template without seeing Haiku&#x27;s labels, as before. Claude Fable 5.1 (claude-fable-5-1) labels the same blind third of the templates, without seeing Haiku&#x27;s or Codex&#x27;s labels, in place of the author. Reported: Fable-versus-Codex agreement on that third (a cross-company check), Codex-versus-Haiku agreement, and routing accuracy against the Codex labels. The README states that no human labeled the templates. The author&#x27;s blind grading of about 30 answers (D8) is unchanged.</li>
+<li>How are the nine waitlist templates treated, given that each is the matching booking call plus one fixed waitlist exchange? Keep the 52 templates. data/templates.csv gains a family column: each waitlist template&#x27;s family is its booking twin&#x27;s template id, every other template is its own family. The test split (Task 7) assigns whole families, so twins are never on opposite sides. The plan&#x27;s 70 to 120 template estimate is corrected.</li>
 </ul>
 <section id="progress">
 <h2>Progress</h2>
@@ -74,11 +74,11 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 4: generate the findings document. Requirements: R5, R6, R7, R8, R56</span></li>
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 5: document list, conflict register and format conversion. Requirements: R24, R25, R26</span></li>
 </ul>
-<h3>Milestone 2: Search and test set (0 of 3 done)</h3>
+<h3>Milestone 2: Search and test set (3 of 3 done)</h3>
 <ul>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 6: chunk documents, build the index and search. Requirements: R27, R28</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 7: split by template and build frozen test cases. Requirements: R9, R10, R11, R29, R81</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 8: measure retrieval on its own. Requirements: R30</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 6: chunk documents, build the index and search. Requirements: R27, R28</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 7: split by template and build frozen test cases. Requirements: R9, R10, R11, R29, R81</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 8: measure retrieval on its own. Requirements: R30</span></li>
 </ul>
 <h3>Milestone 3: Agent core (0 of 9 done)</h3>
 <ul>
@@ -368,7 +368,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td>Conversation engine</td><td>Keeps conversation state, runs the pipeline, keeps a flow active across follow-up messages</td><td>Conversation state (R40), conversation lifetime (R82)</td></tr>
 <tr><td>Safety check</td><td>Matches emergency patterns in code before anything else and returns fixed replies</td><td>Safety classes (R34 to R37)</td></tr>
 <tr><td>Router</td><td>Haiku 5.5 returns a route and "clear" or "unclear"</td><td>Router (R38, R39), routing model (D25)</td></tr>
-<tr><td>Knowledge search</td><td>Combined keyword and meaning-based search over current documents</td><td>Document search (R24 to R32)</td></tr>
+<tr><td>Knowledge search</td><td>Combined keyword and meaning-based search over current documents: the top result of each list is always kept (keyword search's only when some word matches), then the top 10 of each list are merged by reciprocal-rank fusion; five results returned (combined search keeps each list's top result (D41))</td><td>Document search (R24 to R32)</td></tr>
 <tr><td>Scheduling and account store</td><td>Read-only lookups and booking transactions on the scheduling database</td><td>Booking rules (R45 to R56), data rules (D29)</td></tr>
 <tr><td>Reply writer</td><td>Sonnet 5.5 turns facts chosen by code into wording, as structured reply types</td><td>Pricing and internal-text rules (R42, R43)</td></tr>
 <tr><td>Reply checks</td><td>Checks every sentence for promises, refunds, waivers and internal text before release</td><td>Sentence release (R60)</td></tr>
@@ -388,7 +388,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td>Search index</td><td>Built offline, shipped in each release as files (chunks and embeddings); the keyword index is rebuilt from the chunks at startup</td><td>The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too.</td></tr>
 <tr><td>Scheduler and reset gate</td><td>A background task in the app plus an app-wide gate: every message holds it shared, the nightly reset holds it exclusively</td><td>One machine and one worker, so an in-process gate is enough to make messages wait during a reset; the job-runs table catches a missed reset at startup.</td></tr>
 <tr><td>Alerts</td><td>A webhook URL setting (for example a push-notification service), plus a free outside uptime monitor on the health endpoint</td><td>One HTTP call per alert; the app cannot alert while it is down, so downtime is detected from outside (booking, reviewer-link and downtime protections (D34)).</td></tr>
-<tr><td>AI SDKs and timeouts</td><td>Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off</td><td>Model IDs <code>claude-sonnet-5-5</code> and <code>claude-haiku-5-5</code> and settings pinned and logged with every run.</td></tr>
+<tr><td>AI SDKs and timeouts</td><td>Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off</td><td>Model IDs <code>claude-sonnet-5-5</code> and <code>claude-haiku-5-5</code>, the embedding model <code>voyage-4</code>, and settings pinned and logged with every run.</td></tr>
 <tr><td>Offline grading</td><td><code>codex exec</code> with a JSON output format</td><td>Uses the author's subscription, no API cost (grading through Codex (D15)).</td></tr>
 </tbody>
 </table>
@@ -517,7 +517,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT tried "what the agent did"
         TEXT constraints "emergency, disputed fee, gap"
         TEXT mood "caller's mood"
-        TEXT reason_tag "dispute, emergency, action gap, decline, billing review, warranty review"
+        TEXT reason_tag "dispute, emergency, burning smell, late technician, complaint, commercial, action gap, decline, billing review, warranty review"
         INTEGER priority "2 emergency, 1 normal, 0 low"
         TEXT status "open or closed"
         TEXT created_at "real time created"
@@ -773,7 +773,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     H-&gt;&gt;H: 7. score first runs, weight by template</pre>
 <p><em>How the held-out set is measured against a fresh database copy, never the live one.</em></p>
 <ol>
-<li>For each case the harness copies the seed database and adds its fixtures (an invoice, or a synthetic customer if none matches).</li>
+<li>For each case the harness copies the seed database and adds its fixtures: the invoice the caller describes, a synthetic customer if no real one matches, and for an existing-appointment call with no matching seeded appointment (a customer whose only upcoming appointment is on that day, for the service the caller describes), that appointment: in an open seed slot, or a new slot for a technician free in that window. Planted rows use ids no seed row has: synthetic customers MHC-0xxxx, invoices INV-9xxxxx unless the caller names one, appointments from 5000 and slots from 9000; a planted row that collides fails rather than replacing a seed row.</li>
 <li>Sonnet 5.5 plays the caller from the caller card and the transcript.</li>
 <li>The caller's turns go to the same agent core the web app uses, called directly with no web layer.</li>
 <li>The agent does its lookups and booking changes on the copy.</li>
@@ -845,7 +845,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     LOG --&gt;|"answers and references, offline"| CDX["Codex, OpenAI"]
     TR["Transcripts"] --&gt;|"one full sample call per template, offline"| CDX
     TR --&gt;|"caller lines for labeling, offline"| ANT
-    KB["Current documents"] --&gt;|"section text, offline"| VOY</pre>
+    KB["Current documents"] --&gt;|"section text, offline"| VOY
+    KB --&gt;|"retrieved passages and the whole current customer knowledge base, offline"| ANT</pre>
 <p><em>What leaves the app: Anthropic sees the conversation and the facts code selected; Voyage sees questions and document sections; Codex sees transcripts and graded answers offline; logs keep only masked text.</em></p>
 <p>Anthropic receives the caller's own text (needed to understand and identify them) plus facts chosen by code; it never receives internal documents as written or database rows a flow does not need. All customer data is synthetic, but the habits are production ones: internal documents are never sent as written (only paraphrased rules), the model never receives database rows beyond the facts a flow needs, logs are masked and purged after 30 days, and keys live only in <code>.env</code> locally and Fly.io secrets in production.</p>
 <h3>10. Background jobs and alerts</h3>
@@ -900,7 +901,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>app/core/</code></td><td>Conversation engine, conversation state, the pipeline order</td></tr>
 <tr><td><code>app/safety/</code></td><td>Emergency patterns, normalisation, fixed safety replies</td></tr>
 <tr><td><code>app/routing/</code></td><td>Haiku router call and its structured result</td></tr>
-<tr><td><code>app/knowledge/</code></td><td>Index loading, keyword and meaning search, rank fusion, threshold</td></tr>
+<tr><td><code>app/knowledge/</code></td><td>Index loading, keyword and meaning search, rank fusion keeping each list's top result, threshold</td></tr>
 <tr><td><code>app/accounts/</code></td><td>Identity checks, invoice, membership and system lookups, fee-mismatch check</td></tr>
 <tr><td><code>app/scheduling/</code></td><td>Slot eligibility, alternatives, booking, reschedule and cancel transactions, seed lookups</td></tr>
 <tr><td><code>app/handoff/</code></td><td>Tickets, reason tags, appending later messages</td></tr>
@@ -922,8 +923,13 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>data/template_merges.csv</code></td><td>The reviewed merge list</td></tr>
 <tr><td><code>data/labels_haiku.csv</code>, <code>data/labels_codex.csv</code>, <code>data/labels_fable.csv</code></td><td>Haiku's call reason per call; Codex's per template (the reference) and Claude Fable 5.1's for the blind third (blind third labeled by Claude Fable 5.1 (D38)), each with its model name</td></tr>
 <tr><td><code>data/label_agreement.json</code></td><td>Codex against Haiku and Fable against Codex, with any disagreements</td></tr>
-<tr><td><code>data/split.json</code></td><td>The random seed, the working and held-out template lists, and a hash of the held-out test cases recorded when they were frozen</td></tr>
-<tr><td><code>data/testset/&lt;case&gt;.json</code></td><td>One test case: template, caller card, fixtures, expected outcome, expected handoff reason, reference answer and its document line spans</td></tr>
+<tr><td><code>data/split.json</code></td><td>The random seed, the working and held-out template lists, a hash of the held-out test cases recorded when they were frozen, and a status line saying when and why (refreezing the held-out cases (D40))</td></tr>
+<tr><td><code>data/split_counts.csv</code></td><td>Calls and templates per reason in the corpus, the working set and the held-out set</td></tr>
+<tr><td><code>data/testset/&lt;case&gt;.json</code></td><td>One test case: template, family, reason and sub-reason, sample call, call weight, the caller script (rewritten with the caller card's identity), caller card (marked synthetic, and whether its zone came from the transcript or was drawn), the caller's existing appointment if any, fixtures, every request in the call with its own expected outcome, the overall expected outcome (contained, handed off, clean decline or redirect) and handoff reason, whether it needs documents, the reference answer and its evidence spans (converted file in <code>data/kb_text/</code>, heading, line range of exactly the answering lines), and what the agent must not do</td></tr>
+<tr><td><code>data/case_requests.csv</code></td><td>The reviewed list of every request in each call beyond its labelled reason, quoting the caller's words, with its kind (knowledge, booking, action) and the reference it needs</td></tr>
+<tr><td><code>data/knowledge_questions.jsonl</code></td><td>The retrieval questions (from the test cases, plus answerable, stale-trap and unanswerable ones written by hand), each with its set, whether it falls under a handled reason, its call weight (questions from test cases), reference answer and evidence spans</td></tr>
+<tr><td><code>data/results/retrieval/summary.json</code></td><td>Retrieval measures for keyword-only, meaning-only and combined search on a named question set; coverage as the call-weighted share of the knowledge questions callers ask that the documents answer; the check that no excluded document is in the index; and the SDK versions, models, token, retry and timeout settings and spending cap used</td></tr>
+<tr><td><code>data/results/retrieval/answers_to_grade.jsonl</code></td><td>Answers from keyword-only search, combined search and the whole knowledge base, with the model, for grading on answer correctness (stale-trap accuracy is judged here)</td></tr>
 <tr><td><code>data/results/&lt;run&gt;/attempts.jsonl</code></td><td>One line per attempt: case, attempt number, first-run flag, conversation, database checks, model ids and settings, grader verdict and grader model</td></tr>
 <tr><td><code>data/results/&lt;run&gt;/summary.json</code></td><td>The computed numbers and their intervals for that run</td></tr>
 <tr><td><code>data/grader_check.csv</code></td><td>The pre-chosen sample, the author's blind grades and the grader's verdicts</td></tr>
@@ -1661,7 +1667,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D39: How are the nine waitlist templates treated, given that each is the matching booking call plus one fixed waitlist exchange?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-18</li>
 <li><strong>Options:</strong>
 <ul>
@@ -1676,6 +1682,58 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul></li>
 <li><strong>Choice:</strong> Keep the 52 templates. data/templates.csv gains a family column: each waitlist template's family is its booking twin's template id, every other template is its own family. The test split (Task 7) assigns whole families, so twins are never on opposite sides. The plan's 70 to 120 template estimate is corrected.</li>
 <li><strong>Reason:</strong> Keeps the waitlist variant as its own test scenario (the agent must not promise a waitlist, one of the seven staff error patterns) while preventing near-duplicate leakage between the tuning and held-out sets. About one column and a few lines plus a test.</li>
+</ul>
+<h3>D40: The milestone 2 reviews found errors in the frozen test cases (caller scripts kept the transcript's identity, wrong planted invoices, two-request calls expecting only a handoff, evidence spans tied to the chunker). Fix them and refreeze the held-out set, or leave the frozen set alone?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "The review of the milestone 2 fixes found more errors in the rebuilt test cases (requests still unlisted, the cancel case on the wrong appointment, a Plus member asking to join, paid invoices shown as owed, evidence spans missing facts). Fix them and refreeze the held-out set again?" (D42)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-18</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Fix the case builder, rebuild all 52 cases and refreeze the held-out set with a new hash, recording the old hash</li>
+<li>Leave the frozen held-out set as it is and fix only the working set</li>
+<li>Leave both sets and note the errors in the results</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/gates/milestone-2.md">docs/gates/milestone-2.md</a>: Codex and a fresh Claude agent reviewed the milestone; 32 of 52 scripts (9 held out) carried a different account, name or phone than the caller card, and the quote-dispute invoice was planted at the quoted amount.</li>
+</ul></li>
+<li><strong>Choice:</strong> Fix the builder and refreeze. The split itself is unchanged (37 working and 15 held-out templates); the held-out hash moves from 7cdaec4bc6b1c44407e8fe2da8a9415899bf1cf4c759ad586c884cf0c9eec5f0 to 9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c. Each case now lists every request the caller makes, each with its own expected outcome. Existing-appointment cases use a real customer's seeded appointment where one matches, so the freed-slot rule (R55, D33) already covers them; a slot planted only for a test (none at present) is freed to open.</li>
+<li><strong>Reason:</strong> The spec forbids changes after the agent has been tuned on held-out results (R10); no agent exists yet, so refreezing now is allowed, and a held-out set with wrong identities or invoices would make every final measurement wrong.</li>
+</ul>
+<h3>D41: How does combined search merge the keyword and meaning-based lists?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-18</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Keep each list's top result (keyword only when some word matches), then fill by reciprocal-rank fusion over the top 10 of each list</li>
+<li>Plain reciprocal-rank fusion</li>
+<li>Meaning-based search only</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="data/results/retrieval/summary.json">data/results/retrieval/summary.json</a>: On the working-set questions: plain fusion missed answers meaning search had first; keep-top fusion found every answer; meaning-only had the best recall at five; keyword-only was weakest.</li>
+</ul></li>
+<li><strong>Choice:</strong> Keep each list's top result, then reciprocal-rank fusion. The spec leaves the fusion method to the builder (R28). The results report meaning-only beside it honestly, and the rule was chosen on the working set only.</li>
+<li><strong>Reason:</strong> Plain fusion dropped meaning search's correct first answer whenever keyword search missed; keeping keyword search's top result protects exact-term questions (prices, place names) that meaning search can rank lower.</li>
+</ul>
+<h3>D42: The review of the milestone 2 fixes found more errors in the rebuilt test cases (requests still unlisted, the cancel case on the wrong appointment, a Plus member asking to join, paid invoices shown as owed, evidence spans missing facts). Fix them and refreeze the held-out set again?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Replaces:</strong> "The milestone 2 reviews found errors in the frozen test cases (caller scripts kept the transcript's identity, wrong planted invoices, two-request calls expecting only a handoff, evidence spans tied to the chunker). Fix them and refreeze the held-out set, or leave the frozen set alone?" (D40)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-18</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Fix them, rebuild all 52 cases and refreeze the held-out set with a new hash, recording both earlier hashes</li>
+<li>Fix only the working set</li>
+<li>Leave the cases and note the errors</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/gates/milestone-2.md">docs/gates/milestone-2.md</a>: Codex and a fresh Claude agent reviewed the fixes; held-out cases affected: charged twice (paid invoice), repeat repair (booking request), upgrade (mid-year question).</li>
+</ul></li>
+<li><strong>Choice:</strong> Fix and refreeze. Every request beyond a call's labelled reason comes from a reviewed list (data/case_requests.csv) quoting the caller's words; seeded appointments are the customer's only upcoming one and match the service the caller describes; a caller asking to join is drawn as a non-member; charged-twice and refund invoices are planted paid; evidence spans cover every number in the reference, tested. The split is unchanged (37 working, 15 held out); the hash moves from 9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c to 4423a9632bcd38f06b7945585c8bdf43bb005f5b038345d5a8b921cd303afa46. The nine waitlist calls also list "an earlier slot" as a request, handled when the agent offers the earliest eligible slots; a "wants an earlier slot" ticket is also correct but counts as a handoff (R44). New reference answers: upgrading mid-year (held out) and cancelling before renewal; the replacement-estimate answer no longer claims the advisor confirms the price, which no document says.</li>
+<li><strong>Reason:</strong> No agent exists yet, so refreezing is still allowed (R10); held-out cases with wrong data would make the final measurements wrong.</li>
 </ul>
 <h3>Glossary</h3>
 <ul>
@@ -1714,6 +1772,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Per-visitor budget:</strong> a daily spending limit for one visitor, so others still have budget left</li>
 <li><strong>Priority handoff:</strong> a handoff ticket marked to be picked up first</li>
 <li><strong>Read-only lookup:</strong> reading a caller's record without changing it</li>
+<li><strong>Reciprocal-rank fusion:</strong> merging ranked lists by adding up one over (60 plus rank) for each item across the lists</li>
 <li><strong>Reference answer:</strong> the correct answer to a test question, written in advance to compare the agent against</li>
 <li><strong>Reply-speed budget:</strong> the planned time each step may take so the whole reply arrives quickly</li>
 <li><strong>Retention:</strong> how long stored data is kept before it is deleted</li>
@@ -1818,6 +1877,112 @@ tests/test_engine_interface.py ....                                      [100%]
 <li><strong>Documents:</strong> update the architecture (label and template files, stored service-type values and date formats, offline transcripts to Anthropic, pipeline use of the app's zone map, folder table, status paragraph) and the plan (three label files, holiday file path, template estimate, family split).</li>
 <li><strong>Template grouping:</strong> a dedicated transcript check was run twice (Claude Fable 5.1, and Codex at the author's request; reports in <code>docs/reviews/</code>). Both found no template needs splitting and names never affect grouping. They differed on the nine waitlist templates. The author chose to keep the 52 templates and link each waitlist template to its booking twin as a family that stays on one side of the test split (template families (D39), proposed).</li>
 </ul>
+<h3>Milestone 2 gate</h3>
+<p>Reviews of this milestone compare against <code>tortoise/milestone-1</code>, the last approval.</p>
+<h4>Tests</h4>
+<p><strong>Passed:</strong> <code>python -m pytest</code> finished with exit code 0.</p>
+<pre><code>============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.7.0
+rootdir: /home/lucyc/gauntlet/AI_Call_Center_Agent
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.15.1, langsmith-0.14.11
+collected 140 items
+
+tests/eval/test_cases.py ...........................................     [ 30%]
+tests/eval/test_retrieval_metrics.py ..................                  [ 43%]
+tests/knowledge/test_search.py ..............                            [ 53%]
+tests/pipeline/test_documents.py .......                                 [ 58%]
+tests/pipeline/test_findings.py .....................                    [ 73%]
+tests/pipeline/test_labels.py ..............                             [ 83%]
+tests/pipeline/test_templates.py .........                               [ 90%]
+tests/test_config.py ..........                                          [ 97%]
+tests/test_engine_interface.py ....                                      [100%]
+
+============================= 140 passed in 5.52s ==============================</code></pre>
+<h4>Requirement coverage</h4>
+<p>Every requirement in SPEC.md is named by a task in PLAN.md.</p>
+<h4>Tasks</h4>
+<p>Every task in milestone 2 is ticked (3 of 3).</p>
+<h4>Architecture check</h4>
+<p>Run by Codex (gpt-5.6-sol, per-run override) and by a fresh Claude agent, both using <code>prompts/architecture-check.md</code>. Both found nothing missing from this milestone.</p>
+<p><strong>Both found:</strong></p>
+<ul>
+<li>Combined search always keeps each list's top result before reciprocal-rank fusion; the document describes plain fusion only (summary table line 68 and the search sections).</li>
+<li>The retrieval answer run uses the ordinary Anthropic key rather than the separate test key (Codex adds: the library's default two retries instead of one, and no $8 budget stop).</li>
+<li>The evaluation-files table omits <code>data/split_counts.csv</code>, <code>data/knowledge_questions.jsonl</code> and <code>data/results/retrieval/</code> (<code>summary.json</code>, <code>answers_to_grade.jsonl</code>).</li>
+</ul>
+<p><strong>Only the Claude agent found:</strong></p>
+<ul>
+<li>The ticket's reason list lacks four reasons the test cases expect: late technician, complaint, commercial and burning smell (fix before the handoff flow task, Task 15).</li>
+<li>Retrieval results do not record the model ID and settings, though the document says every run logs them.</li>
+<li>The stale-question check uses a typed-in list of excluded documents instead of reading <code>data/document_list.csv</code>.</li>
+<li>Evidence line numbers count lines in the converted copies under <code>data/kb_text/</code>, not the originals; the document should say so.</li>
+<li>Not documented: the pinned embedding model (voyage-4); planted appointment fixtures (slots from 9000, appointments from 5000); the extra test-case fields and the clean-decline and redirect outcomes; the zone capacity typed into the case builder rather than taken from the capacity counts.</li>
+</ul>
+<p><strong>Only Codex found:</strong></p>
+<ul>
+<li>The "where the project stands" paragraph still says only milestone 1 is built.</li>
+<li>The outside-services diagram does not show the retrieval test sending passages and the whole knowledge base to Sonnet.</li>
+</ul>
+<h4>Reviews</h4>
+<p>Code reviews of <code>git diff tortoise/milestone-1</code> by Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent, both using <code>prompts/code-review.md</code>. Claude ran all 111 tests (passed); Codex ran 36 (passed; the rest need a writable temporary folder its sandbox lacks). Claude also confirmed the held-out hash, byte-identical rebuilds of the cases and questions, and that the committed index matches the chunker.</p>
+<table>
+<thead><tr><th>Finding</th><th>Codex</th><th>Claude</th></tr></thead>
+<tbody>
+<tr><td>Caller scripts keep the transcript's account number, name and phone beside a different caller card (checked: 32 of 52 cases, 9 held out; e.g. script "MHC-25306, Robert Martinez", card MHC-70158 Robert Clark)</td><td>yes (top)</td><td></td></tr>
+<tr><td>Billing fixtures plant the wrong invoice: the quote dispute plants the quoted $89, not the invoiced $149; an invoice number the caller gives is not planted</td><td>yes (top)</td><td>yes (top)</td></tr>
+<tr><td>Retrieval answer run uses the live key, default retries and no $8 stop</td><td>yes (top)</td><td>(architecture check)</td></tr>
+<tr><td>The "join the membership and book" case expects only a handoff, so an agent that drops the booking can pass</td><td>yes (top)</td><td></td></tr>
+<tr><td>The membership-mention rule fires on any "Comfort Club" mention, e.g. "I'm a member"</td><td></td><td>yes (latent)</td></tr>
+<tr><td>Combined search is not plain reciprocal-rank fusion; it costs recall (93% against meaning-only 98%)</td><td>yes (wrong)</td><td>yes (unclear: builder's call allowed)</td></tr>
+<tr><td>Keyword search's forced top result is arbitrary when no word matches (always the hours section)</td><td></td><td>yes</td></tr>
+<tr><td>Keyword-only mode still calls Voyage</td><td>yes</td><td></td></tr>
+<tr><td>Evidence spans are whole sections copied from the chunker, not the exact answering lines (R29)</td><td></td><td>yes (top)</td></tr>
+<tr><td>Coverage is set by how many unanswerable questions were written (20 of 23), not by the documents (R30)</td><td></td><td>yes (top)</td></tr>
+<tr><td>Stale-question accuracy cannot fail, since the index holds no old documents</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>No keyword-only answers for the answer-correctness comparison</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Retrieval summary does not say it covers only the working set the fusion rule was tuned on</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Synthetic customer IDs (MHC-9xxxx) fall in the real ID range, and fixtures overwrite on a match</td><td></td><td>yes (latent)</td></tr>
+<tr><td>Fixture guard refuses only the seed file, not the live database (R13)</td><td></td><td>yes</td></tr>
+<tr><td>Install-age matching handles only "three years old"; the 18-year-old system case gets a 2019 install</td><td>yes</td><td></td></tr>
+<tr><td>Planted appointment slots are not in the seed, so a freed slot has no defined status; two double-book technician 1</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Planted windows are not checked against the weekday (Saturday mornings only; evening window Tuesday and Thursday)</td><td></td><td>yes (latent)</td></tr>
+<tr><td>"What an invoice is for" expected to hand off because the caller asks for an emailed copy</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Plumbing and estimate clean declines depend on a random zone draw when the transcript names no city</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Tests too weak to catch the above</td><td>yes</td><td>yes</td></tr>
+</tbody>
+</table>
+<h4>Author's choices</h4>
+<p>The author chose to fix everything recommended (all of groups A, B and C):</p>
+<ul>
+<li><strong>Test-case data:</strong> write the caller card's identity into the scripts; plant the invoiced amount under the caller's invoice number; expect both the handled part and the handoff for calls with two requests (R39); narrow the membership-mention rule; read any stated system age; check planted windows against the weekday and avoid double-booking a technician; a freed planted slot goes back to open; record when a zone was drawn rather than taken from the transcript.</li>
+<li><strong>Safety:</strong> the fixture loader refuses the live database as well as the seed; synthetic customer IDs sit outside the real range, and a collision fails instead of overwriting.</li>
+<li><strong>Refreeze:</strong> the rebuilt cases change the held-out fingerprint. This is allowed because no agent tuning has happened (R10); it is recorded as a new decision with the new fingerprint.</li>
+<li><strong>Retrieval measures:</strong> separate test key, one retry, $8 stop, and the model and settings recorded; summary names the set; evidence spans narrowed to the exact answering lines (R29); coverage over handled-reason caller questions only (R30); stale questions scored on the answer at grading (Task 19), with an index check and the excluded list read from the document list; keyword-only answers added; keyword-only mode skips Voyage and the keyword top is kept only when a word matches; keep-each-list's-top rule kept and recorded as a decision, re-measured and reported honestly against meaning-only.</li>
+<li><strong>Architecture document:</strong> all wording fixes from both checks.</li>
+</ul>
+<p><strong>After the fixes.</strong> The retrieval answers were rerun on the separate test key (Sonnet 5.5, 800 tokens, low effort, one retry; $0.52): 72 answers from keyword-only search, combined search and the whole knowledge base for the 24 working-set questions, waiting for grading (Task 19). Working-set retrieval: keyword-only recall 69% and hit rate 71%; meaning-only 98% and 100%; combined 94% and 100%; stale-question hit rate 100% for combined; coverage 0.875 of handled-reason questions; no excluded document in the index. The author chose the revised Comfort Club savings answer (a team member confirms whether benefits apply on the day of joining) and settled the refreeze decision (D40).</p>
+<h4>Review of the fixes</h4>
+<p>Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent reviewed <code>git diff 68feeda..HEAD</code> against every finding and chosen fix above. Both ran all 131 tests (passed) and rebuilt the cases and questions byte for byte; the refrozen held-out hash verifies. Both found every original finding fixed except those below.</p>
+<table>
+<thead><tr><th>Finding</th><th>Codex</th><th>Claude</th></tr></thead>
+<tbody>
+<tr><td>Some requests in a call are still not listed: the renewal-date caller also asks "can I still cancel before then?"; the held-out repeat-repair caller asks "can you get someone out?"; the compressor caller says "let's schedule it"</td><td>yes (top)</td><td>yes (top; booking ones unclear)</td></tr>
+<tr><td>The cancel case expects the customer's tune-up on 10/21, but the caller says "my brother-in-law ended up fixing it", which fits their repair on 10/28; appointments are chosen without the service type</td><td></td><td>yes (top)</td></tr>
+<tr><td>The "join the plan" caller is drawn as an existing Comfort Club Plus member</td><td></td><td>yes (top)</td></tr>
+<tr><td>Every planted invoice is fully unpaid, including the held-out "charged twice" caller (paid twice) and the refund caller</td><td></td><td>yes (top)</td></tr>
+<tr><td>Six reference answers state facts outside their evidence spans (for example the 12-month minimum; "the technician confirms the final price")</td><td>yes (top)</td><td>spans include lines in between (minor)</td></tr>
+<tr><td>Coverage still depends on the hand-written question mix; the filter does not change the working-set figure (both out-of-scope questions are held out)</td><td>yes (unclear)</td><td>yes (unclear)</td></tr>
+<tr><td>Retrieval results do not record the SDK versions, the $8 cap, timeouts, or Voyage's input type and retries</td><td>yes</td><td></td></tr>
+<tr><td>Planted-fixture id ranges (appointments from 5000, slots from 9000) still undocumented</td><td>yes</td><td>yes (harmless)</td></tr>
+<tr><td>Combined-search decision (D41) still proposed</td><td>yes</td><td>yes (unclear)</td></tr>
+<tr><td>Reschedule caller wants "any afternoon this week"; the first open afternoon is 10/21</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Tests check names and addresses in one case only; no tests of tier, appointment service, invoice balance or span support against the caller's words and the reference</td><td>yes</td><td>yes</td></tr>
+</tbody>
+</table>
+<p><strong>Author's choices on the review of the fixes:</strong> fix everything recommended: a reviewed list of every request in each case (written from the scripts, checked by a fresh agent), read by the builder; seeded appointments matched on service type and preferring customers with one upcoming appointment; callers asking to join drawn as non-members; paid invoices for the charged-twice and refund calls; evidence spans covering every fact in the reference, with a test; coverage over the knowledge questions callers ask, weighted by calls; fuller run settings; fixture id ranges documented; stronger tests; no change to the reschedule case; one more held-out refreeze, recorded as a new decision replacing D40.</p>
+<p><strong>After the second round.</strong> A fresh Claude agent checked the reviewed request list against the full transcripts: 43 of 52 cases complete; the 9 waitlist calls lacked the caller's request for an earlier slot, now added (handled when the agent offers the earliest eligible slots; a "wants an earlier slot" ticket is also correct but counts as a handoff), at the author's choice. Held-out hash now 4423a9632bcd38f06b7945585c8bdf43bb005f5b038345d5a8b921cd303afa46 (D42, proposed). Retrieval answers rerun on the test key for the current questions.</p>
 </section>
 <section id="final-checks">
 <h2>Final checks</h2>

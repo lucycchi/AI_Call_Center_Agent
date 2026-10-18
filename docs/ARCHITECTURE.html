@@ -50,7 +50,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <h2>Summary</h2>
 <p><strong>The problem.</strong> Meridian Home Comfort, a fictional heating, cooling and plumbing company in the Austin area, cannot keep up with its calls. The challenge (<code>docs/PRD.md</code>) is to build, in four working days, a chat agent at a public web address that answers routine calls from the company's documents, reads callers' accounts, books and changes appointments in a provided SQLite database, hands everything else to a human with full context, and proves its performance with numbers measured on held-out data.</p>
 <p><strong>The approach.</strong> One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.</p>
-<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestone 1 of 6 is built: configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>), and the prepared documents. The later milestones are planned.</p>
+<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestones 1 and 2 of 6 are built: configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results. The later milestones are planned.</p>
 <h2>1. System overview</h2>
 <p>The system has three kinds of user (the reviewer or a caller, the author, and staff using the shared password), one web application, two databases on one disk, three outside AI services, and an offline toolkit on the author's laptop.</p>
 <pre class="mermaid">flowchart LR
@@ -98,7 +98,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td>Conversation engine</td><td>Keeps conversation state, runs the pipeline, keeps a flow active across follow-up messages</td><td>Conversation state (R40), conversation lifetime (R82)</td></tr>
 <tr><td>Safety check</td><td>Matches emergency patterns in code before anything else and returns fixed replies</td><td>Safety classes (R34 to R37)</td></tr>
 <tr><td>Router</td><td>Haiku 5.5 returns a route and "clear" or "unclear"</td><td>Router (R38, R39), routing model (D25)</td></tr>
-<tr><td>Knowledge search</td><td>Combined keyword and meaning-based search over current documents</td><td>Document search (R24 to R32)</td></tr>
+<tr><td>Knowledge search</td><td>Combined keyword and meaning-based search over current documents: the top result of each list is always kept (keyword search's only when some word matches), then the top 10 of each list are merged by reciprocal-rank fusion; five results returned (combined search keeps each list's top result (D41))</td><td>Document search (R24 to R32)</td></tr>
 <tr><td>Scheduling and account store</td><td>Read-only lookups and booking transactions on the scheduling database</td><td>Booking rules (R45 to R56), data rules (D29)</td></tr>
 <tr><td>Reply writer</td><td>Sonnet 5.5 turns facts chosen by code into wording, as structured reply types</td><td>Pricing and internal-text rules (R42, R43)</td></tr>
 <tr><td>Reply checks</td><td>Checks every sentence for promises, refunds, waivers and internal text before release</td><td>Sentence release (R60)</td></tr>
@@ -118,7 +118,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td>Search index</td><td>Built offline, shipped in each release as files (chunks and embeddings); the keyword index is rebuilt from the chunks at startup</td><td>The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too.</td></tr>
 <tr><td>Scheduler and reset gate</td><td>A background task in the app plus an app-wide gate: every message holds it shared, the nightly reset holds it exclusively</td><td>One machine and one worker, so an in-process gate is enough to make messages wait during a reset; the job-runs table catches a missed reset at startup.</td></tr>
 <tr><td>Alerts</td><td>A webhook URL setting (for example a push-notification service), plus a free outside uptime monitor on the health endpoint</td><td>One HTTP call per alert; the app cannot alert while it is down, so downtime is detected from outside (booking, reviewer-link and downtime protections (D34)).</td></tr>
-<tr><td>AI SDKs and timeouts</td><td>Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off</td><td>Model IDs <code>claude-sonnet-5-5</code> and <code>claude-haiku-5-5</code> and settings pinned and logged with every run.</td></tr>
+<tr><td>AI SDKs and timeouts</td><td>Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off</td><td>Model IDs <code>claude-sonnet-5-5</code> and <code>claude-haiku-5-5</code>, the embedding model <code>voyage-4</code>, and settings pinned and logged with every run.</td></tr>
 <tr><td>Offline grading</td><td><code>codex exec</code> with a JSON output format</td><td>Uses the author's subscription, no API cost (grading through Codex (D15)).</td></tr>
 </tbody>
 </table>
@@ -247,7 +247,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT tried "what the agent did"
         TEXT constraints "emergency, disputed fee, gap"
         TEXT mood "caller's mood"
-        TEXT reason_tag "dispute, emergency, action gap, decline, billing review, warranty review"
+        TEXT reason_tag "dispute, emergency, burning smell, late technician, complaint, commercial, action gap, decline, billing review, warranty review"
         INTEGER priority "2 emergency, 1 normal, 0 low"
         TEXT status "open or closed"
         TEXT created_at "real time created"
@@ -503,7 +503,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     H-&gt;&gt;H: 7. score first runs, weight by template</pre>
 <p><em>How the held-out set is measured against a fresh database copy, never the live one.</em></p>
 <ol>
-<li>For each case the harness copies the seed database and adds its fixtures (an invoice, or a synthetic customer if none matches).</li>
+<li>For each case the harness copies the seed database and adds its fixtures: the invoice the caller describes, a synthetic customer if no real one matches, and for an existing-appointment call with no matching seeded appointment (a customer whose only upcoming appointment is on that day, for the service the caller describes), that appointment: in an open seed slot, or a new slot for a technician free in that window. Planted rows use ids no seed row has: synthetic customers MHC-0xxxx, invoices INV-9xxxxx unless the caller names one, appointments from 5000 and slots from 9000; a planted row that collides fails rather than replacing a seed row.</li>
 <li>Sonnet 5.5 plays the caller from the caller card and the transcript.</li>
 <li>The caller's turns go to the same agent core the web app uses, called directly with no web layer.</li>
 <li>The agent does its lookups and booking changes on the copy.</li>
@@ -575,7 +575,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     LOG --&gt;|"answers and references, offline"| CDX["Codex, OpenAI"]
     TR["Transcripts"] --&gt;|"one full sample call per template, offline"| CDX
     TR --&gt;|"caller lines for labeling, offline"| ANT
-    KB["Current documents"] --&gt;|"section text, offline"| VOY</pre>
+    KB["Current documents"] --&gt;|"section text, offline"| VOY
+    KB --&gt;|"retrieved passages and the whole current customer knowledge base, offline"| ANT</pre>
 <p><em>What leaves the app: Anthropic sees the conversation and the facts code selected; Voyage sees questions and document sections; Codex sees transcripts and graded answers offline; logs keep only masked text.</em></p>
 <p>Anthropic receives the caller's own text (needed to understand and identify them) plus facts chosen by code; it never receives internal documents as written or database rows a flow does not need. All customer data is synthetic, but the habits are production ones: internal documents are never sent as written (only paraphrased rules), the model never receives database rows beyond the facts a flow needs, logs are masked and purged after 30 days, and keys live only in <code>.env</code> locally and Fly.io secrets in production.</p>
 <h2>10. Background jobs and alerts</h2>
@@ -630,7 +631,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>app/core/</code></td><td>Conversation engine, conversation state, the pipeline order</td></tr>
 <tr><td><code>app/safety/</code></td><td>Emergency patterns, normalisation, fixed safety replies</td></tr>
 <tr><td><code>app/routing/</code></td><td>Haiku router call and its structured result</td></tr>
-<tr><td><code>app/knowledge/</code></td><td>Index loading, keyword and meaning search, rank fusion, threshold</td></tr>
+<tr><td><code>app/knowledge/</code></td><td>Index loading, keyword and meaning search, rank fusion keeping each list's top result, threshold</td></tr>
 <tr><td><code>app/accounts/</code></td><td>Identity checks, invoice, membership and system lookups, fee-mismatch check</td></tr>
 <tr><td><code>app/scheduling/</code></td><td>Slot eligibility, alternatives, booking, reschedule and cancel transactions, seed lookups</td></tr>
 <tr><td><code>app/handoff/</code></td><td>Tickets, reason tags, appending later messages</td></tr>
@@ -652,8 +653,13 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>data/template_merges.csv</code></td><td>The reviewed merge list</td></tr>
 <tr><td><code>data/labels_haiku.csv</code>, <code>data/labels_codex.csv</code>, <code>data/labels_fable.csv</code></td><td>Haiku's call reason per call; Codex's per template (the reference) and Claude Fable 5.1's for the blind third (blind third labeled by Claude Fable 5.1 (D38)), each with its model name</td></tr>
 <tr><td><code>data/label_agreement.json</code></td><td>Codex against Haiku and Fable against Codex, with any disagreements</td></tr>
-<tr><td><code>data/split.json</code></td><td>The random seed, the working and held-out template lists, and a hash of the held-out test cases recorded when they were frozen</td></tr>
-<tr><td><code>data/testset/&lt;case&gt;.json</code></td><td>One test case: template, caller card, fixtures, expected outcome, expected handoff reason, reference answer and its document line spans</td></tr>
+<tr><td><code>data/split.json</code></td><td>The random seed, the working and held-out template lists, a hash of the held-out test cases recorded when they were frozen, and a status line saying when and why (refreezing the held-out cases (D40))</td></tr>
+<tr><td><code>data/split_counts.csv</code></td><td>Calls and templates per reason in the corpus, the working set and the held-out set</td></tr>
+<tr><td><code>data/testset/&lt;case&gt;.json</code></td><td>One test case: template, family, reason and sub-reason, sample call, call weight, the caller script (rewritten with the caller card's identity), caller card (marked synthetic, and whether its zone came from the transcript or was drawn), the caller's existing appointment if any, fixtures, every request in the call with its own expected outcome, the overall expected outcome (contained, handed off, clean decline or redirect) and handoff reason, whether it needs documents, the reference answer and its evidence spans (converted file in <code>data/kb_text/</code>, heading, line range of exactly the answering lines), and what the agent must not do</td></tr>
+<tr><td><code>data/case_requests.csv</code></td><td>The reviewed list of every request in each call beyond its labelled reason, quoting the caller's words, with its kind (knowledge, booking, action) and the reference it needs</td></tr>
+<tr><td><code>data/knowledge_questions.jsonl</code></td><td>The retrieval questions (from the test cases, plus answerable, stale-trap and unanswerable ones written by hand), each with its set, whether it falls under a handled reason, its call weight (questions from test cases), reference answer and evidence spans</td></tr>
+<tr><td><code>data/results/retrieval/summary.json</code></td><td>Retrieval measures for keyword-only, meaning-only and combined search on a named question set; coverage as the call-weighted share of the knowledge questions callers ask that the documents answer; the check that no excluded document is in the index; and the SDK versions, models, token, retry and timeout settings and spending cap used</td></tr>
+<tr><td><code>data/results/retrieval/answers_to_grade.jsonl</code></td><td>Answers from keyword-only search, combined search and the whole knowledge base, with the model, for grading on answer correctness (stale-trap accuracy is judged here)</td></tr>
 <tr><td><code>data/results/&lt;run&gt;/attempts.jsonl</code></td><td>One line per attempt: case, attempt number, first-run flag, conversation, database checks, model ids and settings, grader verdict and grader model</td></tr>
 <tr><td><code>data/results/&lt;run&gt;/summary.json</code></td><td>The computed numbers and their intervals for that run</td></tr>
 <tr><td><code>data/grader_check.csv</code></td><td>The pre-chosen sample, the author's blind grades and the grader's verdicts</td></tr>
