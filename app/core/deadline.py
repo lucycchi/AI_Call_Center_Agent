@@ -25,7 +25,11 @@ def remaining() -> float | None:
 def per_attempt(retries: int = 1) -> float | None:
     """The timeout for one model-call attempt: the time left shared across the attempt and its retries."""
     left = remaining()
-    return None if left is None else max(left / (retries + 1), 0.01)
+    if left is None:
+        return None
+    if left <= 0.01:
+        raise DeadlinePassed("too little time left for a model call")
+    return left / (retries + 1)
 
 
 def passed() -> bool:

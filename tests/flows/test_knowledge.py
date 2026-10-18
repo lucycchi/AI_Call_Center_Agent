@@ -51,5 +51,5 @@ def test_the_first_checked_sentence_is_released_within_the_time_budget():
 
     arrived = time.monotonic()
     answer("how much is drain clearing", searcher, threshold=0.4)
-    first = next(iter(CheckedStream(slow_writer())))
+    first = next(iter(CheckedStream(slow_writer(), money_check=lambda sentence, previous: True)))
     assert first and time.monotonic() - arrived < 2.5

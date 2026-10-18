@@ -5,11 +5,8 @@ from app.replies.writer import split_sentences, write
 
 
 @pytest.mark.parametrize("sentence, rule", [
-    ("We'll waive the diagnostic fee for you.", "waiver"), ("I can waive that fee.", "waiver"),
-    ("I've issued your refund.", "refund"), ("You'll get a full refund.", "refund"),
     ("Your repair will cost exactly $240.", "firm_total"), ("The total will be $480.", "firm_total"),
     ("I can put you on the waitlist.", "waitlist"), ("I'll add you to our waiting list.", "waitlist"),
-    ("I can give you 20% off.", "discount"), ("I can give you a discount on this one.", "discount"),
 ])
 def test_promises_the_agent_cannot_keep_fail(sentence, rule):
     result = check_sentence(sentence, "")
@@ -40,9 +37,10 @@ def test_eight_words_of_an_internal_document_fail_even_across_sentences():
 
 
 def test_the_stream_releases_checked_sentences_and_stops_at_the_first_failure():
-    stream = CheckedStream(iter(["The fee is $89.", "We'll waive it for you.", "Anything else?"]))
+    stream = CheckedStream(iter(["The fee is $89.", "We'll waive it for you.", "Anything else?"]),
+                           money_check=lambda sentence, previous: "waive" not in sentence)
     assert list(stream) == ["The fee is $89."]
-    assert stream.blocked_rule == "waiver"
+    assert stream.blocked_rule == "money promise"
 
 
 def test_streamed_text_is_split_into_sentences():
@@ -92,19 +90,6 @@ def test_the_writer_sends_history_as_text_never_as_stored_roles():
     assert "caller: hi" in messages[0]["content"] and "agent: hello" in messages[0]["content"]
 
 
-# Milestone 3 gate fixes.
-
-@pytest.mark.parametrize("sentence, rule", [
-    ("The diagnostic fee will be waived for you.", "waiver"), ("I've removed the diagnostic charge.", "waiver"),
-    ("That fee has been taken off your bill.", "waiver"),
-    ("A refund has been issued to your card.", "refund"), ("I'll process a full refund today.", "refund"),
-    ("You qualify for a 20 percent discount.", "discount"), ("That's 25% off for you.", "discount"),
-])
-def test_passive_and_roundabout_promises_fail(sentence, rule):
-    result = check_sentence(sentence, "")
-    assert (result.ok, result.rule) == (False, rule)
-
-
 @pytest.mark.parametrize("sentence", ["You qualify for the 15% member discount on repairs.",
                                       "Annual plans are non-refundable once a tune-up has been performed."])
 def test_published_terms_still_pass(sentence):
@@ -136,47 +121,79 @@ def _customer_document_sentences():
                         yield path.stem, sentence
 
 
-def test_every_sentence_of_the_current_customer_documents_passes_the_promise_checks():
+def test_every_sentence_of_the_current_customer_documents_passes_the_code_checks():
     blocked = [(doc, s, check_sentence(s, "").rule) for doc, s in _customer_document_sentences()
                if not check_sentence(s, "").ok and check_sentence(s, "").rule != "internal_text"]
     assert not blocked, blocked[:5]
 
 
-@pytest.mark.parametrize("sentence", [
-    "As a Comfort Club member, your diagnostic fee will be waived.", "The $89 diagnostic fee gets credited toward the repair.",
-    "That pending authorization will be removed automatically.", "The diagnostic fee is waived for members."])
-def test_published_wording_from_the_documents_passes(sentence):
-    assert check_sentence(sentence, "").ok, check_sentence(sentence, "").rule
+# Money promises are judged by a model check on every sentence that touches money (D43).
+
+def _labelled():
+    import json
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[2] / "data" / "eval" / "money_sentences.jsonl"
+    return [json.loads(line) for line in path.open()]
 
 
-@pytest.mark.parametrize("sentence, rule", [
-    ("I'll refund you the $89.", "refund"), ("We'll credit your account $89.", "waiver"), ("We can drop the late fee.", "waiver"),
-    ("We will refund the duplicate charge.", "refund"), ("I'll waive the after-hours fee this time.", "waiver"),
-    ("Your diagnostic fee is waived today.", "waiver"),
-])
-def test_real_promises_fail(sentence, rule):
-    result = check_sentence(sentence, "")
-    assert (result.ok, result.rule) == (False, rule)
+def test_every_labelled_sentence_touches_money_or_is_a_plain_pass():
+    from app.replies.money_check import touches_money
+    for row in _labelled():
+        if row["expected"] == "block":
+            assert touches_money(row["sentence"]), row["sentence"]
 
 
-# Deny by default: a concession is blocked unless it is an approved published term.
-@pytest.mark.parametrize("sentence", [
-    "Since you're a member, the late fee will be waived this time.", "The fee will be waived automatically for you this once.",
-    "Your fee will be waived within 2 days.", "We'll knock the trip charge off.", "That one's on us, no charge.",
-    "I'll give you a 10% discount since you've been waiting."])
-def test_concessions_that_are_not_published_terms_fail(sentence):
-    assert not check_sentence(sentence, "").ok
+@pytest.mark.parametrize("sentence", ["We're open Monday to Friday, 7am to 7pm.", "Manor is in our service area.",
+                                      "Which of these slots suits you?", "Please leave your home right now."])
+def test_sentences_without_money_never_reach_the_model(sentence):
+    from app.replies.money_check import touches_money
+    assert not touches_money(sentence)
 
 
-def test_a_concession_split_over_two_sentences_fails():
-    assert not check_sentence("It will be waived for you.", "The diagnostic fee is $89.").ok
+class FakeChecker:
+    def __init__(self, verdict="pass", stop_reason="end_turn", error=None):
+        self.verdict, self.stop_reason, self.error, self.calls, self.messages = verdict, stop_reason, error, [], self
+
+    def create(self, **kwargs):
+        import json
+        self.calls.append(kwargs)
+        if self.error:
+            raise self.error
+        block = type("Block", (), {"type": "text", "text": json.dumps({"promises_beyond_published_terms": self.verdict == "block"})})()
+        return type("Response", (), {"content": [block], "stop_reason": self.stop_reason})()
 
 
-@pytest.mark.parametrize("sentence", [
-    "We take Visa, Mastercard and Amex for your invoice.", "I can take you through the charges on your invoice.",
-    "We'll take a look at that charge for you.", "We remove the old unit, and the charge for haul-away is listed on the invoice.",
-    "We credit the $89 diagnostic fee toward the repair if you approve it.", "We refund unused membership months, prorated.",
-    "Members get a 15% discount on repairs.", "It's waived for members.", "Comfort Club members get $500 off a replacement."])
-def test_ordinary_and_published_sentences_pass(sentence):
-    previous = "The diagnostic fee is $89." if sentence.startswith("It's") else ""
-    assert check_sentence(sentence, previous).ok, check_sentence(sentence, previous).rule
+def test_the_money_check_asks_haiku_with_the_published_terms_and_the_sentence_before():
+    from app.replies.money_check import MoneyCheck
+    client = FakeChecker("pass")
+    assert MoneyCheck(client)("It's waived for members.", "The diagnostic fee is $89.") is True
+    call = client.calls[0]
+    assert call["model"] == "claude-haiku-5-5" and call["output_config"]["format"]["type"] == "json_schema"
+    assert call["purpose"] == "check"
+    content = call["messages"][0]["content"]
+    assert "It's waived for members." in content and "The diagnostic fee is $89." in content
+    assert "$89" in call["system"] and "15%" in call["system"]
+
+
+@pytest.mark.parametrize("client", [FakeChecker("block"), FakeChecker("pass", stop_reason="refusal"),
+                                    FakeChecker(error=RuntimeError("timeout"))])
+def test_the_money_check_fails_closed(client):
+    from app.replies.money_check import MoneyCheck
+    assert MoneyCheck(client)("Your fee will be waived.", "") is False
+
+
+def test_a_money_sentence_with_no_promise_is_released():
+    from app.replies.money_check import MoneyCheck
+    stream = CheckedStream(iter(["A tune-up is $129.", "Anything else?"]), money_check=MoneyCheck(FakeChecker("pass")))
+    assert list(stream) == ["A tune-up is $129.", "Anything else?"]
+
+
+
+
+
+def test_the_money_check_evaluation_counts_misses_and_over_blocks():
+    from eval.money_check_eval import evaluate
+    rows = [{"sentence": "I'll waive it.", "previous": "", "expected": "block"},
+            {"sentence": "A tune-up is $129.", "previous": "", "expected": "pass"}]
+    report = evaluate(rows, lambda sentence, previous: True)
+    assert report["missed_promises"] == ["I'll waive it."] and report["over_blocked"] == []

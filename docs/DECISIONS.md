@@ -574,6 +574,20 @@ can only propose a decision; only the author settles one.
 - **Choice:** Fix and refreeze. Every request beyond a call's labelled reason comes from a reviewed list (data/case_requests.csv) quoting the caller's words; seeded appointments are the customer's only upcoming one and match the service the caller describes; a caller asking to join is drawn as a non-member; charged-twice and refund invoices are planted paid; evidence spans cover every number in the reference, tested. The split is unchanged (37 working, 15 held out); the hash moves from 9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c to 4423a9632bcd38f06b7945585c8bdf43bb005f5b038345d5a8b921cd303afa46. The nine waitlist calls also list "an earlier slot" as a request, handled when the agent offers the earliest eligible slots; a "wants an earlier slot" ticket is also correct but counts as a handoff (R44). New reference answers: upgrading mid-year (held out) and cancelling before renewal; the replacement-estimate answer no longer claims the advisor confirms the price, which no document says.
 - **Reason:** No agent exists yet, so refreezing is still allowed (R10); held-out cases with wrong data would make the final measurements wrong.
 
+## D43: How are money promises in replies and money or membership action requests detected, after three review rounds showed word patterns failing in both directions?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
+- **Options:**
+  - A Haiku check on every reply sentence that touches money, plus fixed code rules, failing closed; the router decides action requests, with a code backstop only for unmistakable requests
+  - Keep word patterns for both and fix each reported phrasing
+  - Accept the known gaps and measure them in the evaluation milestone
+- **Research:**
+  - [docs/gates/milestone-3.md](docs/gates/milestone-3.md): Three review rounds (Codex and fresh Claude agents, about 160 probe phrasings) found pattern checks both missing promises ('we won't charge you', 'it's on us') and blocking published terms, with each round trading one set of errors for another.
+  - [data/results/money_check/summary.json](data/results/money_check/summary.json): On 108 labelled reply sentences (61 promises, 47 published or ordinary), the full sentence check caught 61 of 61 promises and released 47 of 47 others; the instructions were tuned on this set, so it is a working-set result.
+- **Choice:** Every reply sentence that mentions money (a fee, charge, cost, price, $, free, refund, credit, discount, waive, owe, bill or payment) is checked by Claude Haiku 5.5 against the published money terms and the sentence before it, after the fixed code rules (firm totals, waitlists, breaker advice, internal text, and promises worded as a personal favour). A refusal, error, timeout or unreadable answer blocks the sentence; a pipeline with no money check configured blocks every money sentence. The router decides money and membership action requests; a code backstop catches only requests that are never questions (payment links, autopay, cancelling the membership or auto-renew, refunds, fee waivers, paying a bill, signing up for the plan), on every route except a handoff. The labelled sets are kept in data/eval/ (money_sentences.jsonl, action_requests.jsonl) and measured in the evaluation milestone on fresh sentences and through the router.
+- **Reason:** Promise and request wording is open-ended; a model reads paraphrase that patterns cannot, and failing closed keeps errors on the safe side. Only sentences about money pay the extra time (about half a second each, a fraction of a cent), so most replies keep their speed. The spec's reply-check rule (R42) still holds: code decides and acts on every check.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
@@ -600,6 +614,7 @@ can only propose a decision; only the author settles one.
 - **Embedding:** a list of numbers representing a text's meaning, used to find similar text
 - **Escalate:** hand the call to a human
 - **Expected outcome:** the result a test case should have (contained, handed off or clean decline), fixed before tuning
+- **Fail closed:** when a check cannot give an answer, treat it as a failure, so the sentence is blocked rather than shown
 - **Fixture:** prepared test data loaded into a test copy of the database
 - **Grader:** a model that scores whether the agent's answer was correct
 - **Ground-truth label:** the label treated as correct when measuring accuracy

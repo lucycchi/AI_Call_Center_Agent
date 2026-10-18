@@ -2,6 +2,7 @@
 events and spending (R57, R73). Every text field a caller could have written is masked before it is stored."""
 
 import json
+import logging
 import sqlite3
 import threading
 from collections.abc import Callable
@@ -10,6 +11,8 @@ from pathlib import Path
 
 from app.config import real_now
 from app.ops.masking import mask
+
+log = logging.getLogger("meridian.ops")
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
 PRIORITY = {"emergency": 2, "burning smell": 2, "billing review": 0, "warranty review": 0}  # everything else is 1
@@ -24,6 +27,8 @@ class OpsStore:
         self._db.execute("pragma journal_mode = wal")
         self._db.execute("pragma foreign_keys = on")
         self._db.executescript(SCHEMA)
+        self._pending = Path(path).with_suffix(".pending.jsonl")  # staff tickets kept while the database failed
+        self.retry_pending()
 
     def _now(self) -> str:
         return self._clock().isoformat(timespec="seconds")
@@ -131,6 +136,33 @@ class OpsStore:
                            "reason_tag, priority, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                            (conversation_id, appointment_id, mask(who), mask(wants), mask(tried), mask(constraints),
                             mood, reason_tag, PRIORITY.get(reason_tag, 1), self._now()))
+
+    def create_ticket_or_keep(self, **ticket) -> int | None:
+        """A staff ticket that must not be lost: if it cannot be saved, it goes to a fallback file next to the
+        database and is saved by retry_pending, on every later message and at startup."""
+        try:
+            return self.create_ticket(**ticket)
+        except Exception as error:
+            log.error("%s ticket not saved, kept in %s: %s", ticket.get("reason_tag"), self._pending, error)
+            with self._pending.open("a") as handle:
+                handle.write(json.dumps(ticket) + "\n")
+            return None
+
+    def retry_pending(self) -> None:
+        if not self._pending.exists():
+            return
+        waiting = [json.loads(line) for line in self._pending.read_text().splitlines() if line.strip()]
+        still = []
+        for ticket in waiting:
+            try:
+                self.create_ticket(**ticket)
+            except Exception as error:
+                log.error("kept %s ticket still not saved: %s", ticket.get("reason_tag"), error)
+                still.append(ticket)
+        if still:
+            self._pending.write_text("".join(json.dumps(t) + "\n" for t in still))
+        else:
+            self._pending.unlink()
 
     def append_to_ticket(self, ticket_id: int, message_id: int) -> None:
         self._write("insert or ignore into ticket_messages (ticket_id, message_id) values (?, ?)", (ticket_id, message_id))

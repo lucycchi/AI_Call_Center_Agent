@@ -58,7 +58,7 @@ def chat(tmp_path):
     pipeline = AgentPipeline(store=store, scheduling_db=db, seed_db=SEED, searcher=FakeSearcher(),
                              route_fn=lambda text, history: route(text, history, client),
                              writer=lambda reply_type, facts, history: write(reply_type, facts, history, client),
-                             threshold=0.4)
+                             threshold=0.4, money_check=lambda s, p: True)
     engine = Engine(pipeline)
 
     scripted = client.messages._client
@@ -410,7 +410,7 @@ def test_a_booking_is_confirmed_even_when_the_warranty_review_ticket_fails(chat,
     original = chat["store"].create_ticket
 
     def failing(*args, **kwargs):
-        if "warranty review" in args:
+        if "warranty review" in (*args, *kwargs.values()):
             raise sqlite3.OperationalError("disk full")
         return original(*args, **kwargs)
     monkeypatch.setattr(chat["store"], "create_ticket", failing)
@@ -490,7 +490,8 @@ def test_the_writer_is_stopped_at_the_message_deadline(tmp_path):
             time.sleep(0.1)
     pipeline = AgentPipeline(store=OpsStore(tmp_path / "ops.sqlite"), scheduling_db=db, seed_db=SEED, searcher=FakeSearcher(),
                              route_fn=lambda text, history: route(text, history, RecordingClient(ScriptedClient(dict(ROUTES)), "x")),
-                             writer=slow_writer, threshold=0.4, deadline_s=0.15)
+                             writer=slow_writer, threshold=0.4, deadline_s=0.15,
+                             money_check=lambda s, p: True)
     events = list(Engine(pipeline).handle(T("c1", "v1", "m1", "how much is a tune-up cost")))
     texts = [e.text for e in events if isinstance(e, SentenceEvent)]
     assert "Sentence 4." not in texts and events[-1].outcome == "handed_off"
@@ -533,7 +534,7 @@ def test_a_failed_warranty_review_ticket_is_retried_on_the_next_message(chat, mo
     failed = [False]
 
     def flaky(*args, **kwargs):
-        if "warranty review" in args and not failed[0]:
+        if "warranty review" in (*args, *kwargs.values()) and not failed[0]:
             failed[0] = True
             raise sqlite3.OperationalError("disk full")
         return original(*args, **kwargs)
@@ -583,3 +584,73 @@ def test_a_yes_to_an_offer_routed_as_confirm_picks_the_slot(chat):
     chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair first thing in the morning on Tuesday please")
     reply, _ = chat["say"]("Yes, Tuesday morning is fine")
     assert "Read back" in reply and "Tuesday" in reply
+
+
+# Third review of the fixes.
+
+@pytest.mark.parametrize("text, window, expected", [
+    ("yes, 12-4 works", "08:00-12:00", False), ("Yes, Monday at 1 works", "08:00-12:00", False),
+    ("yes, 8-12 is fine", "08:00-12:00", True), ("yes, 12–4 works", "12:00-16:00", True),
+    ("Yes, noon to four works", "08:00-12:00", False)])
+def test_a_yes_naming_a_time_in_any_form_must_match_the_read_back(text, window, expected):
+    from app.flows.scheduling import confirms
+    assert confirms(text, "2026-10-19", window, SETTINGS.now) is expected
+
+
+def test_okay_im_good_at_a_read_back_does_not_end_the_chat_but_a_curly_im_good_does_after(chat):
+    book_to_read_back(chat)
+    _, done = chat["say"]("Okay, I'm good")
+    assert done.outcome != "ended"
+    _, done = chat["say"]("I’m good, thanks", conversation="c2")
+    assert done.outcome == "ended"
+
+
+def test_may_i_have_the_2nd_one_picks_slot_two():
+    from app.flows.scheduling import _pick
+    choices = [{"slot_date": "2026-10-19", "window": "08:00-12:00"}, {"slot_date": "2026-10-19", "window": "12:00-16:00"}]
+    assert _pick("May I have the 2nd one?", choices, SETTINGS.now) == choices[1]
+
+
+def test_a_failed_warranty_review_is_kept_in_a_fallback_file_and_saved_on_restart(tmp_path, monkeypatch):
+    store = OpsStore(tmp_path / "ops.sqlite")
+    original = store.create_ticket
+
+    def failing(*args, **kwargs):
+        raise sqlite3.OperationalError("disk full")
+    monkeypatch.setattr(store, "create_ticket", failing)
+    store.create_ticket_or_keep(conversation_id=None, who="Linda Foster, MHC-10001", wants="repeat repair claim",
+                                tried="booked appointment 160", constraints="warranty not verifiable", mood="",
+                                reason_tag="warranty review", appointment_id=160)
+    assert store.tickets() == []
+    monkeypatch.setattr(store, "create_ticket", original)
+    restarted = OpsStore(tmp_path / "ops.sqlite")
+    assert [t["reason_tag"] for t in restarted.tickets()] == ["warranty review"]
+
+
+def test_tags_are_remembered_only_when_the_ticket_was_saved(chat, monkeypatch):
+    def broken(*args, **kwargs):
+        raise sqlite3.OperationalError("locked")
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair")
+    monkeypatch.setattr(chat["store"], "create_ticket", broken)
+    chat["say"]("anything earlier?")
+    monkeypatch.undo()
+    chat["say"]("anything earlier?")
+    assert [t["reason_tag"] for t in chat["store"].tickets()].count("earlier slot") == 1
+
+
+def test_a_message_with_almost_no_time_left_stops_before_a_model_call():
+    from app.core import deadline
+    token = deadline.start(0.001)
+    try:
+        import time
+        time.sleep(0.002)
+        with pytest.raises(deadline.DeadlinePassed):
+            deadline.per_attempt()
+    finally:
+        deadline.DEADLINE.reset(token)
+
+
+def test_a_cancel_request_routed_as_a_redirect_is_still_an_action_gap(chat):
+    chat["routes_add"]("cancel my membership now", clear(request("cancel my membership now", "redirect", "wrong number")))
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. cancel my membership now")
+    assert chat["store"].tickets()[-1]["reason_tag"] == "action gap"

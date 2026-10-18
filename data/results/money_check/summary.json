@@ -1,0 +1,11 @@
+{
+ "sentences": 108,
+ "promises": 61,
+ "published_or_ordinary": 47,
+ "promises_caught": 61,
+ "passes_released": 47,
+ "missed_promises": [],
+ "over_blocked": [],
+ "model": "claude-haiku-5-5",
+ "anthropic_sdk": "1.15.0"
+}

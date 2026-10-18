@@ -7,36 +7,36 @@ Reviews of this milestone compare against `tortoise/milestone-2`, the last appro
 **Passed:** `python -m pytest` finished with exit code 0.
 
 ```
-rootdir: /home/lucyc/gauntlet/AI_Call_Center_Agent
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.15.1, langsmith-0.14.11
-collected 397 items
+collected 459 items
 
-tests/accounts/test_accounts.py .............................            [  7%]
-tests/core/test_engine.py ................                               [ 11%]
-tests/eval/test_cases.py ...........................................     [ 22%]
-tests/eval/test_retrieval_metrics.py ..................                  [ 26%]
-tests/flows/test_conversations.py ...................................... [ 36%]
-................                                                         [ 40%]
-tests/flows/test_knowledge.py ....                                       [ 41%]
-tests/handoff/test_handoff.py ..........                                 [ 43%]
-tests/knowledge/test_search.py ..............                            [ 47%]
-tests/ops/test_store.py ...........                                      [ 50%]
-tests/pipeline/test_documents.py .........                               [ 52%]
-tests/pipeline/test_findings.py .....................                    [ 57%]
-tests/pipeline/test_labels.py ..............                             [ 61%]
-tests/pipeline/test_templates.py .........                               [ 63%]
-tests/replies/test_checks.py ........................................... [ 74%]
-                                                                         [ 74%]
-tests/safety/test_safety.py ............................................ [ 85%]
-..                                                                       [ 85%]
-tests/scheduling/test_eligibility.py ...........................         [ 92%]
+tests/accounts/test_accounts.py ........................................ [  8%]
+...................                                                      [ 12%]
+tests/core/test_engine.py ..................                             [ 16%]
+tests/eval/test_cases.py ...........................................     [ 26%]
+tests/eval/test_retrieval_metrics.py ..................                  [ 30%]
+tests/flows/test_conversations.py ...................................... [ 38%]
+..........................                                               [ 44%]
+tests/flows/test_knowledge.py ....                                       [ 44%]
+tests/handoff/test_handoff.py ..........                                 [ 47%]
+tests/knowledge/test_search.py ..............                            [ 50%]
+tests/ops/test_store.py ...........                                      [ 52%]
+tests/pipeline/test_documents.py .........                               [ 54%]
+tests/pipeline/test_findings.py .....................                    [ 59%]
+tests/pipeline/test_labels.py ..............                             [ 62%]
+tests/pipeline/test_templates.py .........                               [ 64%]
+tests/replies/test_checks.py ........................................... [ 73%]
+................                                                         [ 76%]
+tests/safety/test_safety.py ............................................ [ 86%]
+......                                                                   [ 87%]
+tests/scheduling/test_eligibility.py ...........................         [ 93%]
 tests/scheduling/test_transactions.py ...............                    [ 96%]
-tests/test_config.py ..........                                          [ 98%]
+tests/test_config.py ..........                                          [ 99%]
 tests/test_engine_interface.py ....                                      [100%]
 
-============================= 397 passed in 14.86s =============================
+============================= 459 passed in 19.13s =============================
 ```
 
 ## Requirement coverage
@@ -165,3 +165,24 @@ Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent reviewed `git dif
 | Tests miss each of the above | yes | yes |
 
 **Author's choices on the second review:** fix everything recommended (items 1 to 14), changing approach for two parts: the promise checks become deny by default (any concession word is blocked unless it matches an approved published term from the documents, judged with the sentence before it), and the action backstop catches only explicit requests on any route, leaving questions to the router; plus known-abbreviation joining only, the deadline checked before each later sentence, dates narrowing slot choices before ordinals, read-back yes rules, a retried warranty-review ticket, a retried receipt write, invoice notes only on dispute and billing tickets, no timeout floor, the burning flag in the danger rule, caller-facing fixed text, "I'm good" restored and every combined-ticket tag remembered. Left as they are: the narrow status-read race and one street over-mask.
+
+## Third review of the fixes
+
+Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent reviewed `git diff 90e5033..HEAD` with large phrase sets (Claude: 75 reply sentences, 85 request phrasings, every transcript caller line, whole conversations through the engine, all compared against 90e5033). Fixed and confirmed: the sentence-end safety bug, the writer deadline, dates before slot numbers, read-back yes rules for the reported phrases, the receipt retry, invoice notes, the burning flag, the fixed-text wording, "I'm good" and combined tags. Remaining:
+
+| Finding | Codex | Claude |
+|---|---|---|
+| Approved-term keywords anywhere in the sentence or the one before excuse unrelated concessions ("As a member, the diagnostic fee and the late fee are both waived"; "A 50% discount applies to your next repair"; "Your prorated refund has been issued") (regression) | yes (top) | yes (top) |
+| Promises with no listed word are never checked ("We won't charge you the late fee", "This visit is free of charge", "You'll get your money back", "We'll cover the cost") | | yes (top) |
+| Published and ordinary sentences blocked: 15 of 39 in the probe set ("We accept all major credit cards", "There's no charge to cancel more than 24 hours before", "Refunds are handled by our billing team"); "well" read as "we'll" (regression) | yes | yes (top) |
+| Action check: misses ("I’d like a refund" with a curly apostrophe, "Okay, sign me up", "Pay my bill please", "Take me off autopay", "Downgrade me", "Make sure my membership doesn't renew") and false hits ("How do I set up autopay?", "cancel my appointment, plus I have a question") (regressions) | yes (top) | yes (top) |
+| The action backstop skips the handoff and redirect routes | yes | |
+| A yes naming a time in other forms still books the read-back slot ("yes, 12-4 works", "Yes, Monday at 1 works") | yes (top) | |
+| "Okay, I'm good" at a read-back ends the chat and drops the booking (regression); "I’m good" with a curly apostrophe does not end it | | yes |
+| A failed warranty-review ticket is lost if the caller never writes again | | yes |
+| A 10-millisecond timeout floor remains | yes | |
+| Small: "May I have the 2nd one?" reads "may" as a month; tags recorded even when the ticket save failed; one test asserts a sentence that misstates the refund policy | | yes |
+
+**Author's choices on the third review:** change approach (money promises checked by a model (D43)): every reply sentence about money goes to a Haiku check against the published money terms after the code rules, failing closed; the router decides action requests, with a code backstop for unmistakable requests only. Plus the smaller fixes: times in any form must match the read-back, a goodbye at a read-back needs "bye", curly apostrophes normalised, kept warranty-review tickets in a fallback file retried every message and at startup, no timeout floor, "may" as a month only before a day, tags recorded only when saved.
+
+**Measured after the change:** on the 108 labelled sentences in `data/eval/money_sentences.jsonl`, the full sentence check caught 61 of 61 promises and released 47 of 47 published or ordinary sentences (`data/results/money_check/summary.json`); the instructions were tuned on this set, so the evaluation milestone measures it again on fresh sentences. In a real chat the first checked sentence took 2.1 to 4.7 seconds (budget 2.5), to be measured in the evaluation milestone.

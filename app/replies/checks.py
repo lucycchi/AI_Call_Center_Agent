@@ -7,46 +7,10 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.replies.money_check import touches_money
+
 ROOT = Path(__file__).resolve().parents[2]
 RUN = 8  # consecutive words shared with an internal document
-
-# Deny by default (R42): a sentence offering any concession on money is blocked unless the concession is one of the
-# published terms below. Blocks are logged and counted, so over-blocking is visible and cheap; a missed promise is not.
-CONCESSIONS = [
-    ("waiver", r"\bwaiv\w*"), ("waiver", r"\bcomp(?:ed|ing)?\b"), ("waiver", r"\bno charge\b"), ("waiver", r"\bon us\b"),
-    ("waiver", r"\b(?:drop|remove|take|knock|reverse|zero)\w*\b[^.]{0,25}\b(?:fee|charge)s?\b[^.]{0,10}\boff\b"),
-    ("waiver", r"\b(?:drop|remov|revers|zero)\w*\b[^.]{0,15}\b(?:the |your |that |this )?(?:[\w-]+ )?(?:fee|charge)s?\b"),
-    ("waiver", r"\b(?:fee|charge)s?\b[^.]{0,20}\b(?:taken off|removed|dropped|reversed|zeroed)\b"),
-    ("waiver", r"\bcredit\w*"), ("refund", r"\brefund\w*"),
-    ("discount", r"\bdiscount\w*"), ("discount", r"\b\d+ ?(?:%|percent) off\b"), ("discount", r"\$\d[\d,]* off\b"),
-]
-# Wording that makes a concession personal ("for you", "this time") is never a published term.
-PERSONAL = re.compile(r"\b(?:for you|this time|this once|just this|today|as a courtesy|since you'?ve|i'?ll|i will|i can|we'?ll|"
-                      r"we will|we can|i'?ve|we'?ve|let me|you'?ll get|you will get)\b", re.I)
-MEMBER = re.compile(r"\b(?:members?|comfort club|plus)\b", re.I)
-APPROVED = {
-    # The diagnostic fee and after-hours dispatch are waived for Comfort Club members (fee schedule, FAQ, membership).
-    "waiver": [lambda t: re.search(r"\b(?:diagnostic|after-hours|dispatch)\b", t) and re.search(r"\bwaiv", t)
-               and (MEMBER.search(t) or not re.search(r"\byour?\b", t)),
-               # The diagnostic fee is credited toward a repair approved on the same visit; a $500 replacement credit.
-               lambda t: re.search(r"\bcredit\w*\b[^.]{0,30}\btoward\w* (?:the )?repair", t),
-               lambda t: re.search(r"\bcredit\b", t) and re.search(r"\$(?:500|0)\b", t)],
-    "refund": [lambda t: re.search(r"\bprorat|\bnon-refundable\b|\brefund requests? (?:are|is) (?:handled|reviewed)", t)],
-    "discount": [lambda t: re.search(r"\b(?:15|0) ?(?:%|percent)|\$500 off|\bmember discounts?\b|\bdiscount applies to\b", t)],
-}
-
-
-def _concession(sentence: str, previous: str) -> str | None:
-    """The rule a sentence breaks by offering an unapproved concession, judged with the sentence before it
-    (so "It will be waived for you." after "The diagnostic fee is $89." is still caught)."""
-    said = sentence.lower()
-    context = f"{previous.lower()} {said}"
-    for rule, pattern in CONCESSIONS:
-        if re.search(pattern, said):
-            if PERSONAL.search(said) or not any(approve(context) for approve in APPROVED[rule]):
-                return rule
-    return None
-
 
 FIRST_PERSON = r"\b(?:i|we)(?:'ll|’ll|'ve|’ve| will| can| could| have| am going to| are going to| would)?"
 RULES = [
@@ -90,10 +54,6 @@ def check_sentence(sentence: str, reply_so_far: str, burning_mentioned: bool = F
     for rule, patterns in RULES:
         if any(re.search(p, said) for p in patterns):
             return CheckResult(False, rule)
-    previous = re.split(r"(?<=[.!?])\s+", reply_so_far.strip())[-1] if reply_so_far.strip() else ""
-    rule = _concession(sentence, previous)
-    if rule:
-        return CheckResult(False, rule)
     # Across the whole reply so far, so a quote split over two sentences is still caught.
     words = _words(f"{reply_so_far} {sentence}")
     if any(tuple(words[i:i + RUN]) in INTERNAL_RUNS for i in range(len(words) - RUN + 1)):
@@ -104,9 +64,10 @@ def check_sentence(sentence: str, reply_so_far: str, burning_mentioned: bool = F
 class CheckedStream:
     """Yields each sentence once it passes; stops at the first failure and records which rule it broke."""
 
-    def __init__(self, sentences: Iterable[str], burning_mentioned: bool = False):
+    def __init__(self, sentences: Iterable[str], burning_mentioned: bool = False, money_check=None):
         self._sentences = sentences
         self._burning = burning_mentioned
+        self._money_check = money_check  # (sentence, previous) -> bool; every sentence touching money goes to it
         self.blocked_rule: str | None = None
         self.blocked_sentence: str | None = None
 
@@ -114,6 +75,10 @@ class CheckedStream:
         so_far = ""
         for sentence in self._sentences:
             result = check_sentence(sentence, so_far, self._burning)
+            if result.ok and touches_money(sentence):
+                previous = re.split(r"(?<=[.!?])\s+", so_far)[-1] if so_far else ""
+                if self._money_check is None or not self._money_check(sentence, previous):
+                    result = CheckResult(False, "money promise")  # no checker configured also fails closed
             if not result.ok:
                 self.blocked_rule, self.blocked_sentence = result.rule, sentence
                 return

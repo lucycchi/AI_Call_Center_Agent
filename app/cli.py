@@ -19,6 +19,7 @@ def build_engine(folder: Path):
     from app.knowledge.index import load_index
     from app.knowledge.search import Searcher
     from app.ops.store import OpsStore
+    from app.replies.money_check import MoneyCheck
     from app.replies.writer import write
     from app.routing.router import route
 
@@ -33,7 +34,7 @@ def build_engine(folder: Path):
                              searcher=Searcher(chunks, VoyageEmbedder(input_type="query"), embeddings),
                              route_fn=lambda text, history: route(text, history, client),
                              writer=lambda reply_type, facts, history: write(reply_type, facts, history, client),
-                             threshold=SETTINGS.retrieval_threshold)
+                             threshold=SETTINGS.retrieval_threshold, money_check=MoneyCheck(client))
     return Engine(pipeline)
 
 

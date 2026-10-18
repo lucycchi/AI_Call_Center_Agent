@@ -48,10 +48,10 @@ class _Messages:
     def __init__(self, client, sdk_version):
         self._client, self._sdk = client, sdk_version
 
-    def create(self, **kwargs):
+    def create(self, purpose: str = "route", **kwargs):
         started = time.monotonic()
         response = self._client.messages.create(**kwargs)
-        _report("route", kwargs, getattr(response, "usage", None), started, self._sdk)
+        _report(purpose, kwargs, getattr(response, "usage", None), started, self._sdk)
         return response
 
     def stream(self, **kwargs):

@@ -1,0 +1,72 @@
+{"text": "I want to set up autopay", "expected": "action"}
+{"text": "Can you set up autopay on my plan?", "expected": "action"}
+{"text": "send me a payment link", "expected": "action"}
+{"text": "Can I get a payment link?", "expected": "action"}
+{"text": "please cancel my Comfort Club membership", "expected": "action"}
+{"text": "turn off my auto-renew", "expected": "action"}
+{"text": "I want to cancel my auto-renew", "expected": "action"}
+{"text": "sign me up for the Comfort Club", "expected": "action"}
+{"text": "I'd like to join the maintenance plan", "expected": "action"}
+{"text": "upgrade me to Plus", "expected": "action"}
+{"text": "I want to upgrade to Plus", "expected": "action"}
+{"text": "I want a refund", "expected": "action"}
+{"text": "refund me the $89", "expected": "action"}
+{"text": "can I get a refund", "expected": "action"}
+{"text": "please waive the fee", "expected": "action"}
+{"text": "can you waive the after-hours fee?", "expected": "action"}
+{"text": "I want to pay my bill", "expected": "action"}
+{"text": "I need to pay invoice INV-263891.", "expected": "action"}
+{"text": "I\u2019d like to join the Comfort Club.", "expected": "action"}
+{"text": "I\u2019d like a refund.", "expected": "action"}
+{"text": "I\u2019m asking for a refund", "expected": "action"}
+{"text": "I\u2019d like to upgrade to Plus.", "expected": "action"}
+{"text": "Okay, sign me up.", "expected": "action"}
+{"text": "Yes, I'd like to join.", "expected": "action"}
+{"text": "I want to join.", "expected": "action"}
+{"text": "I want to sign up.", "expected": "action"}
+{"text": "Could you waive it?", "expected": "action"}
+{"text": "Can you waive that?", "expected": "action"}
+{"text": "I'd like to downgrade to the standard plan.", "expected": "action"}
+{"text": "Downgrade me to Standard", "expected": "action"}
+{"text": "Pay my bill please", "expected": "action"}
+{"text": "Take me off autopay", "expected": "action"}
+{"text": "Please credit my account", "expected": "action"}
+{"text": "I would like to pay my invoice.", "expected": "action"}
+{"text": "I'd like to make a payment.", "expected": "action"}
+{"text": "Text me a link to pay.", "expected": "action"}
+{"text": "Please turn off auto renew.", "expected": "action"}
+{"text": "Make sure my membership doesn't renew.", "expected": "action"}
+{"text": "I want the late fee removed.", "expected": "action"}
+{"text": "Cancel my membership.", "expected": "action"}
+{"text": "Stop my membership from renewing.", "expected": "action"}
+{"text": "Put me on autopay.", "expected": "action"}
+{"text": "Can you charge my card on file?", "expected": "action"}
+{"text": "I want to enroll in the Plus plan.", "expected": "action"}
+{"text": "How much does it cost to join the Comfort Club?", "expected": "not action"}
+{"text": "What's your refund policy?", "expected": "not action"}
+{"text": "What do I get if I upgrade to Plus?", "expected": "not action"}
+{"text": "Can you sign me up for a tune-up next week?", "expected": "not action"}
+{"text": "Cancel my Comfort Club tune-up on Thursday", "expected": "not action"}
+{"text": "cancel my appointment, I plan to be away", "expected": "not action"}
+{"text": "book me in, I want to upgrade my old furnace", "expected": "not action"}
+{"text": "can I pay the technician on the day?", "expected": "not action"}
+{"text": "Can I pay by card over the phone?", "expected": "not action"}
+{"text": "Is the diagnostic fee waived for members?", "expected": "not action"}
+{"text": "Does the membership auto-renew?", "expected": "not action"}
+{"text": "Can I upgrade from the regular plan to Plus mid-year?", "expected": "not action"}
+{"text": "How do I set up autopay?", "expected": "not action"}
+{"text": "How do I turn off auto-renew?", "expected": "not action"}
+{"text": "I need to cancel my visit, plus I want to ask a question.", "expected": "not action"}
+{"text": "Can you cancel my appointment plus the one next week?", "expected": "not action"}
+{"text": "Please cancel the tune-up, plus I have a question.", "expected": "not action"}
+{"text": "my plans changed, can I cancel my appointment?", "expected": "not action"}
+{"text": "I need to cancel my maintenance plan visit on Friday", "expected": "not action"}
+{"text": "What's my balance?", "expected": "not action"}
+{"text": "When does my membership renew?", "expected": "not action"}
+{"text": "I'm a Comfort Club member", "expected": "not action"}
+{"text": "Okay, I'll pay it through the portal.", "expected": "not action"}
+{"text": "What does the Comfort Club include?", "expected": "not action"}
+{"text": "Do members get a discount on a new system?", "expected": "not action"}
+{"text": "How do refunds work for the membership?", "expected": "not action"}
+{"text": "Is there a fee to cancel?", "expected": "not action"}
+{"text": "Can I pay with ACH?", "expected": "not action"}

@@ -23,7 +23,9 @@ HEDGE = re.compile(r"\?|\b(but|wait|actually|instead|hold on|not|no|nope|hmm|may
 # A yes that names a day or time is about a different slot, not this read-back ("Yes, Tuesday works").
 NAMES_A_TIME = re.compile(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|morning|afternoon|"
                           r"evening|next week|january|february|march|april|june|july|august|september|october|november|"
-                          r"december|\d{1,2}(st|nd|rd|th)|\d{1,2}(:\d\d)? ?(am|pm)|\d{1,2} to \d{1,2})\b", re.I)
+                          r"december|noon|at \d{1,2}|\d{1,2}(st|nd|rd|th)|\d{1,2}(:\d\d)? ?(am|pm)|\d{1,2} ?(to|-|–) ?\d{1,2})\b", re.I)
+# A time the read-back must match, in forms the window parser may not read ("noon to four", "at 1").
+TIME_EXPR = re.compile(r"\b\d{1,2} ?[-–] ?\d{1,2}\b|\bat \d{1,2}\b|\bnoon\b|\b\d{1,2}(:\d\d)? ?(am|pm)\b|\b\d{1,2} to \d{1,2}\b", re.I)
 log = logging.getLogger("meridian.scheduling")
 NO = re.compile(r"^\W*(no|nope|neither|none of)\b", re.I)
 EARLIER = re.compile(r"\b(earlier|sooner|anything before|any earlier)\b", re.I)
@@ -45,8 +47,8 @@ def confirms(text: str, slot_date: str, window: str, now) -> bool:
     if not NAMES_A_TIME.search(AFFIRMATIVE.sub("", text, count=1)):
         return True
     wanted = parse_request(text, now)
-    if wanted is None:
-        return False
+    if wanted is None or (TIME_EXPR.search(text) and wanted.window is None):
+        return False  # a time it names but that cannot be matched to the read-back window
     return (wanted.date is None or wanted.date.isoformat() == slot_date) and \
         (wanted.window is None or wanted.window == window) and \
         (wanted.part is None or (window == "08:00-12:00") == (wanted.part == "morning"))
@@ -99,8 +101,9 @@ def _pick(text: str, choices: list[dict], now, key_date="slot_date") -> dict | N
     number or ordinal picks among them; then the window or part of day."""
     if len(choices) == 1 and YES.search(text):
         return choices[0]
-    names_a_day = re.search(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|january|february|"
-                            r"march|april|may|june|july|august|september|october|november|december|\d{1,2}/\d{1,2})\b", text, re.I)
+    names_a_day = re.search(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|\d{1,2}/\d{1,2})\b|"
+                            r"\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d",
+                            text, re.I)
     if NTH_WITH_NOUN.search(text) and not names_a_day:  # "the 2nd one" is a slot, not 2 November
         return _numbered(text, choices)
     wanted = parse_request(text, now)
@@ -216,17 +219,12 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
         confirmed = confirm_booking({"store": store, "conversation_id": state.conversation_id}, booked,
                                     chosen["slot_date"], chosen["window"], chosen["service_type"])
         if booked.warranty_review:
-            try:  # the booking has committed; a failed review ticket must not hide it
-                store.create_ticket(None, f"{customer.name}, {customer.customer_id}", f"{claim} claim: {flow.get('issue', '')}",
-                                    f"booked appointment {booked.appointment_id} as a normal visit",
-                                    "warranty not verifiable from the database", "", "warranty review", booked.appointment_id)
-            except Exception as error:
-                log.error("warranty review for appointment %s not saved, kept to retry: %s", booked.appointment_id, error)
-                state.pending_tickets.append({"conversation_id": None, "who": f"{customer.name}, {customer.customer_id}",
-                                              "wants": f"{claim} claim: {flow.get('issue', '')}",
-                                              "tried": f"booked appointment {booked.appointment_id} as a normal visit",
-                                              "constraints": "warranty not verifiable from the database", "mood": "",
-                                              "reason_tag": "warranty review", "appointment_id": booked.appointment_id})
+            # The booking has committed; the review ticket is kept in a fallback file if it cannot be saved.
+            store.create_ticket_or_keep(conversation_id=None, who=f"{customer.name}, {customer.customer_id}",
+                                        wants=f"{claim} claim: {flow.get('issue', '')}",
+                                        tried=f"booked appointment {booked.appointment_id} as a normal visit",
+                                        constraints="warranty not verifiable from the database", mood="",
+                                        reason_tag="warranty review", appointment_id=booked.appointment_id)
             return FlowResult(confirmed.facts + [NO_FEE_IF_COVERED], "confirmation", db_actions=confirmed.db_actions)
         return confirmed
     if NO.search(text):

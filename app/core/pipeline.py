@@ -86,10 +86,11 @@ class AgentPipeline:
     def __init__(self, store, scheduling_db: Path, seed_db: Path, searcher, route_fn: Callable, writer: Callable,
                  threshold: float, guard: Callable[[str], str | None] = lambda visitor: None,
                  now: datetime = SETTINGS.now, clock: Callable[[], datetime] = real_now,
-                 deadline_s: float = SETTINGS.message_deadline_s):
+                 deadline_s: float = SETTINGS.message_deadline_s, money_check: Callable[[str, str], bool] | None = None):
         self.store, self.scheduling_db, self.seed_db = store, scheduling_db, seed_db
         self.searcher, self.route_fn, self.writer, self.threshold = searcher, route_fn, writer, threshold
         self.guard, self.now, self.clock, self.deadline_s = guard, now, clock, deadline_s
+        self.money_check = money_check  # None fails closed: every sentence touching money is blocked (D43)
 
     # -- one turn ---------------------------------------------------------------------------------------
     def run(self, turn: Turn) -> Iterator[Event]:
@@ -122,6 +123,8 @@ class AgentPipeline:
             return False
 
     def _turn(self, turn: Turn, started: float, first_ms: list, remember) -> Iterator[Event]:
+        from dataclasses import replace
+        turn = replace(turn, text=turn.text.replace("’", "'").replace("‘", "'"))  # phone keyboards send curly quotes
         self.store.close_idle()
         row = self.store.conversation(turn.conversation_id)
         if row and row["visitor_id"] != turn.visitor_id:
@@ -137,12 +140,7 @@ class AgentPipeline:
                 yield DoneEvent(route="none", ticket=None, outcome="closed")
                 return
             self.store.reopen(turn.conversation_id)
-        for pending in list(state.pending_tickets):  # staff tickets whose save failed earlier
-            try:
-                self.store.create_ticket(**pending)
-                state.pending_tickets.remove(pending)
-            except Exception as error:
-                log.error("pending %s ticket still not saved: %s", pending["reason_tag"], error)
+        self._quietly(self.store.retry_pending)  # staff tickets kept while the database failed
         caller_message = self.store.log_message(turn.conversation_id, "caller", turn.text, turn.message_id)
         if state.ticket_id:
             add_to_open_ticket({"store": self.store, "ticket_id": state.ticket_id}, caller_message)
@@ -161,15 +159,15 @@ class AgentPipeline:
         def error_event(detail: str) -> None:
             self._quietly(self.store.log_event, "error", detail, turn.conversation_id)
 
-        def ticket(reason_tag: str, constraints: str, wants: str) -> list[str]:
+        def ticket(reason_tag: str, constraints: str, wants: str, also_tags: list[str] = []) -> list[str]:  # noqa: B006
             context = {"store": self.store, "conversation_id": turn.conversation_id, "who": state.who, "wants": wants,
                        "tried": "; ".join(state.tried), "mood": _mood(turn.text)}
             notes = state.notes if reason_tag in BILLING_TAGS else []
             result = hand_off(context, reason_tag, "; ".join(c for c in [constraints, *notes] if c))
-            if context.get("ticket_id"):
+            if context.get("ticket_id"):  # remembered only once the ticket is saved
                 state.ticket_id = context["ticket_id"]
                 turn_tickets.append(context["ticket_id"])
-                state.tags_opened.append(reason_tag)
+                state.tags_opened += [tag for tag in also_tags + [reason_tag] if tag not in state.tags_opened]
             return result.facts
 
         def finish(route: str, outcome: str, receipt: dict, db_actions: list[str], label: str | None = None,
@@ -202,7 +200,10 @@ class AgentPipeline:
             yield emit(LIMIT)
             yield finish("limit", "limit", {"limit": limit}, [])
             return
-        if ENDING.match(turn.text):  # a clear goodbye ends the chat, even with a flow open
+        at_read_back = state.flow.get("step") == "readback"
+        # A clear goodbye ends the chat, even with a flow open; at a read-back only "bye" does, since "okay, I'm good"
+        # may answer the read-back.
+        if ENDING.match(turn.text) and (not at_read_back or re.search(r"\b(bye|goodbye)\b", turn.text, re.I)):
             state.flow, state.active_flow, state.pending = {}, None, []
             yield emit(GOODBYE)
             done = finish("none", "ended", {"safety": "clear"}, [])
@@ -271,7 +272,8 @@ class AgentPipeline:
             facts = [fact for result in written for fact in result.facts]
             burning = state.burning_mentioned or not breaker_advice_allowed(earlier + [turn.text])
             try:
-                stream = CheckedStream(self.writer(written[0].reply_type, facts, history), burning_mentioned=burning)
+                stream = CheckedStream(self.writer(written[0].reply_type, facts, history), burning_mentioned=burning,
+                                       money_check=self.money_check)
                 for count_released, sentence in enumerate(stream):
                     # The deadline is checked before each later sentence, so a slow reply is cut off (R59).
                     if count_released and deadline.passed():
@@ -289,8 +291,7 @@ class AgentPipeline:
         if handoffs:
             tags = [tag for tag, _, _ in handoffs]
             fixed += ticket(tags[0], "; ".join(c for _, c, _ in handoffs if c),
-                            "; ".join(dict.fromkeys(w for _, _, w in handoffs)))
-            state.tags_opened += [tag for tag in tags[1:] if tag not in state.tags_opened]
+                            "; ".join(dict.fromkeys(w for _, _, w in handoffs)), tags[1:])
             outcome = "declined" if tags[0] == "decline" else "handed_off"
         for sentence in fixed:
             yield emit(sentence)
@@ -343,7 +344,8 @@ class AgentPipeline:
         Only explicit requests count, on any route: "can I pay by card?" is a question the FAQ answers."""
         if request.route == "account" and request.detail == "action":
             return True
-        return request.route in ("account", "scheduling", "knowledge") and is_action_request(request.text)
+        # On every route but a handoff, which is already handed off with the router's own reason.
+        return request.route != "handoff" and is_action_request(request.text)
 
     def _flow(self, request: Request) -> FlowResult:
         if self._action(request):

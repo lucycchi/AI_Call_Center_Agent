@@ -70,7 +70,7 @@ def parse_request(text: str, now: datetime) -> DateRequest | None:
             if ahead == 0 and match.group(1) == "next ":
                 ahead = 7
             day = today + timedelta(days=ahead)
-    spoken = re.search(r"\b(8|12|1|4) to (12|4|5|7)\b", said)
+    spoken = re.search(r"\b(8|12|1|4) ?(?:to|-|–) ?(12|4|5|7)\b", said)
     window = SPOKEN_WINDOWS.get(spoken.groups()) if spoken else None
     if window is None and re.search(r"\bevening\b|\bafter work\b", said):
         window = "16:00-19:00"  # the only evening window

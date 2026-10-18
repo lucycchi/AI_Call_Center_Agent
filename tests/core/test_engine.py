@@ -75,7 +75,7 @@ def world(tmp_path):
 
     def build(guard=lambda visitor: None):
         pipeline = AgentPipeline(store=OpsStore(tmp_path / "ops.sqlite", clock=clock), scheduling_db=db, seed_db=SEED,
-                                 searcher=FakeSearcher(), route_fn=router, writer=echo_writer, threshold=0.4,
+                                 searcher=FakeSearcher(), route_fn=router, writer=echo_writer, threshold=0.4, money_check=lambda s, p: True,
                                  guard=guard, now=SETTINGS.now, clock=clock)
         return Engine(pipeline), pipeline
     engine, pipeline = build()
@@ -219,7 +219,7 @@ def test_breaker_advice_from_the_writer_is_blocked_after_a_burning_smell(world, 
         yield "Reset any tripped breaker once."
     pipeline = AgentPipeline(store=OpsStore(tmp_path / "ops2.sqlite"), scheduling_db=db, seed_db=SEED,
                              searcher=FakeSearcher(), route_fn=world["router"], writer=troubleshooting_writer,
-                             threshold=0.4)
+                             threshold=0.4, money_check=lambda s, p: True)
     engine = Engine(pipeline)
     say(engine, "I smell something burning from the vents")
     sentences, done = say(engine, "what does the membership include")
@@ -235,11 +235,12 @@ def test_a_writer_that_promises_a_waiver_is_stopped_before_the_promise(world, tm
         yield "The Comfort Club is $189 a year."
         yield "The diagnostic fee will be waived for you."
     pipeline = AgentPipeline(store=OpsStore(tmp_path / "ops3.sqlite"), scheduling_db=db, seed_db=SEED,
-                             searcher=FakeSearcher(), route_fn=world["router"], writer=rogue_writer, threshold=0.4)
+                             searcher=FakeSearcher(), route_fn=world["router"], writer=rogue_writer, threshold=0.4,
+                             money_check=lambda sentence, previous: "waived" not in sentence)
     sentences, done = say(Engine(pipeline), "what does the membership include")
     assert sentences[0] == "The Comfort Club is $189 a year." and not any("waived" in s for s in sentences)
     events = pipeline.store._rows("select kind, detail from events")
-    assert any(e["kind"] == "blocked sentence" and e["detail"].startswith("waiver") for e in events)
+    assert any(e["kind"] == "blocked sentence" and e["detail"].startswith("money promise") for e in events)
 
 
 def test_the_burning_smell_rule_lasts_the_whole_conversation(world, tmp_path):
@@ -250,7 +251,7 @@ def test_the_burning_smell_rule_lasts_the_whole_conversation(world, tmp_path):
     def writer(reply_type, facts, history):
         yield "Reset any tripped breaker once." if advise[0] else "The Comfort Club is $189 a year."
     pipeline = AgentPipeline(store=OpsStore(tmp_path / "ops4.sqlite"), scheduling_db=db, seed_db=SEED,
-                             searcher=FakeSearcher(), route_fn=world["router"], writer=writer, threshold=0.4)
+                             searcher=FakeSearcher(), route_fn=world["router"], writer=writer, threshold=0.4, money_check=lambda s, p: True)
     engine = Engine(pipeline)
     say(engine, "I smell something burning from the vents")
     for n in range(25):
@@ -277,7 +278,7 @@ def test_each_model_attempt_never_gets_more_than_the_time_left():
     from app.core import deadline
     token = deadline.start(0.1)
     try:
-        assert deadline.per_attempt() <= 0.05
+        assert deadline.per_attempt() <= 0.05  # never more than the time left
     finally:
         deadline.DEADLINE.reset(token)
 

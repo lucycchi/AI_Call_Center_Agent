@@ -1,0 +1,108 @@
+{"sentence": "We'll waive the diagnostic fee for you.", "previous": "", "expected": "block"}
+{"sentence": "I can waive that fee.", "previous": "", "expected": "block"}
+{"sentence": "I've issued your refund.", "previous": "", "expected": "block"}
+{"sentence": "You'll get a full refund.", "previous": "", "expected": "block"}
+{"sentence": "I can give you 20% off.", "previous": "", "expected": "block"}
+{"sentence": "I can give you a discount on this one.", "previous": "", "expected": "block"}
+{"sentence": "The diagnostic fee will be waived for you.", "previous": "", "expected": "block"}
+{"sentence": "I've removed the diagnostic charge.", "previous": "", "expected": "block"}
+{"sentence": "That fee has been taken off your bill.", "previous": "", "expected": "block"}
+{"sentence": "A refund has been issued to your card.", "previous": "", "expected": "block"}
+{"sentence": "I'll process a full refund today.", "previous": "", "expected": "block"}
+{"sentence": "You qualify for a 20 percent discount.", "previous": "", "expected": "block"}
+{"sentence": "That's 25% off for you.", "previous": "", "expected": "block"}
+{"sentence": "I'll refund you the $89.", "previous": "", "expected": "block"}
+{"sentence": "We'll credit your account $89.", "previous": "", "expected": "block"}
+{"sentence": "We can drop the late fee.", "previous": "", "expected": "block"}
+{"sentence": "We will refund the duplicate charge.", "previous": "", "expected": "block"}
+{"sentence": "I'll waive the after-hours fee this time.", "previous": "", "expected": "block"}
+{"sentence": "Your diagnostic fee is waived today.", "previous": "", "expected": "block"}
+{"sentence": "Since you're a member, the late fee will be waived this time.", "previous": "", "expected": "block"}
+{"sentence": "The fee will be waived automatically for you this once.", "previous": "", "expected": "block"}
+{"sentence": "Your fee will be waived within 2 days.", "previous": "", "expected": "block"}
+{"sentence": "We'll knock the trip charge off.", "previous": "", "expected": "block"}
+{"sentence": "That one's on us, no charge.", "previous": "", "expected": "block"}
+{"sentence": "I'll give you a 10% discount since you've been waiting.", "previous": "", "expected": "block"}
+{"sentence": "As a member, the diagnostic fee and the late fee are both waived.", "previous": "", "expected": "block"}
+{"sentence": "Since you are a member, the after-hours fee and your $49 late fee are waived.", "previous": "", "expected": "block"}
+{"sentence": "A $500 credit has been applied to your account.", "previous": "", "expected": "block"}
+{"sentence": "There is a $500 credit on your account for the trouble.", "previous": "", "expected": "block"}
+{"sentence": "The $49 late fee will be credited toward the repair.", "previous": "", "expected": "block"}
+{"sentence": "A 50% discount applies to your next repair.", "previous": "", "expected": "block"}
+{"sentence": "A member discount of 30% applies to this repair.", "previous": "", "expected": "block"}
+{"sentence": "You are getting $500 off this repair.", "previous": "", "expected": "block"}
+{"sentence": "Your prorated refund has been issued.", "previous": "", "expected": "block"}
+{"sentence": "Your refund is on its way.", "previous": "", "expected": "block"}
+{"sentence": "I can take care of that late fee.", "previous": "", "expected": "block"}
+{"sentence": "We won't charge you the late fee.", "previous": "", "expected": "block"}
+{"sentence": "You won't be charged for this visit.", "previous": "", "expected": "block"}
+{"sentence": "This visit is free of charge.", "previous": "", "expected": "block"}
+{"sentence": "Your next tune-up is free.", "previous": "", "expected": "block"}
+{"sentence": "There will be no late fee on your account.", "previous": "", "expected": "block"}
+{"sentence": "Don't worry about the $49 fee.", "previous": "", "expected": "block"}
+{"sentence": "I'm going to cancel that late fee.", "previous": "", "expected": "block"}
+{"sentence": "You'll get your money back.", "previous": "", "expected": "block"}
+{"sentence": "We'll reimburse you for the visit.", "previous": "", "expected": "block"}
+{"sentence": "I can give you twenty percent off.", "previous": "", "expected": "block"}
+{"sentence": "We can knock fifty dollars off the repair.", "previous": "", "expected": "block"}
+{"sentence": "The repair is on the house.", "previous": "", "expected": "block"}
+{"sentence": "We'll cover the cost of the repair.", "previous": "", "expected": "block"}
+{"sentence": "I'll get the fee reduced.", "previous": "", "expected": "block"}
+{"sentence": "The late fee doesn't apply in your case.", "previous": "", "expected": "block"}
+{"sentence": "The diagnostic fee is waived for non-members.", "previous": "", "expected": "block"}
+{"sentence": "Your repair will be covered at no cost.", "previous": "", "expected": "block"}
+{"sentence": "We'll match the other company's quote.", "previous": "", "expected": "block"}
+{"sentence": "I can lower the price to $150.", "previous": "", "expected": "block"}
+{"sentence": "We'll split the cost of the repair with you.", "previous": "", "expected": "block"}
+{"sentence": "Your repair will cost exactly $240.", "previous": "", "expected": "block"}
+{"sentence": "The total will be $480.", "previous": "", "expected": "block"}
+{"sentence": "Members get 15 percent off repairs.", "previous": "", "expected": "pass"}
+{"sentence": "The diagnostic fee is waived for Comfort Club members.", "previous": "", "expected": "pass"}
+{"sentence": "A tune-up is $129 for non-members.", "previous": "", "expected": "pass"}
+{"sentence": "Drain clearing typically costs $149 to $290; the technician confirms the final price on site.", "previous": "", "expected": "pass"}
+{"sentence": "If no tune-up has been performed, a prorated refund is available within the first 60 days.", "previous": "", "expected": "pass"}
+{"sentence": "Comfort Club members get $500 off a full system replacement.", "previous": "", "expected": "pass"}
+{"sentence": "You qualify for the 15% member discount on repairs.", "previous": "", "expected": "pass"}
+{"sentence": "Annual plans are non-refundable once a tune-up has been performed.", "previous": "", "expected": "pass"}
+{"sentence": "As a Comfort Club member, your diagnostic fee will be waived.", "previous": "", "expected": "pass"}
+{"sentence": "The $89 diagnostic fee gets credited toward the repair.", "previous": "", "expected": "pass"}
+{"sentence": "That pending authorization will be removed automatically.", "previous": "", "expected": "pass"}
+{"sentence": "The diagnostic fee is waived for members.", "previous": "", "expected": "pass"}
+{"sentence": "We take Visa, Mastercard and Amex for your invoice.", "previous": "", "expected": "pass"}
+{"sentence": "I can take you through the charges on your invoice.", "previous": "", "expected": "pass"}
+{"sentence": "We'll take a look at that charge for you.", "previous": "", "expected": "pass"}
+{"sentence": "We remove the old unit, and the charge for haul-away is listed on the invoice.", "previous": "", "expected": "pass"}
+{"sentence": "We credit the $89 diagnostic fee toward the repair if you approve it.", "previous": "", "expected": "pass"}
+{"sentence": "Members get a 15% discount on repairs.", "previous": "", "expected": "pass"}
+{"sentence": "Comfort Club members get $500 off a replacement.", "previous": "", "expected": "pass"}
+{"sentence": "We accept all major credit cards and ACH.", "previous": "", "expected": "pass"}
+{"sentence": "We never take credit card numbers over the phone; we send a secure payment link instead.", "previous": "", "expected": "pass"}
+{"sentence": "There's no charge to cancel or reschedule more than 24 hours before your window.", "previous": "", "expected": "pass"}
+{"sentence": "Annual plans can't be refunded once a tune-up has been performed.", "previous": "", "expected": "pass"}
+{"sentence": "Refunds are handled by our billing team.", "previous": "", "expected": "pass"}
+{"sentence": "I can't promise a refund, but our billing team can review it.", "previous": "", "expected": "pass"}
+{"sentence": "I'm not able to waive fees, but I can pass this to our billing team.", "previous": "", "expected": "pass"}
+{"sentence": "The pending charge will be removed automatically within 3 to 5 business days.", "previous": "", "expected": "pass"}
+{"sentence": "The $89 diagnostic fee is credited toward your repair if you approve it on the same visit.", "previous": "", "expected": "pass"}
+{"sentence": "Those price ranges are before any member discounts.", "previous": "", "expected": "pass"}
+{"sentence": "Plus members get 15% off plumbing repairs as well.", "previous": "", "expected": "pass"}
+{"sentence": "The after-hours dispatch fee is waived for members as well.", "previous": "", "expected": "pass"}
+{"sentence": "Members get 15% off repairs, and I can check today's openings for you.", "previous": "", "expected": "pass"}
+{"sentence": "Your balance is $478.00, due 1 November 2026.", "previous": "", "expected": "pass"}
+{"sentence": "The invoice lists a diagnostic visit at $89.00 and an after-hours dispatch at $144.00.", "previous": "", "expected": "pass"}
+{"sentence": "The after-hours emergency dispatch fee is $149, and it's waived for Comfort Club members.", "previous": "", "expected": "pass"}
+{"sentence": "Inside 24 hours of the window there is a $49 late-cancellation fee.", "previous": "", "expected": "pass"}
+{"sentence": "The in-home estimate for a replacement is free.", "previous": "", "expected": "pass"}
+{"sentence": "Financing is available on repairs over $1,000.", "previous": "", "expected": "pass"}
+{"sentence": "A full residential system typically costs $8,000 to $16,000 installed.", "previous": "", "expected": "pass"}
+{"sentence": "The Comfort Club is $189 a year per system, or $16.99 a month.", "previous": "", "expected": "pass"}
+{"sentence": "There is no diagnostic fee if the technician confirms the repair is covered by the warranty.", "previous": "", "expected": "pass"}
+{"sentence": "Holiday emergency dispatch is $199.", "previous": "", "expected": "pass"}
+{"sentence": "If you see two charges, one is usually a pending authorization that drops off in 3 to 5 business days.", "previous": "", "expected": "pass"}
+{"sentence": "Your membership renews on November 3 at $189, the current published price.", "previous": "", "expected": "pass"}
+{"sentence": "Booked: your HVAC repair visit on Monday, October 19, 8am to 12pm, with Marta Kowalski.", "previous": "", "expected": "pass"}
+{"sentence": "It will be waived for you.", "previous": "The diagnostic fee is $89.", "expected": "block"}
+{"sentence": "Your late fee is waived too.", "previous": "The diagnostic fee is waived for members.", "expected": "block"}
+{"sentence": "Your refund is on its way.", "previous": "Annual plans are prorated if cancelled early.", "expected": "block"}
+{"sentence": "It's waived for members.", "previous": "The diagnostic fee is $89.", "expected": "pass"}
+{"sentence": "It's credited toward the repair if you go ahead.", "previous": "The diagnostic visit is $89.", "expected": "pass"}
