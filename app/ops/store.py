@@ -1,0 +1,101 @@
+"""The operations database: conversations, messages and their sentences, receipts, tickets, model calls,
+events and spending (R57, R73). Every text field a caller could have written is masked before it is stored."""
+
+import json
+import sqlite3
+import threading
+from pathlib import Path
+
+from app.config import real_now
+from app.ops.masking import mask
+
+SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
+PRIORITY = {"emergency": 2, "burning smell": 2, "billing review": 0, "warranty review": 0}  # everything else is 1
+
+
+def _now() -> str:
+    return real_now().isoformat(timespec="seconds")
+
+
+class OpsStore:
+    def __init__(self, path: Path):
+        self._db = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
+        self._db.row_factory = sqlite3.Row
+        self._lock = threading.Lock()
+        self._db.execute("pragma journal_mode = wal")
+        self._db.execute("pragma foreign_keys = on")
+        self._db.executescript(SCHEMA)
+
+    def _write(self, sql: str, params: tuple = ()) -> int:
+        with self._lock:
+            return self._db.execute(sql, params).lastrowid
+
+    def _rows(self, sql: str, params: tuple = ()) -> list[dict]:
+        return [dict(row) for row in self._db.execute(sql, params).fetchall()]
+
+    def open_conversation(self, visitor_id: str, conversation_id: str, kind: str = "public") -> None:
+        now = _now()
+        self._write("insert or ignore into visitors (visitor_id, kind, first_seen) values (?, ?, ?)", (visitor_id, kind, now))
+        self._write("insert or ignore into conversations (conversation_id, visitor_id, created_at, last_message_at) "
+                    "values (?, ?, ?, ?)", (conversation_id, visitor_id, now, now))
+
+    def log_message(self, conversation_id: str, role: str, text: str, request_id: str | None = None) -> int:
+        now = _now()
+        message_id = self._write("insert into messages (conversation_id, role, text_masked, created_at, request_id) "
+                                 "values (?, ?, ?, ?, ?)", (conversation_id, role, mask(text), now, request_id))
+        self._write("update conversations set last_message_at = ? where conversation_id = ?", (now, conversation_id))
+        return message_id
+
+    def message_text(self, message_id: int) -> str:
+        return self._db.execute("select text_masked from messages where message_id = ?", (message_id,)).fetchone()[0]
+
+    def log_sentence(self, message_id: int, text: str) -> None:
+        self._write("insert into sentences (message_id, text_masked, created_at) values (?, ?, ?)",
+                    (message_id, mask(text), _now()))
+
+    def sentences(self, message_id: int) -> list[str]:
+        return [r["text_masked"] for r in self._rows("select text_masked from sentences where message_id = ? "
+                                                     "order by sentence_id", (message_id,))]
+
+    def log_receipt(self, message_id: int, safety_result: str, route: str, passages: list, excluded: list,
+                    db_action: str | None, outcome_label: str) -> None:
+        self._write("insert or replace into receipts values (?, ?, ?, ?, ?, ?, ?)",
+                    (message_id, safety_result, route, json.dumps(passages), json.dumps(excluded), db_action, outcome_label))
+
+    def receipt(self, message_id: int) -> dict | None:
+        rows = self._rows("select * from receipts where message_id = ?", (message_id,))
+        return rows[0] if rows else None
+
+    def log_model_call(self, message_id: int | None, purpose: str, model_id: str, sdk_version: str, settings: dict,
+                       input_tokens: int, output_tokens: int, ms: int, microdollars: int) -> None:
+        self._write("insert into model_calls (message_id, purpose, model_id, sdk_version, settings, input_tokens, "
+                    "output_tokens, ms, microdollars) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (message_id, purpose, model_id, sdk_version, json.dumps(settings), input_tokens, output_tokens, ms,
+                     microdollars))
+
+    def log_event(self, kind: str, detail: str, conversation_id: str | None = None) -> None:
+        self._write("insert into events (conversation_id, kind, detail, created_at) values (?, ?, ?, ?)",
+                    (conversation_id, kind, mask(detail), _now()))
+
+    def create_ticket(self, conversation_id: str | None, who: str, wants: str, tried: str, constraints: str, mood: str,
+                      reason_tag: str, appointment_id: int | None = None) -> int:
+        return self._write("insert into tickets (conversation_id, appointment_id, who, wants, tried, constraints, mood, "
+                           "reason_tag, priority, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           (conversation_id, appointment_id, mask(who), mask(wants), mask(tried), mask(constraints),
+                            mood, reason_tag, PRIORITY.get(reason_tag, 1), _now()))
+
+    def append_to_ticket(self, ticket_id: int, message_id: int) -> None:
+        self._write("insert or ignore into ticket_messages (ticket_id, message_id) values (?, ?)", (ticket_id, message_id))
+
+    def ticket_messages(self, ticket_id: int) -> list[str]:
+        return [r["text_masked"] for r in self._rows("select m.text_masked from ticket_messages t join messages m "
+                                                     "using (message_id) where t.ticket_id = ? order by m.message_id",
+                                                     (ticket_id,))]
+
+    def tickets(self) -> list[dict]:
+        """For staff only; visitors go through tickets_for_visitor."""
+        return self._rows("select * from tickets order by ticket_id")
+
+    def tickets_for_visitor(self, visitor_id: str) -> list[dict]:
+        return self._rows("select t.* from tickets t join conversations c using (conversation_id) "
+                          "where c.visitor_id = ? order by t.ticket_id", (visitor_id,))

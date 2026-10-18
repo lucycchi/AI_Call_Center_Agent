@@ -233,7 +233,7 @@ The author can chat with the agent in a terminal (`python -m app.cli`) and see i
 - [x] Task 10: find eligible slots, alternatives and clean declines. Requirements: R49, R50, R51
 - [x] Task 11: book, cancel and reschedule in transactions with confirmation ids. Requirements: R52, R53, R54, R55, R84
 - [x] Task 12: safety check and fixed safety replies. Requirements: R34, R35, R36, R37
-- [ ] Task 13: operations database, logging, masking and tickets. Requirements: R57, R73
+- [x] Task 13: operations database, logging, masking and tickets. Requirements: R57, R73
 - [ ] Task 14: knowledge flow, reply writer and sentence checks. Requirements: R41, R42, R43, R44, R60
 - [ ] Task 15: handoff flow, post-handoff messages and failure paths. Requirements: R58, R59
 - [ ] Task 16: router, conversation state and the engine pipeline. Requirements: R38, R39, R40, R81, R82

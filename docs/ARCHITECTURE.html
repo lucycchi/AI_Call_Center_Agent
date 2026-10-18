@@ -199,7 +199,10 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     VISITORS ||--o{ CONVERSATIONS : "opens"
     CONVERSATIONS ||--o{ MESSAGES : "contains"
     MESSAGES ||--o| RECEIPTS : "is explained by"
+    MESSAGES ||--o{ SENTENCES : "is released as"
     CONVERSATIONS ||--o{ TICKETS : "raises"
+    TICKETS ||--o{ TICKET_MESSAGES : "gathers"
+    MESSAGES ||--o{ TICKET_MESSAGES : "is added to"
     MESSAGES ||--o{ FLAGS : "is flagged by staff"
     VISITORS {
         TEXT visitor_id PK "random id held in the signed cookie"
@@ -228,6 +231,16 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         INTEGER first_sentence_ms "time to first checked sentence"
         INTEGER full_reply_ms "time to the whole reply"
         INTEGER cost_microdollars "AI cost of this reply"
+    }
+    SENTENCES {
+        INTEGER sentence_id PK "whole number, in release order"
+        INTEGER message_id FK "agent reply it belongs to"
+        TEXT text_masked "one checked sentence, masked"
+        TEXT created_at "real time it was released"
+    }
+    TICKET_MESSAGES {
+        INTEGER ticket_id FK "ticket"
+        INTEGER message_id FK "a later caller message added to it"
     }
     RECEIPTS {
         INTEGER message_id PK "the agent reply explained"
@@ -260,7 +273,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT created_at "when flagged"
     }</pre>
 <p><em>Each visitor opens conversations; each message may carry a receipt; conversations raise tickets; staff flags point at single replies.</em></p>
-<p>How they link, in words: each conversation belongs to exactly one visitor; each message belongs to exactly one conversation; each agent message has at most one receipt; each ticket belongs to at most one conversation (silent billing-review tickets have none) and may refer to one appointment, and messages after a handoff stay in the same conversation so the ticket shows them; each flag points at exactly one agent message. Every query for a conversation, its messages, receipts or tickets filters by both the conversation id and the signed visitor id, unless the request carries a staff session.</p>
+<p>How they link, in words: each conversation belongs to exactly one visitor; each message belongs to exactly one conversation; each agent message has at most one receipt and is saved as the checked sentences released for it, in order, which the stream replays after a reconnect; each ticket belongs to at most one conversation (silent billing-review tickets have none) and may refer to one appointment, and messages after a handoff stay in the same conversation and are linked to the ticket (ticket messages) so the ticket shows them; each flag points at exactly one agent message. Every query for a conversation, its messages, receipts or tickets filters by both the conversation id and the signed visitor id, unless the request carries a staff session.</p>
 <table>
 <thead><tr><th>Table</th><th>Example row</th></tr></thead>
 <tbody>
