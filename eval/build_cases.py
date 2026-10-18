@@ -101,8 +101,9 @@ COMPRESSOR = ("If the unit is registered, the manufacturer covers the compressor
                (WARRANTY, "New system installation warranty", ("2-year labor warranty", "5-year labor warranty")),
                ("pricing__repair_price_book_2026.md", "HVAC repair", ("Compressor replacement labor",))])
 MEMBERSHIP_SAVINGS = ("Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee "
-                      "waived and get 15% off repairs, plus two seasonal tune-ups a year, so on a repair visit it saves the "
-                      "diagnostic fee and 15% of the repair; whether it pays for itself depends on the repair cost.",
+                      "waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't "
+                      "say whether those benefits apply to a visit booked on the day you join, so a team member confirms that "
+                      "when setting up the membership.",
                       [(MEMBERSHIP, "Plans", ("$189 per year", "15% off all repairs"))])
 
 

@@ -536,7 +536,7 @@ can only propose a decision; only the author settles one.
 
 ## D40: The milestone 2 reviews found errors in the frozen test cases (caller scripts kept the transcript's identity, wrong planted invoices, two-request calls expecting only a handoff, evidence spans tied to the chunker). Fix them and refreeze the held-out set, or leave the frozen set alone?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-18
 - **Options:**
   - Fix the case builder, rebuild all 52 cases and refreeze the held-out set with a new hash, recording the old hash
