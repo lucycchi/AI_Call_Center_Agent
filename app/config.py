@@ -20,6 +20,7 @@ class Settings:
     now: datetime
     router_model: str
     writer_model: str
+    embedding_model: str
     scheduling_db_path: Path
     seed_db_path: Path
     ops_db_path: Path
@@ -59,6 +60,7 @@ def load_settings() -> Settings:
         now=datetime(2026, 10, 16, 9, 0, tzinfo=AUSTIN),
         router_model="claude-haiku-5-5",
         writer_model="claude-sonnet-5-5",
+        embedding_model="voyage-4",
         scheduling_db_path=live,
         seed_db_path=seed,
         ops_db_path=_path("OPS_DATABASE_PATH", data / "operations.sqlite"),
