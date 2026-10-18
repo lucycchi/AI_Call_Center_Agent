@@ -230,7 +230,7 @@ def fuse(rankings: list[list[str]], k: int = 60) -> list[str]:
 The author can chat with the agent in a terminal (`python -m app.cli`) and see it answer, look up, book, decline and hand off against a copy of the database.
 
 - [x] Task 9: identify callers and read their accounts. Requirements: R45, R46, R47, R48
-- [ ] Task 10: find eligible slots, alternatives and clean declines. Requirements: R49, R50, R51
+- [x] Task 10: find eligible slots, alternatives and clean declines. Requirements: R49, R50, R51
 - [ ] Task 11: book, cancel and reschedule in transactions with confirmation ids. Requirements: R52, R53, R54, R55, R84
 - [ ] Task 12: safety check and fixed safety replies. Requirements: R34, R35, R36, R37
 - [ ] Task 13: operations database, logging, masking and tickets. Requirements: R57, R73
@@ -275,7 +275,7 @@ The author can chat with the agent in a terminal (`python -m app.cli`) and see i
   - Members-only slot 1 (2026-10-16 08:00-12:00) is never offered because its window has started; later members-only slots are offered to Linda but not to Daniel Reyes (tier none).
   - When the request is not eligible, at most three slots are offered, nearest date first, then morning to evening; 12:00-16:00 and 13:00-17:00 are named as different windows.
   - A slot whose technician has a booked overlapping window that day is not offered.
-  - Review Focus 2: `parse_request("tomorrow morning", now)` is 2026-10-17 morning; "this Saturday" asks for 2026-10-17 and the offer falls back to the nearest weekday slots; "next Tuesday evening" is 2026-10-20 `16:00-19:00`.
+  - Review Focus 2: `parse_request("tomorrow morning", now)` is 2026-10-17 morning; "this Saturday" asks for 2026-10-17 (Saturdays have morning slots only); "this Sunday" asks for 2026-10-18, which has no slots, and the offer falls back to the nearest eligible slots; "next Tuesday evening" is 2026-10-20 `16:00-19:00`.
 - [ ] **Step 2: Run** `python -m pytest tests/scheduling/test_eligibility.py -v`. Expected: FAIL.
 - [ ] **Step 3: Implement** the spec's booking rules; the 16:00-19:00 window exists only on Tuesday and Thursday.
 - [ ] **Step 4: Run** the tests. Expected: PASS.

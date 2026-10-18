@@ -15,6 +15,7 @@ class Customer:
     service_address: str
     city: str
     zip: str
+    membership_tier: str
 
 
 def identify(db: sqlite3.Connection, name: str, account: str | None = None, address: str | None = None,
@@ -22,7 +23,7 @@ def identify(db: sqlite3.Connection, name: str, account: str | None = None, addr
     if not any((account, address, phone)):
         return None
     wanted = normalise.name(name)
-    rows = db.execute("select customer_id, name, phone, email, service_address, city, zip from customers").fetchall()
+    rows = db.execute("select customer_id, name, phone, email, service_address, city, zip, membership_tier from customers").fetchall()
     for row in rows:
         customer = Customer(*row)
         if normalise.name(customer.name) != wanted:
