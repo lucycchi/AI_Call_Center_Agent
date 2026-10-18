@@ -1,6 +1,6 @@
 {
   "name": "AI Call Center Agent",
-  "stage": "plan",
+  "stage": "build",
   "test_command": "python -m pytest",
   "approvals": [
     {
@@ -23,5 +23,7 @@
       "date": "2026-10-17",
       "tag": "tortoise/plan"
     }
-  ]
+  ],
+  "milestone": 1,
+  "milestones": 6
 }

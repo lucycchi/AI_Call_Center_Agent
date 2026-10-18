@@ -1,0 +1,53 @@
+template_id,sample_call_id,reason,sub_reason,model
+T28588235,CALL-20260706-0101,new booking,burning smell,gpt-6.1-sol
+Teff9802d,CALL-20260706-0182,new booking,burning smell,gpt-6.1-sol
+Ta049acca,CALL-20260707-0002,existing appointment,cancel,gpt-6.1-sol
+Tf7d382d9,CALL-20260707-0053,warranty,registration,gpt-6.1-sol
+T738adaab,CALL-20260707-0096,membership,renewal date,gpt-6.1-sol
+Tbaf67f84,CALL-20260707-0148,membership,what it includes or price,gpt-6.1-sol
+Td1e329a6,CALL-20260707-0170,new booking,hvac repair,gpt-6.1-sol
+Taca6d958,CALL-20260708-0115,billing,pay an invoice,gpt-6.1-sol
+Tdbe75aee,CALL-20260708-0255,billing,current balance,gpt-6.1-sol
+Tb456e16e,CALL-20260709-0103,new booking,hvac repair,gpt-6.1-sol
+T148d6c30,CALL-20260709-0129,billing,charged twice,gpt-6.1-sol
+Tbc5df324,CALL-20260709-0134,replacement estimate,replacement estimate,gpt-6.1-sol
+Tc36da844,CALL-20260709-0315,warranty,claim,gpt-6.1-sol
+T5a0b5fd4,CALL-20260709-0347,membership,autopay,gpt-6.1-sol
+T1b970162,CALL-20260709-0365,new booking,plumbing,gpt-6.1-sol
+T9e29febc,CALL-20260710-0081,new booking,hvac repair,gpt-6.1-sol
+T2d967470,CALL-20260710-0124,existing appointment,confirm,gpt-6.1-sol
+T3c30d716,CALL-20260710-0136,billing,refund,gpt-6.1-sol
+Ta3b7b18f,CALL-20260710-0335,complaint or manager,complaint or manager,gpt-6.1-sol
+Ta12ddc61,CALL-20260710-0364,membership,cancel,gpt-6.1-sol
+Tb9afdda4,CALL-20260710-0373,billing,what an invoice is for,gpt-6.1-sol
+Te8bcef76,CALL-20260711-0063,existing appointment,reschedule,gpt-6.1-sol
+Tfc7d7be8,CALL-20260711-0109,new booking,tune-up,gpt-6.1-sol
+T7d8fb3e5,CALL-20260711-0248,warranty,claim,gpt-6.1-sol
+T9919897a,CALL-20260712-0007,warranty,repeat repair,gpt-6.1-sol
+Tea4efe8a,CALL-20260712-0046,safety emergency,"gas, carbon monoxide or sparks",gpt-6.1-sol
+T8f924285,CALL-20260712-0067,hiring,hiring,gpt-6.1-sol
+T0a995037,CALL-20260712-0104,membership,what it includes or price,gpt-6.1-sol
+T2603f4e6,CALL-20260713-0285,membership,member discount on a new system,gpt-6.1-sol
+T0ad82d45,CALL-20260713-0314,membership,upgrade,gpt-6.1-sol
+T9f56ade3,CALL-20260713-0320,new booking,hvac repair,gpt-6.1-sol
+T391b9f20,CALL-20260714-0178,new booking,hvac repair,gpt-6.1-sol
+T4ecda9c7,CALL-20260714-0246,billing,quote dispute,gpt-6.1-sol
+Tf995585c,CALL-20260715-0061,new booking,hvac repair,gpt-6.1-sol
+T1dee0920,CALL-20260716-0367,new booking,hvac repair,gpt-6.1-sol
+T85ab9f16,CALL-20260717-0180,safety emergency,"gas, carbon monoxide or sparks",gpt-6.1-sol
+Taa2454c8,CALL-20260718-0062,complaint or manager,complaint or manager,gpt-6.1-sol
+T3baed8ff,CALL-20260718-0360,new booking,plumbing,gpt-6.1-sol
+T1d504a74,CALL-20260721-0093,safety emergency,"gas, carbon monoxide or sparks",gpt-6.1-sol
+Tf0d9c2f5,CALL-20260721-0110,new booking,tune-up,gpt-6.1-sol
+T70425efa,CALL-20260721-0242,new booking,hvac repair,gpt-6.1-sol
+T33be9400,CALL-20260721-0261,existing appointment,technician late,gpt-6.1-sol
+T9f473de6,CALL-20260722-0161,warranty,transfer,gpt-6.1-sol
+Td12bdf25,CALL-20260723-0172,new booking,hvac repair,gpt-6.1-sol
+T19162cee,CALL-20260724-0391,complaint or manager,complaint or manager,gpt-6.1-sol
+T9bb3779a,CALL-20260728-0050,new booking,hvac repair,gpt-6.1-sol
+Teba1e31f,CALL-20260728-0089,commercial,commercial,gpt-6.1-sol
+T6f36e785,CALL-20260802-0015,new booking,plumbing,gpt-6.1-sol
+T8f5cf73c,CALL-20260802-0016,new booking,plumbing,gpt-6.1-sol
+Tc749ab58,CALL-20260813-0031,wrong number,wrong number,gpt-6.1-sol
+T81429224,CALL-20260819-0245,new booking,hvac repair,gpt-6.1-sol
+T1c979c8b,CALL-20260825-0370,new booking,hvac repair,gpt-6.1-sol

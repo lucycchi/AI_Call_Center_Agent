@@ -43,13 +43,13 @@ def label_with_haiku(calls: list[Call], client: Labeler) -> dict[str, tuple[str,
 class AnthropicLabeler:
     """Real client: Haiku 5.5 with a JSON answer. Only used by main(), never in tests."""
 
-    def __init__(self):
+    def __init__(self, model: str | None = None, timeout_s: int | None = None):
         import anthropic
 
         from app.config import SETTINGS
 
-        self._client = anthropic.Anthropic(timeout=SETTINGS.anthropic_timeout_s)
-        self._model = SETTINGS.router_model
+        self._client = anthropic.Anthropic(timeout=timeout_s or SETTINGS.anthropic_timeout_s)
+        self._model = model or SETTINGS.router_model
 
     def label(self, prompt: str) -> dict:
         from pipeline.categories import CATEGORIES, REASONS
@@ -67,6 +67,8 @@ class AnthropicLabeler:
             model=self._model, max_tokens=2000,
             output_config={"effort": "low", "format": {"type": "json_schema", "schema": schema}},
             messages=[{"role": "user", "content": prompt}])
+        if response.stop_reason == "refusal":
+            raise ValueError(f"{self._model} declined to label: {response.stop_details}")
         return json.loads(next(block.text for block in response.content if block.type == "text"))
 
 

@@ -43,7 +43,7 @@ The author can open the draft findings document (the top call reasons, the human
 
 - [x] Task 1: project setup, pinned configuration and the agent-core interface. Requirements: R33
 - [x] Task 2: load transcripts and group them into templates. Requirements: R1
-- [ ] Task 3: label call reasons with Haiku, Codex and the author's sheet. Requirements: R2, R3, R4
+- [x] Task 3: label call reasons with Haiku, Codex and Claude Fable 5.1. Requirements: R2, R3, R4
 - [ ] Task 4: generate the findings document. Requirements: R5, R6, R7, R8, R56
 - [ ] Task 5: document list, conflict register and format conversion. Requirements: R24, R25, R26
 
@@ -83,11 +83,11 @@ The author can open the draft findings document (the top call reasons, the human
 - [ ] **Step 4: Run** the tests. Expected: PASS. Run `python -m pipeline.templates`; expect 70 to 120 templates.
 - [ ] **Step 5: Commit** `feat: transcript loading and template grouping`.
 
-### Task 3: Label call reasons with Haiku, Codex and the author's sheet
+### Task 3: Label call reasons with Haiku, Codex and Claude Fable 5.1
 
 **Files:**
 - Create: `pipeline/categories.py`, `pipeline/label_haiku.py`, `pipeline/label_codex.py`, `pipeline/agreement.py`, `tests/pipeline/test_labels.py`
-- Output: `data/labels.csv`, `data/author_label_sheet.csv`, `data/label_agreement.json`
+- Output: `data/labels_haiku.csv`, `data/labels_codex.csv`, `data/labels_fable.csv`, `data/label_agreement.json` (the blind third is chosen by `data/author_label_sheet.csv`, now labeled by Claude Fable 5.1 (D38))
 
 **Interfaces:**
 - Consumes: `group_templates` (Task 2).
@@ -98,10 +98,10 @@ The author can open the draft findings document (the top call reasons, the human
   - `agreement({"t1":"billing","t2":"membership"}, {"t1":"billing","t2":"warranty"})` equals `0.5`.
   - `label_with_codex` is called once per template and the prompt it builds contains no Haiku label; every template id ends up with a Codex label and model name; a runner returning invalid JSON raises an error naming the template.
   - `CATEGORIES` contains: new booking, billing, membership, warranty, existing appointment, complaint or manager, replacement estimate, safety emergency, hiring, commercial, wrong number.
-  - The author sheet lists about a third of the templates (seed 17) with no AI label columns.
-  - `write_agreement` produces both `author_vs_codex` and `codex_vs_haiku`; with no author sheet returned yet it writes `author_vs_codex: null` and `status: "provisional"`.
+  - The blind third lists about a third of the templates (seed 17) with no AI label columns; Claude Fable 5.1 labels exactly those templates without seeing Haiku's or Codex's labels.
+  - `write_agreement` produces both `fable_vs_codex` and `codex_vs_haiku`; before the Fable labels exist it writes `fable_vs_codex: null` and `status: "provisional"`.
 - [ ] **Step 2: Run** `python -m pytest tests/pipeline/test_labels.py -v`. Expected: FAIL.
-- [ ] **Step 3: Implement.** Haiku labels every transcript against the frozen list (structured output). Codex labels one sample transcript per template through `codex exec -s read-only --ephemeral` with a JSON answer. **Tell the author before running the Codex step.** Milestone 1 does not wait for the author's sheet: findings are generated provisionally and regenerated when the sheet returns.
+- [ ] **Step 3: Implement.** Haiku labels every transcript against the frozen list (structured output). Codex labels one sample transcript per template through `codex exec -s read-only --ephemeral` with a JSON answer. **Tell the author before running the Codex step.** Claude Fable 5.1 labels the blind third from code (about $0.30, JSON-schema answer, model name saved). Findings are generated provisionally until both label sets exist, then regenerated.
 - [ ] **Step 4: Run** the tests. Expected: PASS. Run Haiku labeling live (about $0.10) and Codex labeling once.
 - [ ] **Step 5: Commit** `feat: call-reason labeling and agreement`.
 
@@ -452,7 +452,7 @@ The author can run the working set, read the numbers and the replayed conversati
 - [ ] **Step 1: Write the failing tests** (no live calls):
   - Two cases weighted 10 and 30 calls, first contained and second not: containment 0.25.
   - A finished-without-handoff case graded wrong is a wrong confident answer and not contained; a clean decline is correct but not contained; a fail-then-pass case scores as a failure and is listed as flaky; containment without redirects excludes a contained wrong-number case.
-  - Routing accuracy compares the router's route on the caller's first substantive message with the template label (the author's label where present).
+  - Routing accuracy compares the router's route on the caller's first substantive message with the template label (the Codex label).
   - Interval: for scenarios `[contained, not contained]` with weights `[1, 3]`, seed 7 and 2,000 template resamples, the 95 percent interval is `(0.0, 1.0)`, its midpoint estimate is 0.25, and the same seed gives the same interval twice.
   - Each case runs on its own fresh copy of the seed database; the original file's modification time does not change.
   - Budget: a conversation stops at 12 caller turns or 60 seconds; the run stops and writes a partial summary marked `stopped_at_budget` when spend reaches $8; the harness refuses to run unless `EVAL_ANTHROPIC_API_KEY` is set and differs from the live key.

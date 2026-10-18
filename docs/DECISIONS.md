@@ -243,7 +243,7 @@ can only propose a decision; only the author settles one.
 
 ## D18: Who provides the independent ground-truth call-reason labels?
 
-- **Status:** settled
+- **Status:** replaced by "Which frontier model provides the independent check labels for the call-reason templates?" (D37)
 - **Replaces:** "Who provides the independent ground-truth call-reason labels that the router and the discovery ranking are checked against?" (D14)
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
 - **Options:**
@@ -493,6 +493,33 @@ can only propose a decision; only the author settles one.
 - **Choice:** (1) Confirmation ids are stored in a new agent_confirmations table inside the scheduling database, written in the same transaction as the booking change; the provided tables are untouched and the nightly reset recreates the new table empty. (2) The engine yields typed events: one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions. (3) Each message and its released sentences are saved; the stream replays saved sentences on reconnect, and a message left unfinished by a restart becomes a handoff. (4) Timeouts: Anthropic 20 seconds, Voyage 5 seconds, alert webhook 5 seconds, and a 15-second deadline per message after which it hands off. (5) Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation, one retry, a separate test key, and an $8 stop per run. (6) The reviewer token sits after a # in the link, which browsers never send to servers; the page sends it once and clears it. (7) The final-run freeze covers only the agent-behaviour files and the search index, recorded as a hash. (8) The keyword index is rebuilt at startup from the shipped chunks.
 - **Reason:** Each closes a way the approved behaviour could fail in practice: double bookings after a crash, lost receipts, hung requests, runaway test spend, a leaked reviewer token, or a final run that cannot start.
 
+## D37: Which frontier model provides the independent check labels for the call-reason templates?
+
+- **Status:** replaced by "Who labels the blind third of the templates that checks the Codex labels?" (D38)
+- **Replaces:** "Who provides the independent ground-truth call-reason labels?" (D18)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Claude Fable 5.1 (Anthropic's most capable model) labels every template, with the author's blind third as the independent check and the shared-company limitation disclosed
+  - An OpenAI frontier model through Codex (the replaced decision)
+- **Research:**
+  - [docs/MODEL_RESEARCH.md](docs/MODEL_RESEARCH.md): Using a model from a different company avoids correlated mistakes when one model checks another.
+  - [docs/DECISIONS.md](docs/DECISIONS.md): Template labeling (D18) chose Codex so the check labels came from a different company than the Haiku labels and router.
+- **Choice:** Claude Fable 5.1 (model ID claude-fable-5-1) labels one sample call per template without seeing Haiku's labels, from code, with the model name saved; about $1. The author labels about a third of the templates blind, and the author-versus-Fable agreement is reported as the trust measure. The README states that the frontier labels and the router are both from Anthropic, so routing accuracy against those labels may be optimistic. Answer grading stays with OpenAI through Codex (grading through Codex (D15)).
+- **Reason:** The author's preference: the strongest available labeler, repeatable from code, no Codex setup step. The independence lost by using the same company as the router is partly restored by the author's blind labels and stated openly.
+
+## D38: Who labels the blind third of the templates that checks the Codex labels?
+
+- **Status:** settled
+- **Replaces:** "Which frontier model provides the independent check labels for the call-reason templates?" (D37)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
+- **Options:**
+  - Claude Fable 5.1 labels the blind third instead of the author; Codex still labels every template
+  - The author labels the blind third by hand (the earlier decision)
+- **Research:**
+  - [docs/DECISIONS.md](docs/DECISIONS.md): Template labeling (D18): Codex labels every template and the author labels about a third blind as the check.
+- **Choice:** Codex, set to an OpenAI frontier model on the author's subscription, labels every template without seeing Haiku's labels, as before. Claude Fable 5.1 (claude-fable-5-1) labels the same blind third of the templates, without seeing Haiku's or Codex's labels, in place of the author. Reported: Fable-versus-Codex agreement on that third (a cross-company check), Codex-versus-Haiku agreement, and routing accuracy against the Codex labels. The README states that no human labeled the templates. The author's blind grading of about 30 answers (D8) is unchanged.
+- **Reason:** The author's preference, to save their labeling time. The check stays independent across companies (OpenAI and Anthropic), at a cost of about $0.30, but it is no longer a human check; that limitation is disclosed.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
@@ -502,6 +529,7 @@ can only propose a decision; only the author settles one.
 - **Attached disk (volume):** storage that stays when the server restarts
 - **Batch:** a group of items sent together in one request
 - **Benchmark:** a fixed public test used to compare models
+- **Blind label:** a label given without seeing anyone else's label for the same item
 - **Cached answer:** an answer prepared in advance and reused so it appears instantly
 - **Call driver:** a reason customers call
 - **Caller card:** the facts given to the AI playing the caller: name, account number, phone, address and request
@@ -512,6 +540,7 @@ can only propose a decision; only the author settles one.
 - **Conflict register:** a written list of documents that disagree and which one wins, with the reason
 - **Containment ceiling:** the highest containment possible, equal to the share of calls about reasons the agent handles
 - **Containment rate:** the share of calls the AI finishes without passing them to a person
+- **Correlated mistakes:** errors two models make in the same way because they were built similarly, so one cannot catch the other's
 - **Cut order:** the agreed order in which optional work is dropped if time runs out
 - **Database transaction:** a group of database changes that all happen together or not at all
 - **Embedding:** a list of numbers representing a text's meaning, used to find similar text

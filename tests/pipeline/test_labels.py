@@ -6,6 +6,7 @@ import pytest
 from pipeline.agreement import agreement, write_agreement
 from pipeline.categories import CATEGORIES, REASONS
 from pipeline.label_codex import CodexLabelError, label_with_codex
+from pipeline.label_fable import label_blind_third
 from pipeline.label_haiku import label_with_haiku
 from pipeline.sheet import write_author_sheet
 from pipeline.transcripts import Call
@@ -81,11 +82,63 @@ def test_author_sheet_has_a_third_of_templates_and_no_ai_labels(tmp_path):
     assert path.read_text() == again.read_text()
 
 
-def test_agreement_file_is_provisional_until_the_author_returns_the_sheet(tmp_path):
+def test_agreement_file_is_provisional_until_fable_labels_exist(tmp_path):
     out = tmp_path / "agreement.json"
     write_agreement(out, codex={"T1": "billing", "T2": "membership"}, haiku_by_template={"T1": "billing", "T2": "billing"},
-                    author=None)
+                    fable=None)
     result = json.loads(out.read_text())
     assert result["status"] == "provisional"
-    assert result["author_vs_codex"] is None
+    assert result["fable_vs_codex"] is None
     assert result["codex_vs_haiku"] == 0.5
+
+
+def test_agreement_file_reports_fable_against_codex_on_the_blind_third(tmp_path):
+    out = tmp_path / "agreement.json"
+    write_agreement(out, codex={"T1": "billing", "T2": "membership", "T3": "warranty"},
+                    haiku_by_template={"T1": "billing", "T2": "membership", "T3": "warranty"},
+                    fable={"T1": "billing", "T3": "membership"})
+    result = json.loads(out.read_text())
+    assert result["status"] == "final"
+    assert result["fable_vs_codex"] == 0.5
+    assert result["fable_labels"] == 2
+
+
+def test_fable_labels_only_the_blind_third_without_other_models_labels():
+    fake = FakeHaiku({"reason": "warranty", "sub_reason": "claim"})
+    samples = {"T1": call("C1", "My unit stopped working"), "T2": call("C2", "Balance please")}
+    labels = label_blind_third(samples, ["T1"], fake)
+    assert labels == {"T1": ("warranty", "claim")}
+    assert len(fake.prompts) == 1
+    assert "Haiku" not in fake.prompts[0] and "Codex" not in fake.prompts[0]
+
+
+def test_codex_output_file_check_accepts_a_complete_valid_file(tmp_path):
+    from pipeline.label_codex import validate_codex_file
+
+    expected = {"T1": "C1", "T2": "C2"}
+    good = tmp_path / "good.csv"
+    good.write_text("template_id,sample_call_id,reason,sub_reason,model\n"
+                    "T1,C1,billing,current balance,gpt-6.1-sol\nT2,C2,warranty,claim,gpt-6.1-sol\n")
+    assert validate_codex_file(good, expected) == []
+
+
+def test_codex_output_file_check_lists_every_problem(tmp_path):
+    from pipeline.label_codex import validate_codex_file
+
+    expected = {"T1": "C1", "T2": "C2", "T3": "C3"}
+    bad = tmp_path / "bad.csv"
+    bad.write_text("template_id,sample_call_id,reason,sub_reason,model\n"
+                   "T1,C9,billing,current balance,gpt-6.1-sol\nT2,C2,pizza,order,\n")
+    problems = validate_codex_file(bad, expected)
+    assert any("T1" in p and "sample" in p for p in problems)
+    assert any("T2" in p and "category" in p for p in problems)
+    assert any("T2" in p and "model" in p for p in problems)
+    assert any("T3" in p and "missing" in p for p in problems)
+
+
+def test_haiku_label_per_template_is_the_majority_of_its_calls():
+    from pipeline.agreement import majority_by_template
+
+    templates = {"C1": "T1", "C2": "T1", "C3": "T1", "C4": "T2"}
+    haiku = {"C1": "billing", "C2": "billing", "C3": "membership", "C4": "warranty"}
+    assert majority_by_template(templates, haiku) == {"T1": "billing", "T2": "warranty"}

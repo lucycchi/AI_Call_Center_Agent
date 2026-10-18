@@ -1,0 +1,12 @@
+{
+ "codex_vs_haiku": 1.0,
+ "fable_vs_codex": 1.0,
+ "fable_labels": 17,
+ "human_labels": 0,
+ "status": "final",
+ "fable_vs_codex_sub_reason": 1.0,
+ "disagreements": {
+  "codex_vs_haiku": {},
+  "fable_vs_codex": {}
+ }
+}

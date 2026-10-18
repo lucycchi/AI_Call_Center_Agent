@@ -1,0 +1,18 @@
+template_id,sample_call_id,reason,sub_reason,model
+T0ad82d45,CALL-20260713-0314,membership,upgrade,claude-fable-5-1
+T1dee0920,CALL-20260716-0367,new booking,hvac repair,claude-fable-5-1
+T33be9400,CALL-20260721-0261,existing appointment,technician late,claude-fable-5-1
+T4ecda9c7,CALL-20260714-0246,billing,quote dispute,claude-fable-5-1
+T5a0b5fd4,CALL-20260709-0347,membership,autopay,claude-fable-5-1
+T6f36e785,CALL-20260802-0015,new booking,plumbing,claude-fable-5-1
+T70425efa,CALL-20260721-0242,new booking,hvac repair,claude-fable-5-1
+T738adaab,CALL-20260707-0096,membership,renewal date,claude-fable-5-1
+T8f5cf73c,CALL-20260802-0016,new booking,plumbing,claude-fable-5-1
+T8f924285,CALL-20260712-0067,hiring,hiring,claude-fable-5-1
+T9bb3779a,CALL-20260728-0050,new booking,hvac repair,claude-fable-5-1
+Ta3b7b18f,CALL-20260710-0335,complaint or manager,complaint or manager,claude-fable-5-1
+Taa2454c8,CALL-20260718-0062,complaint or manager,complaint or manager,claude-fable-5-1
+Taca6d958,CALL-20260708-0115,billing,pay an invoice,claude-fable-5-1
+Td1e329a6,CALL-20260707-0170,new booking,hvac repair,claude-fable-5-1
+Tea4efe8a,CALL-20260712-0046,safety emergency,"gas, carbon monoxide or sparks",claude-fable-5-1
+Tf995585c,CALL-20260715-0061,new booking,hvac repair,claude-fable-5-1
