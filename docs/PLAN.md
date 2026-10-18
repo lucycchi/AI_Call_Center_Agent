@@ -229,7 +229,7 @@ def fuse(rankings: list[list[str]], k: int = 60) -> list[str]:
 
 The author can chat with the agent in a terminal (`python -m app.cli`) and see it answer, look up, book, decline and hand off against a copy of the database.
 
-- [ ] Task 9: identify callers and read their accounts. Requirements: R45, R46, R47, R48
+- [x] Task 9: identify callers and read their accounts. Requirements: R45, R46, R47, R48
 - [ ] Task 10: find eligible slots, alternatives and clean declines. Requirements: R49, R50, R51
 - [ ] Task 11: book, cancel and reschedule in transactions with confirmation ids. Requirements: R52, R53, R54, R55, R84
 - [ ] Task 12: safety check and fixed safety replies. Requirements: R34, R35, R36, R37
