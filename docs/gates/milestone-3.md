@@ -7,36 +7,36 @@ Reviews of this milestone compare against `tortoise/milestone-2`, the last appro
 **Passed:** `python -m pytest` finished with exit code 0.
 
 ```
+rootdir: /home/lucyc/gauntlet/AI_Call_Center_Agent
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.15.1, langsmith-0.14.11
-collected 459 items
+collected 432 items
 
-tests/accounts/test_accounts.py ........................................ [  8%]
-...................                                                      [ 12%]
-tests/core/test_engine.py ..................                             [ 16%]
-tests/eval/test_cases.py ...........................................     [ 26%]
-tests/eval/test_retrieval_metrics.py ..................                  [ 30%]
+tests/accounts/test_accounts.py ........................................ [  9%]
+.........                                                                [ 11%]
+tests/core/test_engine.py ..................                             [ 15%]
+tests/eval/test_cases.py ...........................................     [ 25%]
+tests/eval/test_retrieval_metrics.py ..................                  [ 29%]
 tests/flows/test_conversations.py ...................................... [ 38%]
-..........................                                               [ 44%]
-tests/flows/test_knowledge.py ....                                       [ 44%]
-tests/handoff/test_handoff.py ..........                                 [ 47%]
-tests/knowledge/test_search.py ..............                            [ 50%]
-tests/ops/test_store.py ...........                                      [ 52%]
-tests/pipeline/test_documents.py .........                               [ 54%]
-tests/pipeline/test_findings.py .....................                    [ 59%]
-tests/pipeline/test_labels.py ..............                             [ 62%]
-tests/pipeline/test_templates.py .........                               [ 64%]
-tests/replies/test_checks.py ........................................... [ 73%]
-................                                                         [ 76%]
-tests/safety/test_safety.py ............................................ [ 86%]
+.....................................                                    [ 46%]
+tests/flows/test_knowledge.py ....                                       [ 47%]
+tests/handoff/test_handoff.py ..........                                 [ 50%]
+tests/knowledge/test_search.py ..............                            [ 53%]
+tests/ops/test_store.py ...........                                      [ 56%]
+tests/pipeline/test_documents.py .........                               [ 58%]
+tests/pipeline/test_findings.py .....................                    [ 62%]
+tests/pipeline/test_labels.py ..............                             [ 66%]
+tests/pipeline/test_templates.py .........                               [ 68%]
+tests/replies/test_checks.py ...............................             [ 75%]
+tests/safety/test_safety.py ............................................ [ 85%]
 ......                                                                   [ 87%]
 tests/scheduling/test_eligibility.py ...........................         [ 93%]
 tests/scheduling/test_transactions.py ...............                    [ 96%]
 tests/test_config.py ..........                                          [ 99%]
 tests/test_engine_interface.py ....                                      [100%]
 
-============================= 459 passed in 19.13s =============================
+============================= 432 passed in 16.49s =============================
 ```
 
 ## Requirement coverage

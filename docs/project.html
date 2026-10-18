@@ -48,21 +48,21 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <main>
 <header>
 <h1>AI Call Center Agent</h1>
-<p class="stage">Current stage: Milestone gate, milestone 2 of 6 (needs your approval before moving on)</p>
+<p class="stage">Current stage: Milestone gate, milestone 3 of 6 (needs your approval before moving on)</p>
 </header>
 <section id="summary">
 <h2>Summary</h2>
 <p><strong>The problem.</strong> Meridian Home Comfort, a fictional heating, cooling and plumbing company in the Austin area, cannot keep up with its calls. The challenge (<code>docs/PRD.md</code>) is to build, in four working days, a chat agent at a public web address that answers routine calls from the company's documents, reads callers' accounts, books and changes appointments in a provided SQLite database, hands everything else to a human with full context, and proves its performance with numbers measured on held-out data.</p>
 <p><strong>The approach.</strong> One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.</p>
-<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestones 1 and 2 of 6 are built: configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results. The later milestones are planned.</p>
+<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestones 1 to 3 of 6 are built: configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results; then the agent core: identification and account lookups, slot eligibility and booking transactions, the safety check, the operations store, the knowledge, account, scheduling and handoff flows, the router and the engine pipeline, with a terminal chat (<code>python -m app.cli</code>). Milestones 4 to 6 are planned.</p>
 </section>
 <h3>Key decisions</h3>
 <ul>
-<li>Which protections are added to booking confirmations, the reviewer link and downtime alerts? (1) Each read-back carries a confirmation ID; a repeated or retried confirmation returns the first result instead of changing the database again. (2) The secret reviewer link is used once to start a signed reviewer session, then redirects to a clean address, and the token is never logged. (3) A free outside uptime monitor checks the health endpoint and alerts the author when the site is down.</li>
-<li>Which technology stack does the system use? Python 3.12; FastAPI with one worker process; each caller message is an ordinary request and its checked sentences stream back as server-sent events tied to that message; server-rendered HTML with a little plain JavaScript; the provided scheduling SQLite file plus a separate operations SQLite file, both in write-ahead logging mode on the attached disk; the search index built offline and shipped inside each release; an in-app scheduler with an app-wide gate that messages hold shared and the nightly reset holds exclusively; alerts through a webhook; Anthropic and Voyage SDKs pinned.</li>
 <li>Which architecture refinements does the plan review require? (1) Confirmation ids are stored in a new agent_confirmations table inside the scheduling database, written in the same transaction as the booking change; the provided tables are untouched and the nightly reset recreates the new table empty. (2) The engine yields typed events: one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions. (3) Each message and its released sentences are saved; the stream replays saved sentences on reconnect, and a message left unfinished by a restart becomes a handoff. (4) Timeouts: Anthropic 20 seconds, Voyage 5 seconds, alert webhook 5 seconds, and a 15-second deadline per message after which it hands off. (5) Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation, one retry, a separate test key, and an $8 stop per run. (6) The reviewer token sits after a # in the link, which browsers never send to servers; the page sends it once and clears it. (7) The final-run freeze covers only the agent-behaviour files and the search index, recorded as a hash. (8) The keyword index is rebuilt at startup from the shipped chunks.</li>
 <li>Who labels the blind third of the templates that checks the Codex labels? Codex, set to an OpenAI frontier model on the author&#x27;s subscription, labels every template without seeing Haiku&#x27;s labels, as before. Claude Fable 5.1 (claude-fable-5-1) labels the same blind third of the templates, without seeing Haiku&#x27;s or Codex&#x27;s labels, in place of the author. Reported: Fable-versus-Codex agreement on that third (a cross-company check), Codex-versus-Haiku agreement, and routing accuracy against the Codex labels. The README states that no human labeled the templates. The author&#x27;s blind grading of about 30 answers (D8) is unchanged.</li>
 <li>How are the nine waitlist templates treated, given that each is the matching booking call plus one fixed waitlist exchange? Keep the 52 templates. data/templates.csv gains a family column: each waitlist template&#x27;s family is its booking twin&#x27;s template id, every other template is its own family. The test split (Task 7) assigns whole families, so twins are never on opposite sides. The plan&#x27;s 70 to 120 template estimate is corrected.</li>
+<li>How does combined search merge the keyword and meaning-based lists? Keep each list&#x27;s top result, then reciprocal-rank fusion. The spec leaves the fusion method to the builder (R28). The results report meaning-only beside it honestly, and the rule was chosen on the working set only.</li>
+<li>The review of the milestone 2 fixes found more errors in the rebuilt test cases (requests still unlisted, the cancel case on the wrong appointment, a Plus member asking to join, paid invoices shown as owed, evidence spans missing facts). Fix them and refreeze the held-out set again? Fix and refreeze. Every request beyond a call&#x27;s labelled reason comes from a reviewed list (data/case_requests.csv) quoting the caller&#x27;s words; seeded appointments are the customer&#x27;s only upcoming one and match the service the caller describes; a caller asking to join is drawn as a non-member; charged-twice and refund invoices are planted paid; evidence spans cover every number in the reference, tested. The split is unchanged (37 working, 15 held out); the hash moves from 9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c to 4423a9632bcd38f06b7945585c8bdf43bb005f5b038345d5a8b921cd303afa46. The nine waitlist calls also list &quot;an earlier slot&quot; as a request, handled when the agent offers the earliest eligible slots; a &quot;wants an earlier slot&quot; ticket is also correct but counts as a handoff (R44). New reference answers: upgrading mid-year (held out) and cancelling before renewal; the replacement-estimate answer no longer claims the advisor confirms the price, which no document says.</li>
 </ul>
 <section id="progress">
 <h2>Progress</h2>
@@ -80,17 +80,17 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 7: split by template and build frozen test cases. Requirements: R9, R10, R11, R29, R81</span></li>
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 8: measure retrieval on its own. Requirements: R30</span></li>
 </ul>
-<h3>Milestone 3: Agent core (0 of 9 done)</h3>
+<h3>Milestone 3: Agent core (9 of 9 done)</h3>
 <ul>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 9: identify callers and read their accounts. Requirements: R45, R46, R47, R48</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 10: find eligible slots, alternatives and clean declines. Requirements: R49, R50, R51</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 11: book, cancel and reschedule in transactions with confirmation ids. Requirements: R52, R53, R54, R55, R84</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 12: safety check and fixed safety replies. Requirements: R34, R35, R36, R37</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 13: operations database, logging, masking and tickets. Requirements: R57, R73</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 14: knowledge flow, reply writer and sentence checks. Requirements: R41, R42, R43, R44, R60</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 15: handoff flow, post-handoff messages and failure paths. Requirements: R58, R59</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 16: router, conversation state and the engine pipeline. Requirements: R38, R39, R40, R81, R82</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 17: conversation-level flow tests through the engine. Requirements: R45, R47, R48, R51, R52, R53, R54, R84, R35, R37, R73</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 9: identify callers and read their accounts. Requirements: R45, R46, R47, R48</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 10: find eligible slots, alternatives and clean declines. Requirements: R49, R50, R51</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 11: book, cancel and reschedule in transactions with confirmation ids. Requirements: R52, R53, R54, R55, R84</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 12: safety check and fixed safety replies. Requirements: R34, R35, R36, R37</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 13: operations database, logging, masking and tickets. Requirements: R57, R73</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 14: knowledge flow, reply writer and sentence checks. Requirements: R41, R42, R43, R44, R60</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 15: handoff flow, post-handoff messages and failure paths. Requirements: R58, R59</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 16: router, conversation state and the engine pipeline. Requirements: R38, R39, R40, R81, R82</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 17: conversation-level flow tests through the engine. Requirements: R45, R47, R48, R51, R52, R53, R54, R84, R35, R37, R73</span></li>
 </ul>
 <h3>Milestone 4: Evaluation harness (0 of 3 done)</h3>
 <ul>
@@ -354,13 +354,13 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>The browser sends each message as an ordinary request; the web layer checks that the conversation belongs to the signed visitor and opens a stream for that message's sentences.</li>
 <li>The safety check runs first on every message, even mid-flow and even for a visitor over budget; an emergency gets its fixed reply, which costs nothing.</li>
 <li>Only then are the spending and rate limits applied.</li>
-<li>The router runs on every remaining message. With no flow active, its route picks the flow; with a flow active, its result is used only to detect a clear change of topic.</li>
-<li>The active or chosen flow runs its code-owned steps.</li>
+<li>With nothing in progress, a bare acknowledgement ("ok", "thanks") gets a plain "anything else?" and a goodbye ("no, that's it") ends the chat; neither is routed. The router runs on every other message. It splits a message into its requests, each with a route, a detail (such as balance, book or dispute) and a service type. With no flow active, the routes pick the flows; with a flow active, its result is used only to detect a clear change of topic, which includes a different scheduling action (booking, then cancelling another appointment).</li>
+<li>The active or chosen flows run their code-owned steps. Account and scheduling requests wait together for the caller to be identified, then run in turn; a message naming a different customer switches the conversation to that account and drops the previous customer's booking in progress. Every handoff in one message goes into one ticket. The router decides requests to act on money or membership; a code backstop catches only requests that are never questions ("send me a payment link", "set up autopay", "cancel my membership", "I want to pay my bill") on every route except a handoff (R48, D43).</li>
 <li>The flow hands the writer the facts and a reply type.</li>
-<li>Each sentence is checked before release. If a sentence fails, generation stops, the sentences already shown stay, the rest becomes a handoff message with a ticket, and a "blocked" event is logged.</li>
-<li>Every step records events and model calls in the operations store.</li>
+<li>Each sentence is checked before release. If a sentence fails, generation stops, the sentences already shown stay, the rest becomes a handoff message with a ticket, and a "blocked sentence" event is logged. Once the conversation has mentioned a burning smell, breaker-reset advice is blocked too.</li>
+<li>Every step records events and model calls in the operations store. One 15-second deadline covers the whole message: the router and writer calls get only the time left, and each booking change checks it just before committing, so nothing is committed after the caller has been told it was passed on.</li>
 </ol>
-<p>The engine guarantees exactly one done event, always last: if the pipeline stops without one it adds an "incomplete" done event, and if the pipeline raises it adds an "error" done event; the handoff flow turns both into a handoff message.</p>
+<p>The engine guarantees exactly one done event, always last. If the pipeline raises (for example, the operations database is unavailable, so no ticket can be saved), the engine releases a plain message asking the caller to phone the office, logs the failure to the server log and ends with an "error" done event; if the pipeline stops without a done event, it releases a plain handoff message and ends with "incomplete". A message for a conversation that belongs to another visitor gets a plain refusal ("forbidden"), and one for a closed or abandoned conversation asks the caller to start a new one.</p>
 <table>
 <thead><tr><th>Part</th><th>What it does</th><th>Where its rules come from</th></tr></thead>
 <tbody>
@@ -371,7 +371,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td>Knowledge search</td><td>Combined keyword and meaning-based search over current documents: the top result of each list is always kept (keyword search's only when some word matches), then the top 10 of each list are merged by reciprocal-rank fusion; five results returned (combined search keeps each list's top result (D41))</td><td>Document search (R24 to R32)</td></tr>
 <tr><td>Scheduling and account store</td><td>Read-only lookups and booking transactions on the scheduling database</td><td>Booking rules (R45 to R56), data rules (D29)</td></tr>
 <tr><td>Reply writer</td><td>Sonnet 5.5 turns facts chosen by code into wording, as structured reply types</td><td>Pricing and internal-text rules (R42, R43)</td></tr>
-<tr><td>Reply checks</td><td>Checks every sentence for promises, refunds, waivers and internal text before release</td><td>Sentence release (R60)</td></tr>
+<tr><td>Reply checks</td><td>Checks every sentence before release: in code, firm totals, waitlist promises, breaker advice after a burning smell, internal text and promises worded as a personal favour; then every sentence that mentions money goes to a Haiku 5.5 check against the published money terms and the sentence before it, failing closed (money promises checked by a model (D43)); blocks are logged and counted</td><td>Sentence release (R60)</td></tr>
 <tr><td>Spending and rate limits</td><td>Per-visitor, site-wide and reviewer-reserve budgets; message limits</td><td>Guards (R61, R62), spending budgets with a reviewer reserve (D30)</td></tr>
 <tr><td>Operations store</td><td>Logs, tickets, receipts, metrics, alerts, nightly reset, log purge</td><td>Monitoring and operations (R73 to R77), retention (D31)</td></tr>
 </tbody>
@@ -388,7 +388,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td>Search index</td><td>Built offline, shipped in each release as files (chunks and embeddings); the keyword index is rebuilt from the chunks at startup</td><td>The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too.</td></tr>
 <tr><td>Scheduler and reset gate</td><td>A background task in the app plus an app-wide gate: every message holds it shared, the nightly reset holds it exclusively</td><td>One machine and one worker, so an in-process gate is enough to make messages wait during a reset; the job-runs table catches a missed reset at startup.</td></tr>
 <tr><td>Alerts</td><td>A webhook URL setting (for example a push-notification service), plus a free outside uptime monitor on the health endpoint</td><td>One HTTP call per alert; the app cannot alert while it is down, so downtime is detected from outside (booking, reviewer-link and downtime protections (D34)).</td></tr>
-<tr><td>AI SDKs and timeouts</td><td>Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off</td><td>Model IDs <code>claude-sonnet-5-5</code> and <code>claude-haiku-5-5</code>, the embedding model <code>voyage-4</code>, and settings pinned and logged with every run.</td></tr>
+<tr><td>AI SDKs and timeouts</td><td>Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off; each model attempt gets half the time left. A reply sentence about money waits about half a second more for its Haiku check</td><td>Model IDs <code>claude-sonnet-5-5</code> and <code>claude-haiku-5-5</code>, the embedding model <code>voyage-4</code>, and settings pinned and logged with every run.</td></tr>
 <tr><td>Offline grading</td><td><code>codex exec</code> with a JSON output format</td><td>Uses the author's subscription, no API cost (grading through Codex (D15)).</td></tr>
 </tbody>
 </table>
@@ -439,6 +439,11 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT status "scheduled, completed, cancelled or no_show"
         INTEGER is_warranty_visit "1 means no diagnostic fee"
     }
+    AGENT_CONFIRMATIONS {
+        TEXT confirmation_id PK "one-time id from the read-back"
+        TEXT result "first result, as JSON text"
+        TEXT created_at "real time it was written"
+    }
     INVOICES {
         TEXT invoice_id PK "invoice number, e.g. INV-204411"
         TEXT customer_id FK "who is billed"
@@ -449,7 +454,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         INTEGER balance_cents "unpaid amount in cents, 0 means paid"
         TEXT line_items "list of description and cents pairs"
     }</pre>
-<p><em>The five provided tables: customers book appointments in technicians' slots and receive invoices.</em></p>
+<p><em>The five provided tables, plus the agent's confirmations table: customers book appointments in technicians' slots and receive invoices; each booking change stores its first result under its confirmation id.</em></p>
 <p>How the tables link, in words: each appointment belongs to exactly one customer and takes exactly one slot; each slot belongs to exactly one technician and may have several appointments over time (cancelled ones stay as history) but at most one with status scheduled, which the booking code enforces inside its transaction because the provided database has no such rule; each invoice belongs to exactly one customer and may refer to one appointment. The agent writes only to <code>appointment_slots.status</code>, <code>appointments</code>, and one small table it adds, <code>agent_confirmations</code> (confirmation id, result, time), which is written in the same transaction as each booking change so a repeated "yes" can never book twice; the provided tables are untouched and the nightly reset recreates <code>agent_confirmations</code> empty (architecture refinements (D36)). It never writes customers or invoices.</p>
 <p>One made-up example row per table:</p>
 <table>
@@ -469,7 +474,10 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     VISITORS ||--o{ CONVERSATIONS : "opens"
     CONVERSATIONS ||--o{ MESSAGES : "contains"
     MESSAGES ||--o| RECEIPTS : "is explained by"
+    MESSAGES ||--o{ SENTENCES : "is released as"
     CONVERSATIONS ||--o{ TICKETS : "raises"
+    TICKETS ||--o{ TICKET_MESSAGES : "gathers"
+    MESSAGES ||--o{ TICKET_MESSAGES : "is added to"
     MESSAGES ||--o{ FLAGS : "is flagged by staff"
     VISITORS {
         TEXT visitor_id PK "random id held in the signed cookie"
@@ -499,6 +507,16 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         INTEGER full_reply_ms "time to the whole reply"
         INTEGER cost_microdollars "AI cost of this reply"
     }
+    SENTENCES {
+        INTEGER sentence_id PK "whole number, in release order"
+        INTEGER message_id FK "agent reply it belongs to"
+        TEXT text_masked "one checked sentence, masked"
+        TEXT created_at "real time it was released"
+    }
+    TICKET_MESSAGES {
+        INTEGER ticket_id FK "ticket"
+        INTEGER message_id FK "a later caller message added to it"
+    }
     RECEIPTS {
         INTEGER message_id PK "the agent reply explained"
         TEXT safety_result "clear, danger, burning or urgent"
@@ -506,7 +524,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT passages "dated sources used, as JSON text"
         TEXT excluded "stale documents left out"
         TEXT db_action "lookup or transaction done"
-        TEXT outcome_label "supported, not enough evidence, handoff required"
+        TEXT outcome_label "engine outcome: answered, handed_off, declined, redirect, safety, limit, ended"
     }
     TICKETS {
         INTEGER ticket_id PK "ticket number shown to the caller"
@@ -517,7 +535,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT tried "what the agent did"
         TEXT constraints "emergency, disputed fee, gap"
         TEXT mood "caller's mood"
-        TEXT reason_tag "dispute, emergency, burning smell, late technician, complaint, commercial, action gap, decline, billing review, warranty review"
+        TEXT reason_tag "dispute, emergency, burning smell, late technician, complaint, commercial, action gap, decline, billing review, warranty review, not identified, new customer, not enough evidence, blocked reply, unclear, error, other"
         INTEGER priority "2 emergency, 1 normal, 0 low"
         TEXT status "open or closed"
         TEXT created_at "real time created"
@@ -530,7 +548,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT created_at "when flagged"
     }</pre>
 <p><em>Each visitor opens conversations; each message may carry a receipt; conversations raise tickets; staff flags point at single replies.</em></p>
-<p>How they link, in words: each conversation belongs to exactly one visitor; each message belongs to exactly one conversation; each agent message has at most one receipt; each ticket belongs to at most one conversation (silent billing-review tickets have none) and may refer to one appointment, and messages after a handoff stay in the same conversation so the ticket shows them; each flag points at exactly one agent message. Every query for a conversation, its messages, receipts or tickets filters by both the conversation id and the signed visitor id, unless the request carries a staff session.</p>
+<p>How they link, in words: each conversation belongs to exactly one visitor; each message belongs to exactly one conversation; each agent message has at most one receipt and is saved as the checked sentences released for it, in order, which the stream replays after a reconnect; each ticket belongs to at most one conversation (silent billing-review tickets have none) and may refer to one appointment, and messages after a handoff stay in the same conversation and are linked to the ticket (ticket messages) so the ticket shows them; each flag points at exactly one agent message. Every query for a conversation, its messages, receipts or tickets filters by both the conversation id and the signed visitor id, unless the request carries a staff session.</p>
 <table>
 <thead><tr><th>Table</th><th>Example row</th></tr></thead>
 <tbody>
@@ -673,19 +691,21 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     D--&gt;&gt;E: one appointment, 22 Oct 08:00-12:00
     E--&gt;&gt;B: 3. state any 24-hour fee, offer new slots
     B-&gt;&gt;E: 4. picks a new slot and confirms
-    E-&gt;&gt;SC: 5. original status of the old slot
-    SC--&gt;&gt;E: reserved_members
-    E-&gt;&gt;D: 6. one transaction: book new, free old
+    E-&gt;&gt;D: 5. one transaction: recheck and book new
+    D-&gt;&gt;SC: 6. read old slot's original status
+    SC--&gt;&gt;D: reserved_members
+    D-&gt;&gt;D: 7. move appointment and restore old slot
     D--&gt;&gt;E: done
-    E--&gt;&gt;B: 7. confirmation and proof receipt</pre>
+    E--&gt;&gt;B: 8. confirmation and proof receipt</pre>
 <p><em>How moving an appointment keeps the database consistent and restores the old slot correctly.</em></p>
 <ol>
 <li>The identified caller asks to move an appointment.</li>
 <li>The engine reads the caller's scheduled appointments; if there are several it asks which one, reading back only date, window, service and technician.</li>
 <li>If the window starts within 24 hours of "now", the agent states the $49 fee before the caller confirms; a waiver request would hand off.</li>
 <li>The caller picks one of the offered slots and confirms.</li>
-<li>The engine reads the old slot's status in the seed copy; if the seed shows it as booked (a seeded appointment), the slot will be freed to open.</li>
-<li>One write-locked transaction rechecks the new slot's eligibility, books it, updates the appointment and returns the old slot to its seed status (here members-only, not open). Cancelling is the same without the new booking. Both carry a confirmation id, so a repeat returns the first result.</li>
+<li>One write-locked transaction rechecks the new slot's eligibility and books it.</li>
+<li>Inside it, the old slot's status is read from the seed copy; if the seed shows it as booked (a seeded appointment), the slot is freed to open.</li>
+<li>The appointment moves and the old slot returns to its seed status (here members-only, not open). Cancelling is the same without the new booking. Both carry a confirmation id, so a repeat returns the first result; if the appointment changed after the read-back, the caller is told plainly that nothing was changed.</li>
 <li>The agent confirms with a proof receipt.</li>
 </ol>
 <h4>5.4 An account question with a fee mismatch</h4>
@@ -882,6 +902,10 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <h3>12. Code structure</h3>
 <pre class="mermaid">flowchart TB
     WEB["web: routes, pages, stream, staff auth"] --&gt;|"calls"| CORE["core: conversation engine"]
+    CORE --&gt;|"calls"| FLOWS["flows: identify, account, knowledge, scheduling"]
+    FLOWS --&gt;|"call"| KNOW
+    FLOWS --&gt;|"call"| ACCT
+    FLOWS --&gt;|"call"| SCHED
     CORE --&gt;|"calls"| SAFE["safety"]
     CORE --&gt;|"calls"| ROUTE["routing"]
     CORE --&gt;|"calls"| KNOW["knowledge"]
@@ -898,7 +922,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <thead><tr><th>Folder</th><th>Contents</th></tr></thead>
 <tbody>
 <tr><td><code>app/web/</code></td><td>Page routes, the chat stream, the Staff view, cookie and staff-password handling</td></tr>
-<tr><td><code>app/core/</code></td><td>Conversation engine, conversation state, the pipeline order</td></tr>
+<tr><td><code>app/core/</code></td><td>Conversation engine, conversation state, the pipeline order, the per-message deadline and the model-call recorder (<code>model_log.py</code>)</td></tr>
+<tr><td><code>app/flows/</code></td><td>Shared flow protocol and the identify, account, knowledge and scheduling flows the engine calls</td></tr>
 <tr><td><code>app/safety/</code></td><td>Emergency patterns, normalisation, fixed safety replies</td></tr>
 <tr><td><code>app/routing/</code></td><td>Haiku router call and its structured result</td></tr>
 <tr><td><code>app/knowledge/</code></td><td>Index loading, keyword and meaning search, rank fusion keeping each list's top result, threshold</td></tr>
@@ -908,6 +933,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>app/replies/</code></td><td>Sonnet writer, reply types, sentence checks, internal-text match</td></tr>
 <tr><td><code>app/ops/</code></td><td>Operations database, logging and masking, spending and rate limits, alerts, nightly reset, purge</td></tr>
 <tr><td><code>app/config.py</code></td><td>Pinned model IDs, fixed "now", thresholds and limits</td></tr>
+<tr><td><code>app/cli.py</code></td><td>A terminal chat on fresh database copies</td></tr>
 <tr><td><code>pipeline/</code></td><td>Transcript loading and template grouping (with families), Haiku, Codex and Fable labeling and the blind-third sheet, label agreement, staff policy-error checks, zone capacity counts, the document list, conflict register and format conversion, index build, and the findings document <code>docs/FINDINGS.md</code>; it uses the app's zone map (<code>app/scheduling/zones.py</code>) and settings</td></tr>
 <tr><td><code>eval/</code></td><td>Test-set builder (caller cards, fixtures), simulator, Codex grader, metrics and reports</td></tr>
 <tr><td><code>data/</code></td><td>Document list, conflict register, converted documents (<code>data/kb_text/</code>), the hand transcription of the holiday-hours image, templates, labels, built index, test set, results</td></tr>
@@ -1702,7 +1728,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D41: How does combined search merge the keyword and meaning-based lists?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-18</li>
 <li><strong>Options:</strong>
 <ul>
@@ -1719,7 +1745,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D42: The review of the milestone 2 fixes found more errors in the rebuilt test cases (requests still unlisted, the cancel case on the wrong appointment, a Plus member asking to join, paid invoices shown as owed, evidence spans missing facts). Fix them and refreeze the held-out set again?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Replaces:</strong> "The milestone 2 reviews found errors in the frozen test cases (caller scripts kept the transcript's identity, wrong planted invoices, two-request calls expecting only a handoff, evidence spans tied to the chunker). Fix them and refreeze the held-out set, or leave the frozen set alone?" (D40)</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-18</li>
 <li><strong>Options:</strong>
@@ -1734,6 +1760,24 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul></li>
 <li><strong>Choice:</strong> Fix and refreeze. Every request beyond a call's labelled reason comes from a reviewed list (data/case_requests.csv) quoting the caller's words; seeded appointments are the customer's only upcoming one and match the service the caller describes; a caller asking to join is drawn as a non-member; charged-twice and refund invoices are planted paid; evidence spans cover every number in the reference, tested. The split is unchanged (37 working, 15 held out); the hash moves from 9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c to 4423a9632bcd38f06b7945585c8bdf43bb005f5b038345d5a8b921cd303afa46. The nine waitlist calls also list "an earlier slot" as a request, handled when the agent offers the earliest eligible slots; a "wants an earlier slot" ticket is also correct but counts as a handoff (R44). New reference answers: upgrading mid-year (held out) and cancelling before renewal; the replacement-estimate answer no longer claims the advisor confirms the price, which no document says.</li>
 <li><strong>Reason:</strong> No agent exists yet, so refreezing is still allowed (R10); held-out cases with wrong data would make the final measurements wrong.</li>
+</ul>
+<h3>D43: How are money promises in replies and money or membership action requests detected, after three review rounds showed word patterns failing in both directions?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-18</li>
+<li><strong>Options:</strong>
+<ul>
+<li>A Haiku check on every reply sentence that touches money, plus fixed code rules, failing closed; the router decides action requests, with a code backstop only for unmistakable requests</li>
+<li>Keep word patterns for both and fix each reported phrasing</li>
+<li>Accept the known gaps and measure them in the evaluation milestone</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/gates/milestone-3.md">docs/gates/milestone-3.md</a>: Three review rounds (Codex and fresh Claude agents, about 160 probe phrasings) found pattern checks both missing promises ('we won't charge you', 'it's on us') and blocking published terms, with each round trading one set of errors for another.</li>
+<li><a href="data/results/money_check/summary.json">data/results/money_check/summary.json</a>: On 108 labelled reply sentences (61 promises, 47 published or ordinary), the full sentence check caught 61 of 61 promises and released 47 of 47 others; the instructions were tuned on this set, so it is a working-set result.</li>
+</ul></li>
+<li><strong>Choice:</strong> Every reply sentence that mentions money (a fee, charge, cost, price, $, free, refund, credit, discount, waive, owe, bill or payment) is checked by Claude Haiku 5.5 against the published money terms and the sentence before it, after the fixed code rules (firm totals, waitlists, breaker advice, internal text, and promises worded as a personal favour). A refusal, error, timeout or unreadable answer blocks the sentence; a pipeline with no money check configured blocks every money sentence. The router decides money and membership action requests; a code backstop catches only requests that are never questions (payment links, autopay, cancelling the membership or auto-renew, refunds, fee waivers, paying a bill, signing up for the plan), on every route except a handoff. The labelled sets are kept in data/eval/ (money_sentences.jsonl, action_requests.jsonl) and measured in the evaluation milestone on fresh sentences and through the router.</li>
+<li><strong>Reason:</strong> Promise and request wording is open-ended; a model reads paraphrase that patterns cannot, and failing closed keeps errors on the safe side. Only sentences about money pay the extra time (about half a second each, a fraction of a cent), so most replies keep their speed. The spec's reply-check rule (R42) still holds: code decides and acts on every check.</li>
 </ul>
 <h3>Glossary</h3>
 <ul>
@@ -1761,6 +1805,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Embedding:</strong> a list of numbers representing a text's meaning, used to find similar text</li>
 <li><strong>Escalate:</strong> hand the call to a human</li>
 <li><strong>Expected outcome:</strong> the result a test case should have (contained, handed off or clean decline), fixed before tuning</li>
+<li><strong>Fail closed:</strong> when a check cannot give an answer, treat it as a failure, so the sentence is blocked rather than shown</li>
 <li><strong>Fixture:</strong> prepared test data loaded into a test copy of the database</li>
 <li><strong>Grader:</strong> a model that scores whether the agent's answer was correct</li>
 <li><strong>Ground-truth label:</strong> the label treated as correct when measuring accuracy</li>
@@ -1983,6 +2028,180 @@ tests/test_engine_interface.py ....                                      [100%]
 </table>
 <p><strong>Author's choices on the review of the fixes:</strong> fix everything recommended: a reviewed list of every request in each case (written from the scripts, checked by a fresh agent), read by the builder; seeded appointments matched on service type and preferring customers with one upcoming appointment; callers asking to join drawn as non-members; paid invoices for the charged-twice and refund calls; evidence spans covering every fact in the reference, with a test; coverage over the knowledge questions callers ask, weighted by calls; fuller run settings; fixture id ranges documented; stronger tests; no change to the reschedule case; one more held-out refreeze, recorded as a new decision replacing D40.</p>
 <p><strong>After the second round.</strong> A fresh Claude agent checked the reviewed request list against the full transcripts: 43 of 52 cases complete; the 9 waitlist calls lacked the caller's request for an earlier slot, now added (handled when the agent offers the earliest eligible slots; a "wants an earlier slot" ticket is also correct but counts as a handoff), at the author's choice. Held-out hash now 4423a9632bcd38f06b7945585c8bdf43bb005f5b038345d5a8b921cd303afa46 (D42, proposed). Retrieval answers rerun on the test key for the current questions.</p>
+<h3>Milestone 3 gate</h3>
+<p>Reviews of this milestone compare against <code>tortoise/milestone-2</code>, the last approval.</p>
+<h4>Tests</h4>
+<p><strong>Passed:</strong> <code>python -m pytest</code> finished with exit code 0.</p>
+<pre><code>rootdir: /home/lucyc/gauntlet/AI_Call_Center_Agent
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.15.1, langsmith-0.14.11
+collected 432 items
+
+tests/accounts/test_accounts.py ........................................ [  9%]
+.........                                                                [ 11%]
+tests/core/test_engine.py ..................                             [ 15%]
+tests/eval/test_cases.py ...........................................     [ 25%]
+tests/eval/test_retrieval_metrics.py ..................                  [ 29%]
+tests/flows/test_conversations.py ...................................... [ 38%]
+.....................................                                    [ 46%]
+tests/flows/test_knowledge.py ....                                       [ 47%]
+tests/handoff/test_handoff.py ..........                                 [ 50%]
+tests/knowledge/test_search.py ..............                            [ 53%]
+tests/ops/test_store.py ...........                                      [ 56%]
+tests/pipeline/test_documents.py .........                               [ 58%]
+tests/pipeline/test_findings.py .....................                    [ 62%]
+tests/pipeline/test_labels.py ..............                             [ 66%]
+tests/pipeline/test_templates.py .........                               [ 68%]
+tests/replies/test_checks.py ...............................             [ 75%]
+tests/safety/test_safety.py ............................................ [ 85%]
+......                                                                   [ 87%]
+tests/scheduling/test_eligibility.py ...........................         [ 93%]
+tests/scheduling/test_transactions.py ...............                    [ 96%]
+tests/test_config.py ..........                                          [ 99%]
+tests/test_engine_interface.py ....                                      [100%]
+
+============================= 432 passed in 16.49s =============================</code></pre>
+<h4>Requirement coverage</h4>
+<p>Every requirement in SPEC.md is named by a task in PLAN.md.</p>
+<h4>Tasks</h4>
+<p>Every task in milestone 3 is ticked (9 of 9).</p>
+<h4>Architecture check</h4>
+<p>Run by Codex (gpt-5.6-sol, per-run override) and by a fresh Claude agent, both using <code>prompts/architecture-check.md</code>.</p>
+<p><strong>Both found:</strong></p>
+<ul>
+<li>An engine failure ends with an error done event but no handoff message, though the document says the handoff flow turns it into one; the 15-second deadline covers only flow steps, not routing or writing.</li>
+<li><code>agent_confirmations</code> is not drawn in the scheduling database diagram.</li>
+<li>Switching to a different customer's account mid-conversation is not documented.</li>
+</ul>
+<p><strong>Only the Claude agent found:</strong></p>
+<ul>
+<li>Errors are written only to the server log, never recorded as events, so the error alert has nothing to count.</li>
+<li>The dispute ticket's constraints do not carry the fee mismatch (flow 5.4, step 6).</li>
+<li>Receipts: <code>excluded</code> is always empty, passages lack dates, the route lacks clear or unclear; outcome labels differ from the document.</li>
+<li>An idle conversation mid-flow should become "abandoned", not "closed"; ending a chat when the caller ends it is not built.</li>
+<li>No retry of the operations write after a committed booking.</li>
+<li>Not documented: the acknowledgement shortcut past the router, several requests per message sharing one ticket, the closed-conversation reply, <code>app/flows/</code>, the model-call recorder and the terminal chat; the reply-check list and the "blocked sentence" event name need updating.</li>
+</ul>
+<p><strong>Only Codex found:</strong></p>
+<ul>
+<li>The status paragraph is stale.</li>
+<li>After a plumbing decline the booking flow is left half open, and every capacity decline names "hvac repair".</li>
+<li>The reschedule diagram reads the seed before the transaction; the code reads it inside.</li>
+<li>The emergency ticket is created before the safety advice is released.</li>
+<li>The router's output limit is 2,000 tokens in code against 200 in settings (Milestone 1 found Haiku returns no JSON at 200).</li>
+</ul>
+<h4>Reviews</h4>
+<p>Code reviews of <code>git diff tortoise/milestone-2</code> by Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent, both using <code>prompts/code-review.md</code>. Claude ran all 301 tests (passed) and reproduced each finding with offline probes; Codex ran 57 (the rest need a writable temporary folder) and probed in memory.</p>
+<table>
+<thead><tr><th>Finding</th><th>Codex</th><th>Claude</th></tr></thead>
+<tbody>
+<tr><td>Safety: "No, but I smell gas" and "not sure, I smell gas" pass as clear (a negation in another clause cancels the trigger)</td><td></td><td>yes (top)</td></tr>
+<tr><td>Safety: "natural gas" and "gas odor" pass as clear</td><td>yes (top)</td><td></td></tr>
+<tr><td>Breaker-reset advice is never blocked after a burning smell (the rule is unused; the troubleshooting FAQ says to reset a breaker)</td><td></td><td>yes (top)</td></tr>
+<tr><td>A hedged "ok" or "sure" ("ok wait, is there a fee?") counts as a clear yes and changes the database</td><td></td><td>yes (top)</td></tr>
+<tr><td>Slot choice: "the Tuesday one" picks Monday ("one" is read as first); calendar dates ("October 22", "the 22nd", "10/22") are not understood; an explicit date loops in a reschedule</td><td></td><td>yes (top)</td></tr>
+<tr><td>An unidentified caller's second account or scheduling request is dropped, and a later question gets its answer</td><td></td><td>yes (top)</td></tr>
+<tr><td>A step past the deadline keeps running and can commit a booking after the caller was told it was handed off; the router and writer are outside the deadline</td><td>yes (top)</td><td>yes</td></tr>
+<tr><td>Operations database down: no message to the caller and nothing logged; a log write after a committed booking can hide the confirmation</td><td>yes (top)</td><td>yes</td></tr>
+<tr><td>Reply checks miss passive and synonymous promises ("the fee will be waived for you", "a refund has been issued", "you qualify for a 20 percent discount", "I've removed the charge")</td><td>yes (top)</td><td></td></tr>
+<tr><td>A cancellation or reschedule that finds nothing still says it succeeded</td><td>yes (top)</td><td></td></tr>
+<tr><td>Idle close: mid-flow should be abandoned; a message arriving during the sweep can be closed</td><td>yes</td><td>yes</td></tr>
+<tr><td>A decline forgets the requested service ("no hvac repair availability" for plumbing)</td><td>yes</td><td>(architecture)</td></tr>
+<tr><td>Receipts lose the dated passages and excluded documents</td><td>yes</td><td>(architecture)</td></tr>
+<tr><td>The dispute ticket lacks the fee mismatch; "tried" omits lookups</td><td></td><td>yes</td></tr>
+<tr><td>Street pattern false positives ("15 years old way", "2 systems at my place") count as identity attempts and are masked</td><td></td><td>yes</td></tr>
+<tr><td>Router output limit hard-coded at 2,000</td><td>yes</td><td>yes</td></tr>
+<tr><td>A different scheduling action mid-flow (book, then "cancel my other appointment") is treated as a follow-up</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Conversation ownership is not checked in the core</td><td>yes (unclear)</td><td>yes (unclear)</td></tr>
+<tr><td>The action-gap code check is unused; the router alone decides</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>The warranty flag is set on plumbing, tune-up and estimate bookings for a recent install</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>No "wants an earlier slot" ticket path</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Tests too weak to catch the above (safety phrasing, hedged yes, dates, multi-request, deadline side effects, ops failure, echo writer, failed cancel)</td><td>yes</td><td>yes</td></tr>
+</tbody>
+</table>
+<h4>Author's choices</h4>
+<p>The author chose to fix everything recommended (items 1 to 22):</p>
+<ul>
+<li><strong>Safety:</strong> negations count only within their own clause; gas synonyms added; breaker-reset advice blocked once a conversation mentions burning; promise checks match what is promised (waived, refunded, removed, credited, discounted), not who says it.</li>
+<li><strong>Database changes:</strong> only a plain yes confirms; failed changes are reported plainly; one cooperative per-message deadline (no background thread), checked before each model call, before each commit and between sentences; every failure path gives the phone-the-office message and is logged; a committed booking is always confirmed, with a retried log write.</li>
+<li><strong>Wrong answers:</strong> dates before ordinal words, calendar dates understood, the reschedule loop fixed; every waiting request answered after identification; declines keep the service and close the flow; street pattern needs a street-type word.</li>
+<li><strong>Records:</strong> dated passages and excluded documents in receipts; the fee mismatch and lookups in the dispute ticket; errors recorded as events; idle mid-flow conversations abandoned, the idle sweep safe against a new message, and the caller can end a chat; safety advice before the ticket; router output limit set to 2,000 in settings with the reason.</li>
+<li><strong>Open questions, all yes:</strong> the core checks conversation ownership; the action-request code check backs up the router; the warranty flag only on HVAC repair visits; a "wants an earlier slot" ticket when the earliest slots are not enough; a different scheduling action counts as a new topic.</li>
+<li><strong>Documentation and tests:</strong> all architecture updates; a test for every finding, an engine test with the operations database unavailable, and a fake writer that breaks rules.</li>
+</ul>
+<h4>Review of the fixes</h4>
+<p>Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent reviewed <code>git diff 7a2979c..HEAD</code> against every finding and chosen fix above. Claude ran all 358 tests (passed); both reproduced their findings with offline probes. Most findings are fixed; these remain or are new.</p>
+<table>
+<thead><tr><th>Finding</th><th>Codex</th><th>Claude</th></tr></thead>
+<tbody>
+<tr><td>A goodbye closes the chat, and the next message ("actually wait, I smell gas") gets the closed text with no safety reply (the status check runs before safety)</td><td></td><td>yes (top)</td></tr>
+<tr><td>"C.O." is no longer understood ("the C.O. alarm is going off" is clear): punctuation became a clause mark before the swap</td><td></td><td>yes (top)</td></tr>
+<tr><td>A booking can still commit after the deadline (checked before the transaction, not before its commit)</td><td>yes (top)</td><td></td></tr>
+<tr><td>A committed booking can go unconfirmed: a failed warranty-review ticket, a writer failure or the deadline passing in the writer</td><td>yes (top)</td><td>yes (top)</td></tr>
+<tr><td>Sentence checks now block published terms ("as a member, your diagnostic fee will be waived", "credited toward the repair", "the pending authorization will be removed"), while some real promises still pass ("I'll refund you the $89", "we'll credit your account")</td><td></td><td>yes (top)</td></tr>
+<tr><td>Picking by number is worse: a bare "2" loops; "the 2nd one" is read as 2 November</td><td></td><td>yes (top)</td></tr>
+<tr><td>A failed billing-review ticket is never retried (the invoice is marked reviewed first)</td><td>yes (top)</td><td></td></tr>
+<tr><td>The idle sweep can still close a conversation receiving a message (message insert and time update are separate writes)</td><td>yes (top)</td><td></td></tr>
+<tr><td>The burning-smell rule forgets after 20 stored messages</td><td>yes (top)</td><td>yes (unclear)</td></tr>
+<tr><td>Stale documents missing from receipts: unquoted commas in <code>data/document_list.csv</code> cut the reason column</td><td></td><td>yes</td></tr>
+<tr><td>Real street names with "Old" or "The" ("1200 Old Mill Rd") are no longer masked</td><td></td><td>yes</td></tr>
+<tr><td>"Yes, Tuesday works" at a Monday read-back books Monday</td><td></td><td>yes</td></tr>
+<tr><td>A "no" or "yes" before a new scheduling action ("no, cancel my other appointment") hides the switch</td><td>yes</td><td>yes</td></tr>
+<tr><td>The action-request backstop covers only the account route</td><td>yes</td><td>yes (unclear)</td></tr>
+<tr><td>A past date this month ("October 10") stays in the past</td><td>yes</td><td>yes (low)</td></tr>
+<tr><td>Failed state or receipt writes are silently dropped on a normal turn</td><td>yes</td><td></td></tr>
+<tr><td>A complete reply whose last sentence lands after 15 seconds also gets a handoff ticket</td><td></td><td>yes</td></tr>
+<tr><td>The dispute note is added to every later ticket, including emergencies; "anything earlier?" twice opens two tickets; "ok, all set" at a read-back ends the chat</td><td></td><td>yes</td></tr>
+<tr><td>Receipt outcome labels are engine words, not the plain labels of the reply receipt (R71)</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Each model call's timeout applies per attempt, so one retry can double it</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Tests miss each of the above</td><td>yes</td><td>yes</td></tr>
+</tbody>
+</table>
+<p><strong>Author's choices on the review of the fixes:</strong> fix everything recommended (items 1 to 21): safety before the closed check, abbreviations before clause marks, a lasting burning-smell flag; the deadline checked inside the transaction before commit; confirmations of committed changes as fixed sentences; a yes naming another day does not count; slot numbers and "the Nth one" pick slots; no handoff after a finished reply; "all set" is not a goodbye; sentence checks retuned and tested against every customer-document sentence; the document list quoted; the street denylist only for the word after the number, tested on every seeded address; message and time saved together; billing review marked after its ticket; a failed state save is an operations failure; billing notes only on billing tickets and one earlier-slot ticket; plain receipt labels; only a bare yes or no is a confirmation; the action backstop on scheduling and unambiguous knowledge requests; past dates told as passed; each model attempt gets half the time left.</p>
+<h4>Second review of the fixes</h4>
+<p>Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent reviewed <code>git diff 2cb2201..HEAD</code>. Claude ran all 397 tests and compared probes against the code before this round; Codex probed in memory. Most of the 21 items are fixed; these remain or are new, several of them regressions.</p>
+<table>
+<thead><tr><th>Finding</th><th>Codex</th><th>Claude</th></tr></thead>
+<tbody>
+<tr><td>The abbreviation joiner joins across sentences: "It's not breaker B. I smell gas" is now clear (regression)</td><td></td><td>yes (top)</td></tr>
+<tr><td>The action backstop hands off questions and bookings ("how much does it cost to join", "what's your refund policy", "sign me up for a tune-up") (regression)</td><td></td><td>yes (top)</td></tr>
+<tr><td>Strict mode drops imperative payment requests ("I want to pay my bill")</td><td>yes (top)</td><td></td></tr>
+<tr><td>Promise checks: a published-terms word excuses a real waiver ("since you're a member, the late fee will be waived this time"); split sentences escape ("The fee is $89." "It will be waived for you."); ordinary sentences are blocked ("we take Visa ... for your invoice")</td><td>yes (top)</td><td>yes (top)</td></tr>
+<tr><td>The writer is no longer bounded by the deadline (the check between sentences was removed)</td><td>yes (unclear)</td><td>yes (top)</td></tr>
+<tr><td>Slot numbers beat dates ("first thing in the morning on Tuesday" picks Monday's first slot) (regression)</td><td></td><td>yes (top)</td></tr>
+<tr><td>"Yes, please confirm it" routed as a confirm request drops the booking; "Yes, Monday morning is fine" at a Monday read-back does not book; "yes, 12-4 works" books whatever was read back</td><td>yes</td><td>yes</td></tr>
+<tr><td>A failed warranty-review ticket is lost after the booking commits</td><td>yes (top)</td><td></td></tr>
+<tr><td>Receipt writes still fail silently</td><td>yes (top)</td><td></td></tr>
+<tr><td>Membership action-gap tickets receive invoice notes</td><td>yes</td><td></td></tr>
+<tr><td>The per-attempt timeout's 0.5-second floor can exceed the time left</td><td>yes</td><td></td></tr>
+<tr><td>The burning-smell flag is not used by the burning-plus-breaker danger rule; the closed path reads 200 messages and the main path 20</td><td></td><td>yes</td></tr>
+<tr><td>A writer instruction reaches the caller word for word ("Offer to check the caller's appointments again."); fixed confirmations show ISO dates and 24-hour windows</td><td></td><td>yes</td></tr>
+<tr><td>"I'm good" no longer ends a chat (regression); only the first tag of a combined ticket is remembered</td><td></td><td>yes</td></tr>
+<tr><td>Small: a race between the status read and the message insert; "3 the way it went down" masked as a street; confirmations skip the sentence checks</td><td></td><td>yes (low)</td></tr>
+<tr><td>Tests miss each of the above</td><td>yes</td><td>yes</td></tr>
+</tbody>
+</table>
+<p><strong>Author's choices on the second review:</strong> fix everything recommended (items 1 to 14), changing approach for two parts: the promise checks become deny by default (any concession word is blocked unless it matches an approved published term from the documents, judged with the sentence before it), and the action backstop catches only explicit requests on any route, leaving questions to the router; plus known-abbreviation joining only, the deadline checked before each later sentence, dates narrowing slot choices before ordinals, read-back yes rules, a retried warranty-review ticket, a retried receipt write, invoice notes only on dispute and billing tickets, no timeout floor, the burning flag in the danger rule, caller-facing fixed text, "I'm good" restored and every combined-ticket tag remembered. Left as they are: the narrow status-read race and one street over-mask.</p>
+<h4>Third review of the fixes</h4>
+<p>Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent reviewed <code>git diff 90e5033..HEAD</code> with large phrase sets (Claude: 75 reply sentences, 85 request phrasings, every transcript caller line, whole conversations through the engine, all compared against 90e5033). Fixed and confirmed: the sentence-end safety bug, the writer deadline, dates before slot numbers, read-back yes rules for the reported phrases, the receipt retry, invoice notes, the burning flag, the fixed-text wording, "I'm good" and combined tags. Remaining:</p>
+<table>
+<thead><tr><th>Finding</th><th>Codex</th><th>Claude</th></tr></thead>
+<tbody>
+<tr><td>Approved-term keywords anywhere in the sentence or the one before excuse unrelated concessions ("As a member, the diagnostic fee and the late fee are both waived"; "A 50% discount applies to your next repair"; "Your prorated refund has been issued") (regression)</td><td>yes (top)</td><td>yes (top)</td></tr>
+<tr><td>Promises with no listed word are never checked ("We won't charge you the late fee", "This visit is free of charge", "You'll get your money back", "We'll cover the cost")</td><td></td><td>yes (top)</td></tr>
+<tr><td>Published and ordinary sentences blocked: 15 of 39 in the probe set ("We accept all major credit cards", "There's no charge to cancel more than 24 hours before", "Refunds are handled by our billing team"); "well" read as "we'll" (regression)</td><td>yes</td><td>yes (top)</td></tr>
+<tr><td>Action check: misses ("I’d like a refund" with a curly apostrophe, "Okay, sign me up", "Pay my bill please", "Take me off autopay", "Downgrade me", "Make sure my membership doesn't renew") and false hits ("How do I set up autopay?", "cancel my appointment, plus I have a question") (regressions)</td><td>yes (top)</td><td>yes (top)</td></tr>
+<tr><td>The action backstop skips the handoff and redirect routes</td><td>yes</td><td></td></tr>
+<tr><td>A yes naming a time in other forms still books the read-back slot ("yes, 12-4 works", "Yes, Monday at 1 works")</td><td>yes (top)</td><td></td></tr>
+<tr><td>"Okay, I'm good" at a read-back ends the chat and drops the booking (regression); "I’m good" with a curly apostrophe does not end it</td><td></td><td>yes</td></tr>
+<tr><td>A failed warranty-review ticket is lost if the caller never writes again</td><td></td><td>yes</td></tr>
+<tr><td>A 10-millisecond timeout floor remains</td><td>yes</td><td></td></tr>
+<tr><td>Small: "May I have the 2nd one?" reads "may" as a month; tags recorded even when the ticket save failed; one test asserts a sentence that misstates the refund policy</td><td></td><td>yes</td></tr>
+</tbody>
+</table>
+<p><strong>Author's choices on the third review:</strong> change approach (money promises checked by a model (D43)): every reply sentence about money goes to a Haiku check against the published money terms after the code rules, failing closed; the router decides action requests, with a code backstop for unmistakable requests only. Plus the smaller fixes: times in any form must match the read-back, a goodbye at a read-back needs "bye", curly apostrophes normalised, kept warranty-review tickets in a fallback file retried every message and at startup, no timeout floor, "may" as a month only before a day, tags recorded only when saved.</p>
+<p><strong>Measured after the change:</strong> on the 108 labelled sentences in <code>data/eval/money_sentences.jsonl</code>, the full sentence check caught 61 of 61 promises and released 47 of 47 published or ordinary sentences (<code>data/results/money_check/summary.json</code>); the instructions were tuned on this set, so the evaluation milestone measures it again on fresh sentences. In a real chat the first checked sentence took 2.1 to 4.7 seconds (budget 2.5), to be measured in the evaluation milestone.</p>
 </section>
 <section id="final-checks">
 <h2>Final checks</h2>
