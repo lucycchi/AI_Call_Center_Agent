@@ -51,6 +51,10 @@ def _passages(case: dict) -> list[str]:
 def _account_facts(case: dict, db_path: str | None = None) -> dict:
     facts = {"caller_card": case["caller_card"], "planted": [f["row"] for f in case.get("fixtures", [])],
              "existing_appointment": case.get("appointment")}
+    tier = case["caller_card"].get("membership_tier")
+    if tier in ("standard", "plus"):  # the lookup reads the renewal at the current published price (R46)
+        from app.accounts.fees import MEMBERSHIP_PRICE_CENTS
+        facts["membership_renewal_price"] = f"${MEMBERSHIP_PRICE_CENTS[tier] / 100:,.2f} a year, the current published price"
     if db_path:  # the customer's appointments in the seed, so a real one is not taken for an invented one
         from app.config import SETTINGS
         with sqlite3.connect(SETTINGS.seed_db_path) as seed:

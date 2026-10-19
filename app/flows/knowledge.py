@@ -23,6 +23,10 @@ SUPERSEDED = _superseded()
 
 PRICE_WORDS = re.compile(r"\b(cost|costs|price|prices|pricing|how much|fee|fees|charge|charges|rate|\$)", re.I)
 FINAL_PRICE = "Always add: the technician confirms the final price on site."
+SAVINGS = re.compile(r"\b(save me money|save money|saves? me|pays? for itself|worth it|worth joining)\b", re.I)
+NO_ESTIMATE = ("Do not estimate whether joining would save money on this visit. State the member benefits, and say the "
+               "documents do not say whether they apply to a visit booked on the day of joining, so a team member confirms "
+               "that when setting up the membership.")
 PRICED = {"services/service_catalog.md", "pricing/repair_price_book_2026.csv"}  # typical repair and service prices
 
 
@@ -38,5 +42,7 @@ def answer(question: str, searcher, threshold: float) -> FlowResult:
     excluded = list(dict.fromkeys(old for document in sources for old in SUPERSEDED.get(document, [])))
     # The final-price line is for typical repair and service prices, not fixed fees or membership prices.
     reply_type = "price answer" if PRICE_WORDS.search(question) and PRICED & set(sources) else "policy answer"
+    if SAVINGS.search(question):
+        facts = facts + [NO_ESTIMATE]
     return FlowResult(facts + ([FINAL_PRICE] if reply_type == "price answer" else []), reply_type, sources,
                       passages=passages, excluded=excluded)

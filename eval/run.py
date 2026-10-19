@@ -90,7 +90,13 @@ def run_graded(cases: list[dict], name: str, cap_usd: float | None = None):
 
     def codex(prompt):
         return runner(prompt)
-    firsts = grade_attempts(run_all_once(cases, 1), by_id, codex)
+    def keep_ungraded(batch, label):  # saved before grading, so a grading failure loses no conversations
+        with (out / f"ungraded-{label}.jsonl").open("w") as handle:
+            for a in batch:
+                handle.write(json.dumps(asdict(a)) + "\n")
+        return batch
+
+    firsts = grade_attempts(keep_ungraded(run_all_once(cases, 1), "first"), by_id, codex)
     retries = grade_attempts(run_all_once([by_id[a.case_id] for a in firsts if a.all_correct is False], 2), by_id, codex) \
         if not stopped else []
     attempts = firsts + retries

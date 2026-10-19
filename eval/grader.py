@@ -7,6 +7,7 @@ import os
 import random
 import subprocess
 import tempfile
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -81,15 +82,21 @@ def codex_command(prompt: str, out: str) -> list[str]:
     return ["codex", "exec", "-m", CODEX_MODEL, "-s", "read-only", "--ephemeral", "-o", out, prompt]
 
 
-def codex_runner(prompt: str) -> str:
-    with tempfile.TemporaryDirectory() as folder:
-        out = Path(folder) / "verdicts.txt"
-        result = subprocess.run(codex_command(prompt, str(out)), capture_output=True, text=True, stdin=subprocess.DEVNULL,
-                                timeout=900)
-        if out.exists() and out.read_text().strip():
-            return out.read_text()
-        errors = [line for line in (result.stdout + result.stderr).splitlines() if "ERROR" in line]
-        raise GraderError(f"Codex returned no verdicts: {errors[-1] if errors else 'no error message'}")
+def codex_runner(prompt: str, attempts: int = 5, wait_s: float = 120) -> str:
+    """One Codex run; when the model is at capacity, wait and try again (up to five tries, two minutes apart)."""
+    for attempt in range(1, attempts + 1):
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "verdicts.txt"
+            result = subprocess.run(codex_command(prompt, str(out)), capture_output=True, text=True, stdin=subprocess.DEVNULL,
+                                    timeout=900)
+            if out.exists() and out.read_text().strip():
+                return out.read_text()
+            errors = [line for line in (result.stdout + result.stderr).splitlines() if "ERROR" in line]
+            message = errors[-1] if errors else "no error message"
+        if "capacity" not in message.lower() or attempt == attempts:
+            raise GraderError(f"Codex returned no verdicts: {message}")
+        time.sleep(wait_s)
+    raise GraderError("Codex returned no verdicts")
 
 
 def api_runner(prompt: str) -> str:

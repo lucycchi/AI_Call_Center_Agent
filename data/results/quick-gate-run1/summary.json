@@ -1,0 +1,28 @@
+{
+ "containment": 0.3880597014925373,
+ "containment_without_redirects": 0.359375,
+ "scope_ceiling": 0.7014925373134329,
+ "adjusted_ceiling": 0.6194029850746269,
+ "action_gap": 0.029850746268656716,
+ "wrong_confident": 0.029850746268656716,
+ "knowledge_accuracy": 0.9090909090909091,
+ "routing_accuracy": 1.0,
+ "handoff_correct_safety_and_booking": 0.5555555555555556,
+ "handoff_correct_other": 1.0,
+ "booking_correct": 1.0,
+ "lookup_correct": 0.9296875,
+ "clean_declines": 2,
+ "flaky": [],
+ "interval_low": 0.16666666666666666,
+ "interval_high": 0.6470588235294118,
+ "scenarios": 20,
+ "weighted_calls": 134,
+ "human_baseline": null,
+ "human_baseline_excluding_actions": null,
+ "stopped_at_budget": false,
+ "extra": {
+  "spent_usd": 0.4859,
+  "grader_model": "gpt-5.6-sol",
+  "ticket_actionable": 0.6923076923076923
+ }
+}

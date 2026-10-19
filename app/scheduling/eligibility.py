@@ -67,8 +67,16 @@ def eligible_slots(db: sqlite3.Connection, customer, service_type: str, now: dat
     booked = {}
     for tech, day, window in db.execute("select tech_id, slot_date, window from appointment_slots where status = 'booked'"):
         booked.setdefault((tech, day), []).append(window)
+    # The caller's own scheduled visits: never offer a slot overlapping one of them.
+    own = {}
+    customer_id = getattr(customer, "customer_id", None)
+    if customer_id:
+        for day, window in db.execute("select s.slot_date, s.window from appointments a join appointment_slots s using (slot_id) "
+                                      "where a.customer_id = ? and a.status = 'scheduled'", (customer_id,)):
+            own.setdefault(day, []).append(window)
     return [slot for slot in map(lambda row: Slot(*row), rows)
-            if _starts(slot, now) > now and not any(_overlaps(slot.window, w) for w in booked.get((slot.tech_id, slot.slot_date), []))]
+            if _starts(slot, now) > now and not any(_overlaps(slot.window, w) for w in booked.get((slot.tech_id, slot.slot_date), []))
+            and not any(_overlaps(slot.window, w) for w in own.get(slot.slot_date, []))]
 
 
 def _wanted(slot: Slot, requested: DateRequest) -> bool:

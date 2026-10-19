@@ -22,7 +22,8 @@ PUBLISHED_TERMS = """- Diagnostic visit $89 for non-members, credited toward a r
 - After-hours emergency dispatch $149 for non-members; waived for members. Holiday emergency dispatch $199.
 - Seasonal tune-up $129 for non-members; included twice a year for members.
 - Late cancellation or reschedule inside 24 hours: $49 for everyone; free more than 24 hours before the window. No-show $89 for non-members, $0 for members.
-- Members get 15% off repairs; Plus members also 15% off plumbing repairs; members get $500 off a full system replacement (also said as "$500 off a replacement" or "a new system").
+- Members get 15% off repairs; Plus members also 15% off plumbing repairs; members get $500 off a full system replacement (also said as "$500 off a replacement" or "a new system", and listed
+  in the fee schedule as a "$500 full system replacement credit" for Standard and Plus).
 - Comfort Club $189 a year per system or $16.99 a month (12-month minimum); Plus $269 a year; upgrade difference $80, prorated.
 - Annual plans: a prorated refund within the first 60 days only if no tune-up was done; non-refundable after a tune-up.
 - Free in-home replacement estimate. Price-book and catalog ranges are typical prices; the technician confirms the final price on site.

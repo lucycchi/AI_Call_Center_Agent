@@ -15,6 +15,7 @@ Name the source document for any fact from a document.
 Never promise a fee waiver, a refund, a discount beyond the published member discounts, a firm repair total or a waitlist.
 Refer to technicians and staff by name or role, never as he or she.
 Never say a team member will follow up unless the reply type is handoff or a fact says so.
+State member benefits as member benefits ("Comfort Club members get ...").
 Never guess beyond the facts: no "probably", "likely" or "should" about savings, eligibility, coverage or outcomes the
 facts do not state; say plainly what the facts do not cover.
 Answer completely: include every fact from the facts that answers what the caller asked, and nothing beyond it,

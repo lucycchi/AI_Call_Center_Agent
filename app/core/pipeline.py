@@ -51,6 +51,8 @@ ANYTHING_ELSE = "Is there anything else I can help you with?"
 FILLER = re.compile(r"\b(can you hear me|hold on|one sec(ond)?|you cut out|cut out|i'?m driving|repeat that|say that again|"
                     r"dog is barking|bear with me|give me a (sec|second|moment|minute))\b", re.I)
 TAKE_YOUR_TIME = "No problem, take your time."
+JOIN_CONSENT = re.compile(r"\b(add it|add that|add me|sign me up|let'?s do it|enrol+ me|go ahead and (add|join))\b", re.I)
+PLAN_WORDS = re.compile(r"\b(comfort club|maintenance plan|membership|the plan)\b", re.I)
 WARRANTY = re.compile(r"\b(warranty|warranties|covered|coverage|claim)\b", re.I)
 # "That's all", "that's everything" or "that's it" with no question in the message is a goodbye wherever it comes.
 GOODBYE_ANYWHERE = re.compile(r"\bthat'?s (all|everything|it)\b|\bthat covers it\b|\bnothing else\b", re.I)
@@ -58,7 +60,7 @@ GOODBYE = "Thanks for contacting Meridian Home Comfort. Have a great day."
 NOT_YOURS = "I can't open that conversation. Please start a new one."
 SCHEDULING_ACTIONS = ("book", "reschedule", "cancel", "confirm")
 BILLING_TAGS = ("dispute", "billing review")  # tickets that carry the invoice notes
-OTHER_ACTION = re.compile(r"\b(cancel|reschedule|move|book|change)\b", re.I)
+ACTION_VERBS = {"cancel": r"cancel", "reschedule": r"reschedule|move|change", "book": r"book"}
 BARE_REPLY = re.compile(r"^\W*(?:(?:um|uh|oh)\W+)?(yes|yeah|yep|yup|no|nope|sure|ok|okay|correct)\W*(?:please|thanks)?\W*$", re.I)
 
 
@@ -275,6 +277,10 @@ class AgentPipeline:
             yield finish("none", "answered", {"safety": "clear"}, [])
             return
         requests, offer_return = self._requests(state, turn.text, routed)
+        # "Add it" or "sign me up" after the plan was discussed is a request to join, an action the agent cannot take (R48).
+        if JOIN_CONSENT.search(turn.text) and any(PLAN_WORDS.search(m["content"]) for m in history[-4:] + [{"content": turn.text}]) \
+                and not any(r.route == "handoff" or (r.route == "account" and r.detail == "action") for r in requests):
+            requests = [*requests, Request(turn.text, "account", "action")]
         if any(r.route == "scheduling" for r in requests) and WARRANTY.search(turn.text) \
                 and not any(r.route == "knowledge" for r in requests):
             requests = [Request(turn.text, "knowledge"), *requests]  # a warranty claim also gets the coverage answer
@@ -389,8 +395,11 @@ class AgentPipeline:
             # A different scheduling action (book, then cancel another appointment) is a new topic too,
             # even after a leading "no" or "yes" ("no, cancel my other appointment instead").
             # At an offer or a read-back, a reply starting with yes or no answers it, unless it names another action.
+            # "Another action" means a verb for an action other than the flow's own ("book it" in a booking does not count).
+            other = "|".join(v for k, v in ACTION_VERBS.items() if k != state.flow.get("kind"))
             answers_read_back = state.flow.get("step") in ("offer", "readback", "which") \
-                and (scheduling.AFFIRMATIVE.search(text) or scheduling.NO.search(text)) and not OTHER_ACTION.search(text)
+                and (scheduling.AFFIRMATIVE.search(text) or scheduling.NO.search(text)) \
+                and not re.search(rf"\b({other})\b", text, re.I)
             switched_action = routed.clear and state.active_flow == "scheduling" and first is not None \
                 and first.route == "scheduling" and first.detail in SCHEDULING_ACTIONS \
                 and first.detail != state.flow.get("kind") and not BARE_REPLY.match(text) and not answers_read_back

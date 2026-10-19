@@ -1,0 +1,19 @@
+{
+ "hash": "1d780a468b95381e9654e3275015ca95bfd7422464fffc27428710ff3b855e3d",
+ "files": 46,
+ "covers": [
+  "app/core",
+  "app/routing",
+  "app/knowledge",
+  "app/accounts",
+  "app/scheduling",
+  "app/safety",
+  "app/replies",
+  "app/handoff",
+  "app/flows",
+  "app/config.py",
+  "data/index"
+ ],
+ "frozen_at": "2026-10-19T02:31:00",
+ "note": "The final held-out run checks the agent still matches this hash."
+}

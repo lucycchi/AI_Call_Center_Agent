@@ -74,3 +74,32 @@ def test_the_chosen_rule_on_the_working_set_curve_and_its_floor():
     assert choose_threshold(points, report["questions"]) == 0.25
     from app.config import SETTINGS
     assert SETTINGS.retrieval_threshold == 0.25
+
+
+def test_knowledge_is_judged_over_every_graded_knowledge_request():
+    cases = {"k": {**_case("k", "what it includes or price", True),
+                   "requests": [{"request": "what it includes or price", "kind": "sub-reason"},
+                                {"request": "how much it costs", "kind": "knowledge"},
+                                {"request": "whether it covers plumbing", "kind": "knowledge"}]},
+             "b": {**_case("b"), "requests": [{"request": "hvac repair", "kind": "sub-reason"}]}}
+    graded = _attempt("k", knowledge_correct=False,
+                      requests=[{"request": "what it includes or price", "correct": True},
+                                {"request": "how much it costs", "correct": True},
+                                {"request": "whether it covers plumbing", "correct": True}])
+    assert judge([graded, _attempt("b")], cases).passed  # three of three knowledge requests right
+
+
+def test_the_quick_run_passes_on_two_of_three_and_stops_once_settled():
+    from eval.quick_run import QuickResult, two_of_three
+    results = iter([QuickResult(True), QuickResult(True), QuickResult(False)])
+    calls = []
+
+    def run(n):
+        calls.append(n)
+        return next(results)
+    final = two_of_three(run)
+    assert final.passed and calls == [1, 2]
+    results = iter([QuickResult(False, ["a"]), QuickResult(True), QuickResult(False, ["b"])])
+    calls.clear()
+    final = two_of_three(run)
+    assert not final.passed and calls == [1, 2, 3] and final.reasons

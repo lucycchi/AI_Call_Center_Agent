@@ -904,3 +904,37 @@ def test_the_writer_never_guesses_and_the_rubric_grades_to_the_question():
     assert "Never guess" in RULES
     rubric = (ROOT / "eval" / "grader_prompt.md").read_text()
     assert "the question did not ask about" in rubric
+
+
+def test_yes_please_book_it_at_a_booking_read_back_books_even_if_routed_as_another_action(chat):
+    chat["routes_add"]("go ahead and book it", clear(request("yes, go ahead and book it", "scheduling", "confirm")))
+    before = count(chat["db"], "select count(*) from appointments")
+    book_to_read_back(chat)
+    chat["say"]("Yes, please go ahead and book it.")
+    assert count(chat["db"], "select count(*) from appointments") == before + 1
+
+
+def test_a_savings_question_gets_the_no_estimate_instruction():
+    from app.flows.knowledge import answer
+    from app.knowledge.index import Chunk
+    from app.knowledge.search import ScoredChunk
+
+    class Plans:
+        def search(self, question, mode="combined", k=5):
+            return [ScoredChunk(Chunk("m#1", "membership/comfort_club_overview.md", "Plans", "", "$189 a year", 1, 2), 0.7, 2)]
+    facts = " ".join(answer("would joining the maintenance plan save me money on this?", Plans(), 0.25).facts)
+    assert "Do not estimate" in facts and "team member confirms" in facts
+
+
+def test_the_writer_states_member_benefits_as_member_benefits():
+    from app.replies.writer import RULES
+    assert "as member benefits" in RULES
+
+
+def test_add_it_after_a_membership_discussion_hands_off_the_enrolment(chat):
+    chat["routes_add"]("save me money", clear(request("I want someone out", "scheduling", "book", "hvac_repair"),
+                                              request("would joining the maintenance plan save me money", "knowledge")))
+    chat["routes_add"]("add it and book", clear(request("add it and book the visit", "scheduling", "book", "hvac_repair")))
+    chat["say"]("I'm Linda Foster, MHC-10001. My AC is blowing warm, I want someone out, and would joining the maintenance plan save me money on this?")
+    chat["say"]("Yeah, add it and book the visit.")
+    assert any(t["reason_tag"] == "action gap" for t in chat["store"].tickets())

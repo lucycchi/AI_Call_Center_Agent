@@ -136,3 +136,9 @@ def test_a_past_date_is_answered_with_the_soonest_slots(db):
     ("4:00 to 7:00", "16:00-19:00"), ("12–4", "12:00-16:00"), ("from 12 until 4", "12:00-16:00")])
 def test_clock_times_map_to_their_windows(text, window):
     assert parse_request(text, NOW).window == window
+
+
+def test_a_caller_is_never_offered_a_slot_overlapping_their_own_appointment(db):
+    linda = customer(db, "Linda Foster", "MHC-10001")  # she has a scheduled visit on 2026-10-22, 08:00-12:00
+    offered = offer(db, linda, "hvac_repair", DateRequest(date(2026, 10, 22)), NOW).slots
+    assert offered and all(not (s.slot_date == "2026-10-22" and s.window in ("08:00-12:00",)) for s in offered)

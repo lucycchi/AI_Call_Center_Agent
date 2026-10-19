@@ -168,3 +168,29 @@ def test_the_rubric_settles_the_close_cases():
     assert "a guess beyond the documents" in rubric and "fails, even when a caveat follows it" in rubric
     assert "the technician confirms the final price on site\", is a key fact" in rubric
     assert "whatever its passages contained" in rubric
+
+
+def test_codex_at_capacity_is_retried(monkeypatch):
+    import eval.grader as grader
+    calls = []
+
+    class Result:
+        stdout, stderr = "ERROR: Selected model is at capacity. Please try a different model.", ""
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        if len(calls) == 2:
+            Path(command[command.index("-o") + 1]).write_text("[]")
+        return Result()
+    monkeypatch.setattr(grader.subprocess, "run", fake_run)
+    monkeypatch.setattr(grader.time, "sleep", lambda s: None)
+    assert grader.codex_runner("PROMPT") == "[]" and len(calls) == 2
+
+
+def test_the_grader_is_given_the_membership_renewal_price(tmp_path):
+    import shutil
+    from eval.grade_conversations import _account_facts
+    db = tmp_path / "c.sqlite"
+    shutil.copy(ROOT / "call_data" / "scheduling_db" / "meridian_scheduling.sqlite", db)
+    facts = _account_facts({"caller_card": {"customer_id": "MHC-10001", "membership_tier": "standard"}, "fixtures": []}, str(db))
+    assert facts["membership_renewal_price"] == "$189.00 a year, the current published price"
