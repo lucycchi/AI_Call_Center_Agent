@@ -588,6 +588,20 @@ can only propose a decision; only the author settles one.
 - **Choice:** Every reply sentence that mentions money (a fee, charge, cost, price, $, free, refund, credit, discount, waive, owe, bill or payment) is checked by Claude Haiku 5.5 against the published money terms and the sentence before it, after the fixed code rules (firm totals, waitlists, breaker advice, internal text, and promises worded as a personal favour). A refusal, error, timeout or unreadable answer blocks the sentence; a pipeline with no money check configured blocks every money sentence. The router decides money and membership action requests; a code backstop catches only requests that are never questions (payment links, autopay, cancelling the membership or auto-renew, refunds, fee waivers, paying a bill, signing up for the plan), on every route except a handoff. The labelled sets are kept in data/eval/ (money_sentences.jsonl, action_requests.jsonl) and measured in the evaluation milestone on fresh sentences and through the router.
 - **Reason:** Promise and request wording is open-ended; a model reads paraphrase that patterns cannot, and failing closed keeps errors on the safe side. Only sentences about money pay the extra time (about half a second each, a fraction of a cent), so most replies keep their speed. The spec's reply-check rule (R42) still holds: code decides and acts on every check.
 
+## D44: Who grades the grader-check sample blind in place of the author (R19)?
+
+- **Status:** settled
+- **Proposed by:** Lucy Chi (author), recorded by Claude (claude-opus-5-5) on 2026-10-18
+- **Options:**
+  - Claude Fable 5.1, given the rubric, each question, answer and reference, and the passages the answer was given, and no other grader's verdicts
+  - The author grades the 30 answers
+  - Report only the model-versus-model agreement
+- **Research:**
+  - [data/results/grader_check_fable.json](data/results/grader_check_fable.json): Fable agreed with Codex on 26 of 30 (87%); all four disagreements were Codex 'wrong', Fable 'right', and turn on how strict the rubric's 'partly correct fails' is.
+  - [data/results/grader_check_claude.json](data/results/grader_check_claude.json): An earlier blind Claude grade without passages or rubric gave the same 26 of 30, and matched Fable on all 30.
+- **Choice:** Claude Fable 5.1 stands in for the author in the grader check, as it did for the blind third of the labelling (D38). Its blind grades are the check's grades, and the published table (data/results/grader_check.json) compares them with Codex's, stating that Fable graded in the author's place.
+- **Reason:** The author's choice ('let fable stand in for me'). Fable saw the same rubric and evidence as Codex, so the check compares two independent frontier graders under one rubric.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
