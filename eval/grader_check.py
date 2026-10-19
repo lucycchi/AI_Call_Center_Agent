@@ -36,7 +36,8 @@ def write_sheet() -> None:
 
 
 COLUMNS = {"author": ("author_correct (yes or no)", "grader_check.json"),
-           "claude": ("claude_correct (yes or no)", "grader_check_claude.json")}
+           "claude": ("claude_correct (yes or no)", "grader_check_claude.json"),
+           "fable": ("fable_correct (yes or no)", "grader_check_fable.json")}
 
 
 def write_table(who: str = "author") -> None:

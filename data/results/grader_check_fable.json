@@ -1,0 +1,16 @@
+{
+ "both_right": 20,
+ "both_wrong": 6,
+ "fable_only": 4,
+ "grader_only": 0,
+ "agreement": 0.8666666666666667,
+ "note": "fable graded blind; this is model-vs-model agreement, not a human check",
+ "checker": "fable",
+ "graded": 30,
+ "disagreements": [
+  "case-T9e29febc|whole_kb",
+  "answerable-6|combined",
+  "case-T2603f4e6|keyword",
+  "case-T9e29febc|combined"
+ ]
+}
