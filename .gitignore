@@ -13,3 +13,6 @@ __pycache__/
 # Brainstorm mockups
 .superpowers/
 *.partial
+
+# Database copies made by test runs
+data/results/*/databases/
