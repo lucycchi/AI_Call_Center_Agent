@@ -43,6 +43,11 @@ def _internal_runs() -> set[tuple[str, ...]]:
 INTERNAL_RUNS = _internal_runs()
 
 
+# A definite promise that a person will follow up; a writer reply has no ticket behind it, so the promise is kept by
+# blocking the sentence, which hands the reply off with a ticket. An offer ("I can pass it on if you'd like") is fine.
+FOLLOW_UP_PROMISE = re.compile(r"\b(?:a |our )?(?:team member|someone|member of (?:our|the) team|our team|staff)\b[^.]{0,20}"
+                               r"\b(?:will|'ll|is going to)\b[^.]{0,10}\b(?:follow up|contact|call|reach out|get back)|"
+                               r"\bi(?:'ll| will| have|'ve)\s+pass(?:ed)?\b(?![^.]*\bif you)", re.I)
 BREAKER_ADVICE = re.compile(r"\breset\w*\b[^.]*\bbreaker|\bbreaker\b[^.]*\breset|\bflip\w*\b[^.]*\bbreaker", re.I)
 
 
@@ -54,6 +59,8 @@ def check_sentence(sentence: str, reply_so_far: str, burning_mentioned: bool = F
     for rule, patterns in RULES:
         if any(re.search(p, said) for p in patterns):
             return CheckResult(False, rule)
+    if FOLLOW_UP_PROMISE.search(sentence):
+        return CheckResult(False, "follow_up_promise")
     # Across the whole reply so far, so a quote split over two sentences is still caught.
     words = _words(f"{reply_so_far} {sentence}")
     if any(tuple(words[i:i + RUN]) in INTERNAL_RUNS for i in range(len(words) - RUN + 1)):

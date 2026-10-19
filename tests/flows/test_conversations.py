@@ -715,3 +715,192 @@ def test_a_caller_who_identifies_in_a_knowledge_question_is_not_asked_again(chat
     chat["say"]("I'm Linda Foster, MHC-10001. How much is a tune-up cost?")
     reply, _ = chat["say"]("I want to book a repair Monday morning")
     assert "account number" not in reply and "2026-10-19" in reply
+
+
+# Found by the rehearsal.
+
+def test_a_duplicate_request_is_never_queued_twice(chat):
+    chat["routes_add"]("can i move it", clear(request("I have a tech coming", "scheduling", "reschedule"),
+                                               request("can I move it", "scheduling", "reschedule")))
+    chat["say"]("I'm Linda Foster, MHC-10001. Something came up, can I move it?")
+    reply, _ = chat["say"]("next Tuesday morning")
+    reply, _ = chat["say"]("yes")
+    reply, _ = chat["say"]("yes")
+    assert "Moved" in reply and "offer" not in reply.lower()
+
+
+def test_an_unidentified_handoff_asks_for_details_and_the_ticket_gets_them(chat):
+    chat["routes_add"]("talk to a manager", clear(request("I want to talk to a manager", "handoff", "complaint")))
+    reply, _ = chat["say"]("I want to talk to a manager.")
+    assert "name" in reply and "account number" in reply
+    chat["say"]("Sure, it's Linda Foster, 512-555-0101. Please call me today.")
+    ticket = chat["store"].tickets()[-1]
+    assert ticket["who"] == "Linda Foster, MHC-10001"
+
+
+def test_an_account_number_and_a_name_in_separate_messages_identify_the_caller(chat):
+    chat["say"]("what's my balance")
+    chat["say"]("Yeah, it's MHC-10002.")
+    reply, _ = chat["say"]("Um, Omar Patel.")
+    assert "$478.00" in reply
+
+
+def test_the_grader_sees_messages_added_to_a_ticket(tmp_path):
+    from eval.grade_conversations import default_tickets
+    from eval.harness import Attempt
+    db = tmp_path / "c-1.sqlite"
+    db.write_bytes(b"")
+    store = OpsStore(tmp_path / "c-1-ops.sqlite")
+    store.open_conversation("v", "c")
+    ticket = store.create_ticket("c", "x", "manager", "", "", "", "complaint")
+    store.append_to_ticket(ticket, store.log_message("c", "caller", "call me today, not next week"))
+    [seen] = default_tickets(Attempt("c", db_path=str(db)))
+    assert seen["later_messages"] == ["call me today, not next week"]
+
+
+def test_the_router_is_told_another_business_name_is_a_wrong_number():
+    from app.routing.router import RULES
+    assert "a different business" in RULES
+
+
+def test_a_message_that_only_gives_details_is_answered_not_handed_off(chat):
+    reply, done = chat["say"]("Linda Foster, 4412 Oak Hollow Dr, Round Rock.")
+    assert done.ticket is None and "found your account" in reply
+
+
+def test_a_warranty_claim_routed_to_booking_also_gets_the_coverage_answer(chat):
+    chat["routes_add"]("warranty claim", clear(request("I need to file a warranty claim", "scheduling", "book", "hvac_repair")))
+    reply, _ = chat["say"]("I'm Linda Foster, MHC-10001. I need to file a warranty claim, the unit stopped working.")
+    assert "$129" in reply or "Maintenance tune-up" in reply or "source" in reply.lower()  # the knowledge facts came too
+    assert "2026-10-" in reply  # and the booking offer
+
+
+def test_the_router_treats_questions_about_my_own_membership_as_account_questions():
+    from app.routing.router import RULES
+    assert "when their own membership renews or charges" in RULES
+
+
+# Found by the quick test run.
+
+def test_filler_lines_never_open_a_ticket_and_repeat_an_open_offer(chat):
+    for line in ("Hold on, my dog is barking.", "Can you hear me okay?", "Sorry, I'm driving, one sec."):
+        _, done = chat["say"](line, conversation="f1")
+        assert done.ticket is None
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning", conversation="f2")
+    reply, done = chat["say"]("Sorry, you cut out for a second there. Could you repeat that?", conversation="f2")
+    assert "2026-10-19" in reply and "Read back" not in reply and done.ticket is None
+
+
+def test_for_a_second_is_not_the_second_slot():
+    from app.flows.scheduling import _pick
+    choices = [{"slot_date": "2026-10-19", "window": "08:00-12:00"}, {"slot_date": "2026-10-21", "window": "08:00-12:00"}]
+    assert _pick("Sorry, you cut out for a second there. Could you repeat that?", choices, SETTINGS.now) is None
+    assert _pick("the second one", choices, SETTINGS.now) == choices[1] and _pick("second please", choices, SETTINGS.now) == choices[1]
+
+
+def test_anything_earlier_at_a_read_back_offers_earlier_slots(chat):
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Thursday 8 to 12")
+    chat["say"]("the first one")
+    reply, _ = chat["say"]("Um, can you do anything earlier?")
+    assert "2026-10-19" in reply
+
+
+def test_rebooking_moves_only_a_visit_booked_in_this_chat(chat):
+    sqlite3.connect(chat["db"]).execute(
+        "update appointment_slots set status='booked' where slot_id=42").connection.commit()
+    sqlite3.connect(chat["db"]).execute("insert into appointments (slot_id, customer_id, issue_description, created_at, status) "
+                                        "values (42, 'MHC-10001', 'seeded', '2026-10-10', 'scheduled')").connection.commit()
+    book_to_read_back(chat)
+    reply, _ = chat["say"]("yes")
+    assert "Booked" in reply and "Moved" not in reply
+
+
+def test_later_ticket_notes_are_confirmed_without_repeating_the_promise(chat):
+    chat["routes_add"]("talk to a manager", clear(request("I want to talk to a manager", "handoff", "complaint")))
+    chat["say"]("I'm Linda Foster, MHC-10001. I want to talk to a manager.")
+    reply, _ = chat["say"]("I need someone to call me today.")
+    assert "added" in reply and "Ticket #1" in reply
+    reply2, _ = chat["say"]("Please make sure it's today.")
+    assert reply2 != reply or "within one business day" not in reply2
+
+
+def test_the_final_price_line_is_only_for_repair_and_service_prices():
+    from app.flows.knowledge import answer
+    from app.knowledge.index import Chunk
+    from app.knowledge.search import ScoredChunk
+
+    class Only:
+        def __init__(self, document):
+            self.document = document
+
+        def search(self, question, mode="combined", k=5):
+            return [ScoredChunk(Chunk("x#1", self.document, "Plans", "", "$189 a year", 1, 2), 0.7, 2)]
+    assert "final price" not in " ".join(answer("how much is the plan", Only("membership/comfort_club_overview.md"), 0.25).facts)
+    assert "final price" in " ".join(answer("how much is drain clearing", Only("services/service_catalog.md"), 0.25).facts)
+
+
+def test_the_writer_is_told_to_answer_completely():
+    from app.replies.writer import RULES
+    assert "every fact" in RULES and "two to four" not in RULES
+
+
+def test_the_grader_sees_the_passages_the_agent_retrieved(tmp_path):
+    from eval.grade_conversations import retrieved_passages
+    from eval.harness import Attempt
+    store = OpsStore(tmp_path / "c-1-ops.sqlite")
+    store.open_conversation("v", "c")
+    message = store.log_message("c", "agent", "x")
+    store.log_receipt(message, "clear", "knowledge, clear", ["membership/comfort_club_overview.md (2026-01-01), Cancellation"], [],
+                      None, "supported by documents")
+    (tmp_path / "c-1.sqlite").write_bytes(b"")
+    passages = retrieved_passages(Attempt("c", db_path=str(tmp_path / "c-1.sqlite")))
+    assert any("cancel auto-renewal" in p for p in passages)
+
+
+@pytest.mark.parametrize("text", ["Okay good to know.", "Hm. Okay.", "Yeah, I think so, it's whatever was there when we moved in."])
+def test_a_calm_message_asking_nothing_gets_anything_else_not_a_ticket(chat, text):
+    reply, done = chat["say"](text)
+    assert done.ticket is None and "anything else" in reply
+
+
+def test_an_angry_or_questioning_unclear_message_is_still_handed_off(chat):
+    _, done = chat["say"]("I've called three times and nobody has called me back. This is ridiculous!!")
+    assert done.ticket
+
+
+@pytest.mark.parametrize("text", ["Oh, sorry about that, I think that's all I needed anyway. No, that's everything.",
+                                  "Great, that's all I needed, thanks"])
+def test_a_goodbye_anywhere_in_the_message_ends_the_chat(chat, text):
+    _, done = chat["say"](text)
+    assert done.outcome == "ended"
+
+
+def test_the_grader_is_given_the_customers_existing_appointments(tmp_path):
+    from eval.grade_conversations import _account_facts
+    import shutil
+    db = tmp_path / "c.sqlite"
+    shutil.copy(SEED, db)
+    facts = _account_facts({"caller_card": {"customer_id": "MHC-10001"}, "fixtures": []}, str(db))
+    assert any(a["slot_date"] == "2026-10-22" for a in facts["scheduled_appointments_at_start"])
+
+
+def test_a_written_promise_of_a_follow_up_becomes_a_real_ticket():
+    from app.replies.checks import CheckedStream
+    stream = CheckedStream(iter(["Your visit is booked.", "A team member will follow up about access to the unit."]),
+                           money_check=lambda s, p: True)
+    assert list(stream) == ["Your visit is booked."] and stream.blocked_rule == "follow_up_promise"
+    offer = CheckedStream(iter(["If you'd like, I can pass your question to a team member."]), money_check=lambda s, p: True)
+    assert list(offer) == ["If you'd like, I can pass your question to a team member."]
+
+
+def test_an_unclear_complaint_keeps_the_routers_reason(chat):
+    chat["routes_add"]("nobody has called me back", {"clear": False, "requests": [request("nobody called back", "handoff", "complaint")]})
+    _, done = chat["say"]("I've called three times and nobody has called me back. I'm done.")
+    assert chat["store"].tickets()[-1]["reason_tag"] == "complaint"
+
+
+def test_the_writer_never_guesses_and_the_rubric_grades_to_the_question():
+    from app.replies.writer import RULES
+    assert "Never guess" in RULES
+    rubric = (ROOT / "eval" / "grader_prompt.md").read_text()
+    assert "the question did not ask about" in rubric

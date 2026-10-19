@@ -48,9 +48,33 @@ def _passages(case: dict) -> list[str]:
     return out
 
 
-def _account_facts(case: dict) -> dict:
-    return {"caller_card": case["caller_card"], "planted": [f["row"] for f in case.get("fixtures", [])],
-            "existing_appointment": case.get("appointment")}
+def _account_facts(case: dict, db_path: str | None = None) -> dict:
+    facts = {"caller_card": case["caller_card"], "planted": [f["row"] for f in case.get("fixtures", [])],
+             "existing_appointment": case.get("appointment")}
+    if db_path:  # the customer's appointments in the seed, so a real one is not taken for an invented one
+        from app.config import SETTINGS
+        with sqlite3.connect(SETTINGS.seed_db_path) as seed:
+            seed.row_factory = sqlite3.Row
+            facts["scheduled_appointments_at_start"] = [dict(r) for r in seed.execute(
+                "select a.appointment_id, s.slot_date, s.window, s.service_type, t.name as technician from appointments a "
+                "join appointment_slots s using (slot_id) join technicians t using (tech_id) "
+                "where a.customer_id = ? and a.status = 'scheduled'", (case["caller_card"]["customer_id"],))]
+    return facts
+
+
+def retrieved_passages(attempt) -> list[str]:
+    """The text of every passage the agent's replies were written from, from its receipts and the built index."""
+    import json
+    from app.knowledge.index import load_index
+    ops = Path(attempt.db_path).with_name(Path(attempt.db_path).stem + "-ops.sqlite")
+    if not ops.exists():
+        return []
+    with sqlite3.connect(ops) as db:
+        labels = [label for (raw,) in db.execute("select passages from receipts where passages is not null")
+                  for label in json.loads(raw or "[]")]
+    chunks, _ = load_index(ROOT / "data" / "index")
+    by_label = {f"{c.document} ({c.effective_date or 'undated'}), {c.heading}": c.text for c in chunks}
+    return [f"[{label}] {by_label[label]}" for label in dict.fromkeys(labels) if label in by_label]
 
 
 def default_tickets(attempt) -> list[dict]:
@@ -59,7 +83,12 @@ def default_tickets(attempt) -> list[dict]:
         return []
     with sqlite3.connect(ops) as db:
         db.row_factory = sqlite3.Row
-        return [dict(r) for r in db.execute("select ticket_id, reason_tag, priority, who, wants, tried, constraints, mood from tickets")]
+        tickets = [dict(r) for r in db.execute("select ticket_id, reason_tag, priority, who, wants, tried, constraints, mood from tickets")]
+        for ticket in tickets:  # what staff see: the ticket and the caller's messages added to it after the handoff
+            ticket["later_messages"] = [r[0] for r in db.execute(
+                "select m.text_masked from ticket_messages t join messages m using (message_id) where t.ticket_id = ? "
+                "order by m.message_id", (ticket["ticket_id"],))]
+        return tickets
 
 
 def grade_attempts(attempts: list, cases: dict, runner, tickets=default_tickets) -> list:
@@ -75,7 +104,8 @@ def grade_attempts(attempts: list, cases: dict, runner, tickets=default_tickets)
         items.append({"id": f"{attempt.case_id}|{attempt.attempt}", "type": "conversation", "requests": case["requests"],
                       "expected_outcome": case["expected_outcome"], "expected_handoff_reason": expected_reason,
                       "reference_answer": case.get("reference_answer"), "passages": _passages(case),
-                      "account_facts": _account_facts(case), "must_not": case.get("must_not", []),
+                      "retrieved_passages": retrieved_passages(attempt),
+                      "account_facts": _account_facts(case, attempt.db_path), "must_not": case.get("must_not", []),
                       "transcript": attempt.conversation, "tickets": opened})
         keep.append(attempt)
     for attempt, verdict in zip(keep, grade(items, runner)):

@@ -47,6 +47,13 @@ ACKNOWLEDGEMENT = re.compile(r"^\W*(yes|yeah|yep|ok|okay|thanks|thank you|great|
 ENDING = re.compile(r"^\W*(?:(?:no|nope|um|uh|ok|okay|thanks|thank you|great)\W+)*(that'?s (it|all|everything)|that covers it|"
                     r"bye|goodbye|nothing else|i'?m good)(\W+(thanks|thank you( so much)?|bye))*\W*$", re.I)
 ANYTHING_ELSE = "Is there anything else I can help you with?"
+# Lines that ask nothing ("hold on", "can you hear me", "you cut out"): never routed, never a ticket.
+FILLER = re.compile(r"\b(can you hear me|hold on|one sec(ond)?|you cut out|cut out|i'?m driving|repeat that|say that again|"
+                    r"dog is barking|bear with me|give me a (sec|second|moment|minute))\b", re.I)
+TAKE_YOUR_TIME = "No problem, take your time."
+WARRANTY = re.compile(r"\b(warranty|warranties|covered|coverage|claim)\b", re.I)
+# "That's all", "that's everything" or "that's it" with no question in the message is a goodbye wherever it comes.
+GOODBYE_ANYWHERE = re.compile(r"\bthat'?s (all|everything|it)\b|\bthat covers it\b|\bnothing else\b", re.I)
 GOODBYE = "Thanks for contacting Meridian Home Comfort. Have a great day."
 NOT_YOURS = "I can't open that conversation. Please start a new one."
 SCHEDULING_ACTIONS = ("book", "reschedule", "cancel", "confirm")
@@ -207,39 +214,80 @@ class AgentPipeline:
         at_read_back = state.flow.get("step") == "readback"
         # A clear goodbye ends the chat, even with a flow open; at a read-back only "bye" does, since "okay, I'm good"
         # may answer the read-back.
-        if ENDING.match(turn.text) and (not at_read_back or re.search(r"\b(bye|goodbye)\b", turn.text, re.I)):
+        says_goodbye = ENDING.match(turn.text) or (GOODBYE_ANYWHERE.search(turn.text) and "?" not in turn.text)
+        if says_goodbye and (not at_read_back or re.search(r"\b(bye|goodbye)\b", turn.text, re.I)):
             state.flow, state.active_flow, state.pending = {}, None, []
             yield emit(GOODBYE)
             done = finish("none", "ended", {"safety": "clear"}, [])
             self._quietly(self.store.end_conversation, turn.conversation_id)
             yield done
             return
+        if FILLER.search(turn.text) and len(turn.text.split()) <= 14 and not has_identifier(turn.text):
+            again = scheduling.repeat(state.flow) if state.flow else None
+            if again:
+                for sentence in CheckedStream(self.writer(again.reply_type, again.facts, self.store.history(turn.conversation_id)),
+                                              money_check=self.money_check):
+                    yield emit(sentence)
+            else:
+                yield emit(TAKE_YOUR_TIME)
+            yield finish(state.active_flow or "none", "answered", {"safety": "clear"}, [])
+            return
         if not state.active_flow and not state.pending:
             if ACKNOWLEDGEMENT.match(turn.text):
                 yield emit(ANYTHING_ELSE)
                 yield finish("none", "answered", {"safety": "clear"}, [])
                 return
-        # A caller who gives their details on any route is identified then, so they are not asked again later (R45).
-        if not state.customer_id and has_identifier(turn.text):
+        identified_now = False
+        # A caller who gives their details on any route is identified then, so they are not asked again later (R45);
+        # an account number and a name may come in two messages. An open ticket is told who the caller is (R57).
+        if not state.customer_id and (has_identifier(turn.text) or (earlier and has_identifier(earlier[-1]))):
             lookup = read_only(self.scheduling_db)
             try:
-                found = find_customer(lookup, turn.text)
+                found = find_customer(lookup, turn.text) or (find_customer(lookup, f"{earlier[-1]} {turn.text}") if earlier else None)
             finally:
                 lookup.close()
             if found:
                 state.customer_id, state.who, state.id_attempts = found.customer_id, f"{found.name}, {found.customer_id}", 0
+                identified_now = found
+                if state.ticket_id:
+                    self._quietly(self.store.set_ticket_caller, state.ticket_id, state.who)
         # 3. Route, keeping follow-ups inside an active flow (R38, R40).
         history = self.store.history(turn.conversation_id)
         routed = self._route(turn.text, history, error_event)
         flow_before = state.active_flow
+        if identified_now and not state.active_flow and not state.pending and not routed.clear:
+            # A message that only gave the caller's details: nothing to hand off.
+            yield emit(f"Thanks, {identified_now.name.split()[0]}, I've found your account. What can I help you with?")
+            yield finish("account", "answered", {"safety": "clear"}, [])
+            return
+        names_a_handoff = any(r.route == "handoff" and r.detail in HANDOFF_TAGS and r.detail not in ("other", "person")
+                              for r in routed.requests)
+        if not routed.clear and not state.active_flow and not state.pending and "?" not in turn.text \
+                and _mood(turn.text) == "calm" and len(turn.text.split()) <= 15 and not names_a_handoff:
+            # An unclear message that asks nothing ("okay, good to know") is not a request: no ticket (R38, tuned on
+            # the working set). An angry message, a question or a longer message still goes to a handoff. With a ticket
+            # open, the message was added to it at the start of the turn (R58).
+            if state.ticket_id:
+                state.ticket_notes += 1
+                yield emit(f"I've added that to Ticket #{state.ticket_id}.")
+            else:
+                yield emit(ANYTHING_ELSE)
+            yield finish("none", "answered", {"safety": "clear"}, [])
+            return
         requests, offer_return = self._requests(state, turn.text, routed)
+        if any(r.route == "scheduling" for r in requests) and WARRANTY.search(turn.text) \
+                and not any(r.route == "knowledge" for r in requests):
+            requests = [Request(turn.text, "knowledge"), *requests]  # a warranty claim also gets the coverage answer
         route_label = flow_before if requests and requests[0].route == "continue" else routed.route
         # 4. Flows. Account and scheduling requests wait for identification together, then run in turn (R39).
         results: list[FlowResult] = []
         queued = False
         for request in requests:
             if request.route in ("account", "scheduling") and not self._action(request) or request.route == "continue":  # noqa: E501
-                if request.route != "continue":
+                waiting = {(p["route"], p["detail"]) for p in state.pending}
+                in_progress = request.route == "scheduling" and request.detail == state.flow.get("kind")
+                # The router can split one request into two identical ones; each is handled once.
+                if request.route != "continue" and (request.route, request.detail) not in waiting and not in_progress:
                     state.pending.append({"route": request.route, "detail": request.detail,
                                           "service_type": request.service_type, "text": request.text})
                 queued = True
@@ -303,7 +351,9 @@ class AgentPipeline:
         # 6. Everything handed off this turn goes in one ticket (R39). With a ticket already open in this conversation,
         # the message was added to it at the start of the turn, so no new ticket is opened (R58).
         if handoffs and state.ticket_id:
-            fixed.append(f"I've added that to Ticket #{state.ticket_id}; our team will contact you within one business day.")
+            state.ticket_notes += 1
+            fixed.append(f"I've added that to Ticket #{state.ticket_id}" +
+                         ("; our team will contact you within one business day." if state.ticket_notes == 1 else "."))
             outcome = "handed_off"
         elif handoffs:
             tags = [tag for tag, _, _ in handoffs]
@@ -351,7 +401,9 @@ class AgentPipeline:
                 return routed.requests, state.active_flow == "scheduling"
             return [Request(text, "continue")], False
         if not routed.clear:
-            return [Request(text, "handoff", "unclear")], False
+            reason = next((r.detail for r in routed.requests if r.route == "handoff" and r.detail in HANDOFF_TAGS
+                           and r.detail not in ("other", "person")), "unclear")
+            return [Request(text, "handoff", reason)], False  # an unclear complaint is still tagged a complaint
         return routed.requests, False
 
     # -- flows ------------------------------------------------------------------------------------------

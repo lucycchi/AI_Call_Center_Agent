@@ -602,6 +602,19 @@ can only propose a decision; only the author settles one.
 - **Choice:** Claude Fable 5.1 stands in for the author in the grader check, as it did for the blind third of the labelling (D38). Its blind grades are the check's grades, and the published table (data/results/grader_check.json) compares them with Codex's, stating that Fable graded in the author's place.
 - **Reason:** The author's choice ('let fable stand in for me'). Fable saw the same rubric and evidence as Codex, so the check compares two independent frontier graders under one rubric.
 
+## D45: Should a knowledge answer fail for leaving out reference facts the caller's question did not ask about?
+
+- **Status:** settled
+- **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-18
+- **Options:**
+  - No: grade to the question; reference facts the question did not ask about do not fail an answer
+  - Yes: every reference fact is required
+  - Keep strict grading and lower the quick run's 80% knowledge bar
+- **Research:**
+  - [data/results/quick-3/summary.json](data/results/quick-3/summary.json): The third quick run failed only on knowledge accuracy (32%); three of the four failures gave correct answers but left out reference facts the question did not ask about (plan benefits on a price question, the free estimate on a discount question, annual billing on a renewal question).
+- **Choice:** The grading rubric (eval/grader_prompt.md) adds that a reference may cover more than one question asked, since each was written for every caller with that kind of question, and facts the question did not ask about do not fail an answer that leaves them out. The references themselves are unchanged and frozen. Guessing still fails, and a required disclaimer is still a key fact.
+- **Reason:** The author's choice. A caller would find those answers correct; the strict reading measured how closely an answer matched a template-wide reference rather than whether it answered the caller. The change is made before any held-out run, on working-set evidence only.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take

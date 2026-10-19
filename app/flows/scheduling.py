@@ -30,8 +30,8 @@ log = logging.getLogger("meridian.scheduling")
 NO = re.compile(r"^\W*(no|nope|neither|none of)\b", re.I)
 EARLIER = re.compile(r"\b(earlier|sooner|anything before|any earlier)\b", re.I)
 # Ordinal words only: a bare "one" or "1" is too often part of a date or window ("the Tuesday one", "1 to 5").
-ORDINALS = [r"\b(first|1st|option (?:1|one)|number (?:1|one)|#1)\b", r"\b(second|2nd|option (?:2|two)|number (?:2|two)|#2)\b",
-            r"\b(third|3rd|option (?:3|three)|number (?:3|three)|#3)\b"]
+ORDINALS = [r"\b(option (?:1|one)|number (?:1|one)|#1)\b", r"\b(option (?:2|two)|number (?:2|two)|#2)\b",
+            r"\b(option (?:3|three)|number (?:3|three)|#3)\b"]  # bare "first" or "second" is handled by NTH_WORD
 
 
 class _PlainYes:
@@ -84,12 +84,19 @@ NTH_ONE = re.compile(r"\b(first|second|third|1st|2nd|3rd)\b(?! of\b)(?:\s+(?:one
 NTH_WITH_NOUN = re.compile(r"\b(1st|2nd|3rd)\s+(?:one|option|slot|choice|time|window)\b", re.I)
 
 
+# "First", "second" and "third" pick a slot only next to a slot word or on their own ("for a second" does not).
+NTH_WORD = re.compile(r"\b(first|second|third)\s+(?:one|option|slot|choice|time|window)\b|"
+                      r"^\W*(?:the\s+)?(first|second|third)(?:\s+one)?(?:\s+(?:please|thanks))?\W*$", re.I)
+
+
 def _numbered(text: str, choices: list[dict]) -> dict | None:
     """"2", "two please", "the 2nd one", "the third option": a slot by its number in the offer."""
     match = BARE_NUMBER.match(text) or NTH_WITH_NOUN.search(text)
     if not match:
-        word = NTH_ONE.search(text)
-        match = word if word and word.group(1).isalpha() else None
+        word = NTH_WORD.search(text)
+        if word:
+            index = NUMBERS[(word.group(1) or word.group(2)).lower()]
+            return choices[index] if index < len(choices) else None
     if match:
         index = NUMBERS[match.group(1).lower()]
         return choices[index] if index < len(choices) else None
@@ -184,6 +191,21 @@ def _earlier(db, customer, flow: dict, now) -> FlowResult:
                       "booking offer", handoff_reason="earlier slot")
 
 
+def repeat(flow: dict) -> FlowResult | None:
+    """The open offer or read-back again, for "sorry, you cut out" or "can you repeat that"."""
+    if flow.get("step") == "offer" and flow.get("offered"):
+        return FlowResult(_offer_facts(flow["offered"], "Repeat the slots on offer and ask which one suits:"), "booking offer")
+    if flow.get("step") == "readback" and flow.get("chosen"):
+        chosen = flow["chosen"]
+        return FlowResult([f"Repeat the read back: {SERVICE_NAMES[chosen['service_type']]} on "
+                           f"{_when(chosen['slot_date'], chosen['window'])}. Ask for a clear yes."], "read-back")
+    if flow.get("step") == "which" and flow.get("appointments"):
+        return FlowResult(["Ask again which appointment the caller means:"] +
+                          [f"{n}) {_when(a['slot_date'], a['window'])}" for n, a in enumerate(flow["appointments"], 1)],
+                          "account answer")
+    return None
+
+
 def step(db, seed_db, customer, state, text: str, now, store) -> FlowResult:
     if state.flow["kind"] == "book":
         return _book(db, customer, state, text, now, store)
@@ -209,8 +231,9 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
             return FlowResult(_offer_facts(flow["offered"], "Ask which of these slots suits, or what other time works:"),
                               "booking offer")
         flow["chosen"] = chosen
-        same_day = [a for a in tx.scheduled_appointments(db, customer.customer_id)
-                    if a.slot_date == chosen["slot_date"] and a.service_type == chosen["service_type"]]
+        booked_here = {int(t.rsplit(" ", 1)[1]) for t in state.tried if t.startswith("booked appointment ")}
+        same_day = [a for a in tx.scheduled_appointments(db, customer.customer_id) if a.appointment_id in booked_here
+                    and a.slot_date == chosen["slot_date"] and a.service_type == chosen["service_type"]]
         if same_day:
             # The caller already has this service booked that day: move that visit rather than book a second one.
             existing = same_day[0]
@@ -220,6 +243,8 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
                               tx.late_fee_preview(db, existing.appointment_id, now))
         return _read_back(flow, f"{SERVICE_NAMES[chosen['service_type']]} on {_when(chosen['slot_date'], chosen['window'])}")
     # Read-back: book only on a clear yes.
+    if EARLIER.search(text):
+        return _earlier(db, customer, flow, now)
     if confirms(text, flow["chosen"]["slot_date"], flow["chosen"]["window"], now):
         chosen = flow["chosen"]
         if _deadline_passed():
@@ -286,6 +311,8 @@ def _existing(db, seed_db, customer, state, text, now) -> FlowResult:
         return FlowResult(["Ask what day and time the caller would like instead."], "booking offer")
     # Read-back for a cancel or reschedule.
     appointment = flow["appointment"]
+    if EARLIER.search(text) and flow.get("offered"):
+        return _earlier(db, customer, flow, now)
     target = flow.get("chosen") or appointment
     if confirms(text, target["slot_date"], target["window"], now):
         if _deadline_passed():

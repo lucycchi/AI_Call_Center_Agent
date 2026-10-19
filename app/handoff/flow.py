@@ -15,11 +15,16 @@ NO_TICKET_MESSAGE = ("I'm sorry, I couldn't record your request just now. Please
                      f"({OFFICE_HOURS}) and they can help you directly.")
 
 
-def _message(ticket_id: int, reason_tag: str) -> str:
+ASK_DETAILS = (" So the team can reach you, please tell me your name and your account number, phone number or service "
+               "address.")
+
+
+def _message(ticket_id: int, reason_tag: str, identified: bool = True) -> str:
+    ask = "" if identified else ASK_DETAILS
     if reason_tag in ("emergency", "burning smell"):
         return (f"This is flagged as an emergency for our team: Ticket #{ticket_id}. They will contact you as a "
-                f"priority. You can keep asking me other questions here.")
-    return (f"I've passed this to our team: Ticket #{ticket_id}. Someone will contact you within one business day. "
+                f"priority.{ask} You can keep asking me other questions here.")
+    return (f"I've passed this to our team: Ticket #{ticket_id}. Someone will contact you within one business day.{ask} "
             f"You can keep asking me other questions here.")
 
 
@@ -39,7 +44,7 @@ def hand_off(state: dict, reason_tag: str, constraints: str) -> FlowResult:
             log.error("event could not be recorded either")
         return FlowResult([NO_TICKET_MESSAGE], "handoff", handoff_reason=reason_tag)
     state["ticket_id"] = ticket_id
-    return FlowResult([_message(ticket_id, reason_tag)], "handoff", handoff_reason=reason_tag)
+    return FlowResult([_message(ticket_id, reason_tag, bool(state.get("who")))], "handoff", handoff_reason=reason_tag)
 
 
 def add_to_open_ticket(state: dict, message_id: int) -> None:

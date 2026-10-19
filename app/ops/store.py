@@ -164,6 +164,10 @@ class OpsStore:
         else:
             self._pending.unlink()
 
+    def set_ticket_caller(self, ticket_id: int, who: str) -> None:
+        """A caller identified after the handoff: the ticket now says who they are (R57)."""
+        self._write("update tickets set who = ? where ticket_id = ?", (mask(who), ticket_id))
+
     def append_to_ticket(self, ticket_id: int, message_id: int) -> None:
         self._write("insert or ignore into ticket_messages (ticket_id, message_id) values (?, ?)", (ticket_id, message_id))
 

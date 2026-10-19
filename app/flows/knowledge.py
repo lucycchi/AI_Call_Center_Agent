@@ -23,6 +23,7 @@ SUPERSEDED = _superseded()
 
 PRICE_WORDS = re.compile(r"\b(cost|costs|price|prices|pricing|how much|fee|fees|charge|charges|rate|\$)", re.I)
 FINAL_PRICE = "Always add: the technician confirms the final price on site."
+PRICED = {"services/service_catalog.md", "pricing/repair_price_book_2026.csv"}  # typical repair and service prices
 
 
 def answer(question: str, searcher, threshold: float) -> FlowResult:
@@ -35,6 +36,7 @@ def answer(question: str, searcher, threshold: float) -> FlowResult:
     sources = list(dict.fromkeys(r.chunk.document for r in results))
     passages = [f"{r.chunk.document} ({r.chunk.effective_date or 'undated'}), {r.chunk.heading}" for r in results]
     excluded = list(dict.fromkeys(old for document in sources for old in SUPERSEDED.get(document, [])))
-    reply_type = "price answer" if PRICE_WORDS.search(question) else "policy answer"
+    # The final-price line is for typical repair and service prices, not fixed fees or membership prices.
+    reply_type = "price answer" if PRICE_WORDS.search(question) and PRICED & set(sources) else "policy answer"
     return FlowResult(facts + ([FINAL_PRICE] if reply_type == "price answer" else []), reply_type, sources,
                       passages=passages, excluded=excluded)
