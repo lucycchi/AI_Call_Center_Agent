@@ -2,7 +2,11 @@
 verdicts, for the author to grade blind; then the full agree and disagree table.
 
 Run: python -m eval.grader_check sheet     writes data/grader_check.csv (no grader verdicts in it)
-     python -m eval.grader_check table     reads the author's grades and writes data/results/grader_check.json"""
+     python -m eval.grader_check table     reads the author's grades and writes data/results/grader_check.json
+     python -m eval.grader_check table claude
+                                           reads a second model's blind grades (claude_correct column) and writes
+                                           data/results/grader_check_claude.json; a model-vs-model check, not the
+                                           author's human check"""
 
 import csv
 import json
@@ -31,16 +35,27 @@ def write_sheet() -> None:
     print(f"{len(sample)} answers in {SHEET}; grade the last column yes or no without looking at the grader's verdicts")
 
 
-def write_table() -> None:
+COLUMNS = {"author": ("author_correct (yes or no)", "grader_check.json"),
+           "claude": ("claude_correct (yes or no)", "grader_check_claude.json")}
+
+
+def write_table(who: str = "author") -> None:
+    column, out = COLUMNS[who]
     grader = json.loads(HIDDEN.read_text())
-    rows = [r for r in csv.DictReader(SHEET.open()) if r["author_correct (yes or no)"].strip()]
-    author = [r["author_correct (yes or no)"].strip().lower().startswith("y") for r in rows]
-    table = agreement_table(author, [bool(grader[r["id"]]) for r in rows])
+    rows = [r for r in csv.DictReader(SHEET.open()) if (r.get(column) or "").strip()]
+    checker = [r[column].strip().lower().startswith("y") for r in rows]
+    table = agreement_table(checker, [bool(grader[r["id"]]) for r in rows])
+    if who != "author":  # agreement_table names its first column "author"; say who actually graded
+        table = {k.replace("author", who): v for k, v in table.items()}
+        table["note"] = f"{who} graded blind; this is model-vs-model agreement, not a human check"
+    table["checker"] = who
     table["graded"] = len(rows)
-    table["disagreements"] = [r["id"] for r, a in zip(rows, author) if a != bool(grader[r["id"]])]
-    (ROOT / "data" / "results" / "grader_check.json").write_text(json.dumps(table, indent=1))
+    table["disagreements"] = [r["id"] for r, a in zip(rows, checker) if a != bool(grader[r["id"]])]
+    (ROOT / "data" / "results" / out).write_text(json.dumps(table, indent=1))
     print(json.dumps(table, indent=1))
 
-
 if __name__ == "__main__":
-    write_table() if sys.argv[1:] == ["table"] else write_sheet()
+    if sys.argv[1:2] == ["table"]:
+        write_table(sys.argv[2] if len(sys.argv) > 2 else "author")
+    else:
+        write_sheet()
