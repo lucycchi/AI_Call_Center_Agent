@@ -161,3 +161,10 @@ def test_conversations_are_graded_by_codex_and_the_database_together(tmp_path):
     no_booking = _attempt_with_db(tmp_path / "y", booked=False)
     [graded] = grade_attempts([no_booking], {"c1": _case("hvac repair")}, runner, tickets=lambda a: [])
     assert graded.all_correct is False  # Codex said fine, but nothing was booked in the database copy
+
+
+def test_the_rubric_settles_the_close_cases():
+    rubric = (ROOT / "eval" / "grader_prompt.md").read_text()
+    assert "a guess beyond the documents" in rubric and "fails, even when a caveat follows it" in rubric
+    assert "the technician confirms the final price on site\", is a key fact" in rubric
+    assert "whatever its passages contained" in rubric

@@ -6,7 +6,11 @@ For a "knowledge answer" (a question, the assistant's answer, a reference answer
 documents, and the passages the assistant was given):
 - correct: the answer states every key fact of the reference answer and contradicts none of them. If the reference
   answer is empty, the question cannot be answered from the documents: correct means the assistant passed it to a team
-  member without stating facts it was not given.
+  member without stating facts it was not given. Three rules settle the close cases:
+  - a guess beyond the documents ("it likely would", "probably yes") fails, even when a caveat follows it;
+  - a disclaimer the reference includes, such as "the technician confirms the final price on site", is a key fact;
+  - the answer is graded against the reference whatever its passages contained: a fact the passages lacked is still
+    missing, and the answer fails.
 - faithful: every factual claim in the answer is supported by the passages (or, for a "whole_kb" answer, by the
   knowledge base it was given). Saying a team member will follow up is not a factual claim.
 - citation_ok: if the answer names a source document, that document contains the fact; null if it names none.
