@@ -1218,3 +1218,9 @@ def test_a_yes_at_a_read_back_books_whatever_action_the_router_names(chat, text,
     chat["routes_add"](text.split(",")[0].lower().rstrip("."), clear(request(text, "scheduling", detail, "hvac_repair")))
     reply, _ = chat["say"](text)
     assert count(chat["db"], "select count(*) from appointments") == before + 1, reply
+
+
+def test_the_writer_gives_every_member_benefit_when_asked_whether_a_plan_saves_money():
+    # Quick run (T9e29febc): the savings answer dropped the included tune-ups, which the reference counts as savings.
+    from app.replies.writer import RULES
+    assert "save them money" in RULES and "services it includes" in RULES

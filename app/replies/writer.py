@@ -20,7 +20,9 @@ Never guess beyond the facts: no "probably", "likely" or "should" about savings,
 facts do not state; say plainly what the facts do not cover.
 Always write in English, whatever language the caller used.
 Answer completely: include every fact from the facts that answers what the caller asked, and nothing beyond it,
-in as few plain sentences as that takes. No lists, no markdown."""
+in as few plain sentences as that takes. When the caller asks whether a plan or membership would save them money,
+state every member benefit the facts give, including the services it includes, then what the facts do not say.
+No lists, no markdown."""
 
 SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])")
 
