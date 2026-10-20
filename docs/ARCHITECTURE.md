@@ -6,7 +6,7 @@
 
 **The approach.** One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.
 
-**Where the project stands.** The intent (`docs/DESIGN.md`), the specification (`docs/SPEC.md`, 86 numbered requirements), this architecture and the plan (`docs/PLAN.md`) are approved, with the decisions recorded in `docs/DECISIONS.md`; the technology stack is its own decision (technology stack (D35)). Milestones 1 to 3 of 6 are built: configuration and the agent-core interface, transcript templates and labels, the findings document (`docs/FINDINGS.md`) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results; then the agent core: identification and account lookups, slot eligibility and booking transactions, the safety check, the operations store, the knowledge, account, scheduling and handoff flows, the router and the engine pipeline, with a terminal chat (`python -m app.cli`). Milestones 4 to 6 are planned.
+**Where the project stands.** The intent (`docs/DESIGN.md`), the specification (`docs/SPEC.md`, 86 numbered requirements), this architecture and the plan (`docs/PLAN.md`) are approved, with the decisions recorded in `docs/DECISIONS.md`; the technology stack is its own decision (technology stack (D35)). Milestones 1 to 4 of 6 are built (foundations, search and test set, agent core, evaluation harness): configuration and the agent-core interface, transcript templates and labels, the findings document (`docs/FINDINGS.md`) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results; then the agent core: identification and account lookups, slot eligibility and booking transactions, the safety check, the operations store, the knowledge, account, scheduling and handoff flows, the router and the engine pipeline, with a terminal chat (`python -m app.cli`); then the evaluation harness: the simulated-caller test run graded by Codex and database checks, the quick test run, the threshold curve, the adversarial runner, the grader check and the agent freeze. Milestones 5 (website and deployment) and 6 (final measurement and deliverables) are planned.
 
 ## 1. System overview
 
@@ -51,11 +51,11 @@ flowchart TB
 1. The browser sends each message as an ordinary request; the web layer checks that the conversation belongs to the signed visitor and opens a stream for that message's sentences.
 2. The safety check runs first on every message, even mid-flow and even for a visitor over budget; an emergency gets its fixed reply, which costs nothing.
 3. Only then are the spending and rate limits applied.
-4. With nothing in progress, a bare acknowledgement ("ok", "thanks") gets a plain "anything else?" and a goodbye ("no, that's it") ends the chat; neither is routed. The router runs on every other message. It splits a message into its requests, each with a route, a detail (such as balance, book or dispute) and a service type. With no flow active, the routes pick the flows; with a flow active, its result is used only to detect a clear change of topic, which includes a different scheduling action (booking, then cancelling another appointment).
-5. The active or chosen flows run their code-owned steps. Account and scheduling requests wait together for the caller to be identified, then run in turn; a message naming a different customer switches the conversation to that account and drops the previous customer's booking in progress. Every handoff in one message goes into one ticket. The router decides requests to act on money or membership; a code backstop catches only requests that are never questions ("send me a payment link", "set up autopay", "cancel my membership", "I want to pay my bill") on every route except a handoff (R48, D43).
+4. Some messages are answered in code without routing. A goodbye ("no, that's it", or "that's all" with nothing else and no question) ends the chat, even with a flow open (at a read-back only "bye" does). A filler line ("hold on", "you cut out") with nothing else in it gets a repeat of the open offer or read-back, or "No problem, take your time." With nothing in progress, a bare acknowledgement ("ok", "thanks") gets a plain "anything else?". A caller who gives their details on any route is identified then, and an open ticket gets the caller's name. The router runs on every message that reaches it. It splits a message into its requests, each with a route, a detail (such as balance, book or dispute) and a service type. With no flow active, the routes pick the flows; with a flow active, its result is used only to detect a clear change of topic, which includes a different scheduling action (booking, then cancelling another appointment) only when the message uses that action's verb ("cancel", "move" or "change", "book"). A code backstop (`app/core/language.py`) hands off a message in another language, with the English note "I can only help in English" (reply to another language (D47)), and hands off nonsense when no flow is open. An unclear, calm message of up to 15 words that asks nothing ("okay, good to know") gets "anything else?" instead of a ticket (or is added to the open ticket); a request for a person is still handed off.
+5. The active or chosen flows run their code-owned steps. Account and scheduling requests wait together for the caller to be identified, then run in turn; a message naming a different customer switches the conversation to that account and drops the previous customer's booking in progress. Every handoff in one message goes into one ticket; a later handoff in the same conversation joins the open ticket, adding its reason tag and, for a dispute or billing review, the invoice notes. A handoff message asks an unidentified caller for their name and account number, phone or address. "Sign me up" or "add it" after the plan was discussed is a request to join, an action the agent cannot take. A booking request that claims a warranty also gets the coverage answer. The router decides requests to act on money or membership; a code backstop catches only requests that are never questions ("send me a payment link", "set up autopay", "cancel my membership", "I want to pay my bill") on every route except a handoff (R48, D43).
 6. The flow hands the writer the facts and a reply type.
 7. Each sentence is checked before release. If a sentence fails, generation stops, the sentences already shown stay, the rest becomes a handoff message with a ticket, and a "blocked sentence" event is logged. Once the conversation has mentioned a burning smell, breaker-reset advice is blocked too.
-8. Every step records events and model calls in the operations store. One 15-second deadline covers the whole message: the router and writer calls get only the time left, and each booking change checks it just before committing, so nothing is committed after the caller has been told it was passed on.
+8. Every step records events and model calls in the operations store. The writer always writes in English. One 15-second deadline covers the whole message: the router and writer calls get only the time left, and each booking change checks it just before committing, so nothing is committed after the caller has been told it was passed on.
 
 The engine guarantees exactly one done event, always last. If the pipeline raises (for example, the operations database is unavailable, so no ticket can be saved), the engine releases a plain message asking the caller to phone the office, logs the failure to the server log and ends with an "error" done event; if the pipeline stops without a done event, it releases a plain handoff message and ends with "incomplete". A message for a conversation that belongs to another visitor gets a plain refusal ("forbidden"), and one for a closed or abandoned conversation asks the caller to start a new one.
 
@@ -68,7 +68,7 @@ The engine guarantees exactly one done event, always last. If the pipeline raise
 | Knowledge search | Combined keyword and meaning-based search over current documents: the top result of each list is always kept (keyword search's only when some word matches), then the top 10 of each list are merged by reciprocal-rank fusion; five results returned (combined search keeps each list's top result (D41)) | Document search (R24 to R32) |
 | Scheduling and account store | Read-only lookups and booking transactions on the scheduling database | Booking rules (R45 to R56), data rules (D29) |
 | Reply writer | Sonnet 5.5 turns facts chosen by code into wording, as structured reply types | Pricing and internal-text rules (R42, R43) |
-| Reply checks | Checks every sentence before release: in code, firm totals, waitlist promises, breaker advice after a burning smell, internal text and promises worded as a personal favour; then every sentence that mentions money goes to a Haiku 5.5 check against the published money terms and the sentence before it, failing closed (money promises checked by a model (D43)); blocks are logged and counted | Sentence release (R60) |
+| Reply checks | Checks every sentence before release: in code, firm totals, waitlist promises, breaker advice after a burning smell, internal text (eight words in a row from an internal document) and promises that a team member will follow up (an offer to pass it on is allowed); then every sentence that mentions money goes to a Haiku 5.5 check against the published money terms and the sentence before it, failing closed (money promises checked by a model (D43)); blocks are logged and counted | Sentence release (R60) |
 | Spending and rate limits | Per-visitor, site-wide and reviewer-reserve budgets; message limits | Guards (R61, R62), spending budgets with a reviewer reserve (D30) |
 | Operations store | Logs, tickets, receipts, metrics, alerts, nightly reset, log purge | Monitoring and operations (R73 to R77), retention (D31) |
 
@@ -84,7 +84,7 @@ The engine guarantees exactly one done event, always last. If the pipeline raise
 | Search index | Built offline, shipped in each release as files (chunks and embeddings); the keyword index is rebuilt from the chunks at startup | The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too. |
 | Scheduler and reset gate | A background task in the app plus an app-wide gate: every message holds it shared, the nightly reset holds it exclusively | One machine and one worker, so an in-process gate is enough to make messages wait during a reset; the job-runs table catches a missed reset at startup. |
 | Alerts | A webhook URL setting (for example a push-notification service), plus a free outside uptime monitor on the health endpoint | One HTTP call per alert; the app cannot alert while it is down, so downtime is detected from outside (booking, reviewer-link and downtime protections (D34)). |
-| AI SDKs and timeouts | Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off; each model attempt gets half the time left. A reply sentence about money waits about half a second more for its Haiku check | Model IDs `claude-sonnet-5-5` and `claude-haiku-5-5`, the embedding model `voyage-4`, and settings pinned and logged with every run. |
+| AI SDKs and timeouts | Official Anthropic and Voyage Python SDKs, versions pinned; timeouts of 20 seconds for Anthropic, 5 for Voyage and 5 for the alert webhook, and a 15-second deadline per message after which it hands off; router and money-check attempts each get half the time left (one retry), and the streamed writer gets all of it, since a stream cannot be retried part-way. A reply sentence about money waits about half a second more for its Haiku check | Model IDs `claude-sonnet-5-5` and `claude-haiku-5-5`, the embedding model `voyage-4`, and settings pinned and logged with every run. |
 | Offline grading | `codex exec` with a JSON output format | Uses the author's subscription, no API cost (grading through Codex (D15)). |
 
 Skipped sections: caching, message queues and scaling do not apply to one small machine with demo traffic; the per-visitor and site-wide limits are the only capacity controls needed.
@@ -184,6 +184,7 @@ erDiagram
     MESSAGES ||--o{ SENTENCES : "is released as"
     CONVERSATIONS ||--o{ TICKETS : "raises"
     TICKETS ||--o{ TICKET_MESSAGES : "gathers"
+    TICKETS ||--o{ TICKET_TAGS : "adds reasons"
     MESSAGES ||--o{ TICKET_MESSAGES : "is added to"
     MESSAGES ||--o{ FLAGS : "is flagged by staff"
     VISITORS {
@@ -220,6 +221,10 @@ erDiagram
         TEXT text_masked "one checked sentence, masked"
         TEXT created_at "real time it was released"
     }
+    TICKET_TAGS {
+        INTEGER ticket_id FK "ticket"
+        TEXT tag "a reason tag added by a later handoff"
+    }
     TICKET_MESSAGES {
         INTEGER ticket_id FK "ticket"
         INTEGER message_id FK "a later caller message added to it"
@@ -242,7 +247,7 @@ erDiagram
         TEXT tried "what the agent did"
         TEXT constraints "emergency, disputed fee, gap"
         TEXT mood "caller's mood"
-        TEXT reason_tag "dispute, emergency, burning smell, late technician, complaint, commercial, action gap, decline, billing review, warranty review, not identified, new customer, not enough evidence, blocked reply, unclear, error, other"
+        TEXT reason_tag "dispute, emergency, burning smell, late technician, complaint, commercial, other language, action gap, earlier slot, decline, billing review, warranty review, not identified, new customer, not enough evidence, blocked reply, unclear, error, other"
         INTEGER priority "2 emergency, 1 normal, 0 low"
         TEXT status "open or closed"
         TEXT created_at "real time created"
@@ -258,7 +263,7 @@ erDiagram
 
 *Each visitor opens conversations; each message may carry a receipt; conversations raise tickets; staff flags point at single replies.*
 
-How they link, in words: each conversation belongs to exactly one visitor; each message belongs to exactly one conversation; each agent message has at most one receipt and is saved as the checked sentences released for it, in order, which the stream replays after a reconnect; each ticket belongs to at most one conversation (silent billing-review tickets have none) and may refer to one appointment, and messages after a handoff stay in the same conversation and are linked to the ticket (ticket messages) so the ticket shows them; each flag points at exactly one agent message. Every query for a conversation, its messages, receipts or tickets filters by both the conversation id and the signed visitor id, unless the request carries a staff session.
+How they link, in words: each conversation belongs to exactly one visitor; each message belongs to exactly one conversation; each agent message has at most one receipt and is saved as the checked sentences released for it, in order, which the stream replays after a reconnect; each ticket belongs to at most one conversation (silent billing-review tickets have none) and may refer to one appointment, and messages after a handoff stay in the same conversation and are linked to the ticket (ticket messages) so the ticket shows them; a later handoff reason joins the open ticket as a ticket tag (one row per extra tag); each flag points at exactly one agent message. Every query for a conversation, its messages, receipts or tickets filters by both the conversation id and the signed visitor id, unless the request carries a staff session.
 
 | Table | Example row |
 |---|---|
@@ -297,7 +302,7 @@ erDiagram
     MODEL_CALLS {
         INTEGER call_id PK "whole number, given automatically"
         INTEGER message_id "reply it served, empty for offline runs"
-        TEXT purpose "route, write or simulate"
+        TEXT purpose "route, write, check or simulate"
         TEXT model_id "e.g. claude-haiku-5-5"
         TEXT sdk_version "pinned SDK version"
         TEXT settings "request settings, as JSON text"
@@ -359,8 +364,8 @@ sequenceDiagram
 2. The safety check runs in code; nothing matches.
 3. Haiku 5.5 returns the route "knowledge" with the label "clear".
 4. Combined search returns the top five pieces; the old $79 FAQ is not in the index at all, because the document list excludes it.
-5. If the top piece's meaning-based score is below the chosen threshold, the engine goes to a handoff instead; here it is above, so the facts and a "price answer" reply type go to Sonnet 5.5.
-6. Sonnet writes the reply, which must include the source and the "technician confirms the final price on site" line.
+5. If the top piece's meaning-based score is below the chosen threshold, the engine goes to a handoff instead; here it is above, so the facts and a reply type go to Sonnet 5.5. The type is a "price answer", with the "technician confirms the final price on site" line, only when the question asks about a price and a source is the service catalog or the repair price book (`app/flows/knowledge.py`); a fixed fee or anything else gets a "policy answer".
+6. Sonnet writes the reply, which must name its source.
 7. Each sentence is checked for promises, discounts, waivers and internal text, then released to the browser.
 8. The message, its receipt (route, passages, excluded stale document), its model calls and its cost are written to the operations database.
 
@@ -393,13 +398,13 @@ sequenceDiagram
 
 1. The caller asks to book and gives a name and account number.
 2. The account store matches name plus account number (never a name alone); after two failed attempts it would hand off.
-3. The slot finder asks for slots that are open, or members-only for standard or Plus members, in the caller's zone and service type, not yet started relative to the fixed "now", and whose technician has no overlapping booking.
+3. The slot finder asks for slots that are open, or members-only for standard or Plus members, in the caller's zone and service type, not yet started relative to the fixed "now", whose technician has no overlapping booking, and which do not overlap the caller's own scheduled visits (except the visit being moved).
 4. The north zone has no plumbing slots, so the agent says so plainly and creates a ticket naming the gap: a clean decline.
 5. The caller asks for an HVAC repair instead.
 6. The finder offers the requested slot if eligible, otherwise up to three nearest by date then window.
-7. The agent reads back the date, window and service type, with a confirmation id attached.
+7. The agent reads back the date, window and service type, with a confirmation id attached. If the caller picks a slot on the same day, for the same service, as a visit already booked in this conversation, the read-back offers to move that visit instead of booking a second one.
 8. The caller confirms. A double click or a browser retry sends the same confirmation id, which returns the first result instead of booking twice (booking, reviewer-link and downtime protections (D34)).
-9. One write-locked transaction reruns every eligibility check (slot status, zone, service, membership, not started, no overlapping booking for the technician, no other scheduled appointment on the slot), then marks the slot booked and adds the appointment row; if anything changed, the agent says the slot was just taken and offers the next three. The warranty-visit flag is set only if the install date proves the 2-year installation warranty; other warranty claims add a low-priority warranty-review ticket linked to the appointment. If the booking commits but the operations write then fails, the booking stands, the caller still gets the confirmation, the write is retried, and if it fails again the appointment id goes to the server log with an alert.
+9. One write-locked transaction reruns every eligibility check (slot status, zone, service, membership, not started, no overlapping booking for the technician, no overlap with the caller's own visits, no other scheduled appointment on the slot), then marks the slot booked and adds the appointment row; if anything changed, the agent says the slot was just taken and offers the next three. The warranty-visit flag is set only if the install date proves the 2-year installation warranty; other warranty claims add a low-priority warranty-review ticket linked to the appointment. If the booking commits but the operations write then fails, the booking stands, the caller still gets the confirmation, the write is retried, and if it fails again the appointment id goes to the server log with an alert.
 10. The agent confirms with the technician's name and a proof receipt ("customer verified · eligibility checked · booked in one transaction").
 
 ### 5.3 Rescheduling or cancelling
@@ -528,19 +533,19 @@ sequenceDiagram
     AG->>DB: 4. lookups and booking changes
     AG-->>C: agent replies
     H->>DB: 5. check booking changes
-    H->>X: 6. answers in batches of about 20
+    H->>X: 6. conversations in batches of 20
     X-->>H: JSON verdicts with model name
-    H->>H: 7. score first runs, weight by template
+    H->>H: 7. pass only if both agree; score first runs
 ```
 
 *How the held-out set is measured against a fresh database copy, never the live one.*
 
-1. For each case the harness copies the seed database and adds its fixtures: the invoice the caller describes, a synthetic customer if no real one matches, and for an existing-appointment call with no matching seeded appointment (a customer whose only upcoming appointment is on that day, for the service the caller describes), that appointment: in an open seed slot, or a new slot for a technician free in that window. Planted rows use ids no seed row has: synthetic customers MHC-0xxxx, invoices INV-9xxxxx unless the caller names one, appointments from 5000 and slots from 9000; a planted row that collides fails rather than replacing a seed row.
+1. For each attempt the harness makes a fresh copy of the seed database and a fresh operations database, and adds the case's fixtures: the invoice the caller describes, a synthetic customer if no real one matches, and for an existing-appointment call with no matching seeded appointment (a customer whose only upcoming appointment is on that day, for the service the caller describes), that appointment: in an open seed slot, or a new slot for a technician free in that window. Planted rows use ids no seed row has: synthetic customers MHC-0xxxx, invoices INV-9xxxxx unless the caller names one, appointments from 5000 and slots from 9000; a planted row that collides fails rather than replacing a seed row.
 2. Sonnet 5.5 plays the caller from the caller card and the transcript.
 3. The caller's turns go to the same agent core the web app uses, called directly with no web layer.
 4. The agent does its lookups and booking changes on the copy.
-5. Code checks the database changes against the expected outcome.
-6. Knowledge answers go to Codex in batches of about 20 for JSON verdicts; the author is told first so Codex is set to a frontier model.
+5. Code checks the database copy against its state at the start of the call (`eval/grade_conversations.py`): each new booking is the expected service, on the slot read back before it, in the caller's zone, members-only only for a member, marked booked, with no second scheduled appointment on it and not yet started; a reschedule or cancel frees the old slot to its seed status; any other changed row is flagged as an unexpected write. A handoff case also needs the expected reason tag on its ticket.
+6. Whole conversations (requests, answers, lookups and ticket quality, with this conversation's tickets and retrieved passages) go to Codex in batches of 20 for JSON verdicts, with the model set by `GRADER_CODEX_MODEL`; a run at capacity or rate-limited is retried. A case passes only if Codex and every code check that applies both pass.
 7. The first run of each case is scored, failures are retried once and reported as flaky if they then pass, and containment is weighted by each template's call count.
 
 ## 6. User flow
@@ -711,7 +716,7 @@ flowchart TB
 | Folder | Contents |
 |---|---|
 | `app/web/` | Page routes, the chat stream, the Staff view, cookie and staff-password handling |
-| `app/core/` | Conversation engine, conversation state, the pipeline order, the per-message deadline and the model-call recorder (`model_log.py`) |
+| `app/core/` | Conversation engine, conversation state, the pipeline order, the per-message deadline, the model-call recorder (`model_log.py`) and the other-language and nonsense backstop (`language.py`) |
 | `app/flows/` | Shared flow protocol and the identify, account, knowledge and scheduling flows the engine calls |
 | `app/safety/` | Emergency patterns, normalisation, fixed safety replies |
 | `app/routing/` | Haiku router call and its structured result |
@@ -724,7 +729,7 @@ flowchart TB
 | `app/config.py` | Pinned model IDs, fixed "now", thresholds and limits |
 | `app/cli.py` | A terminal chat on fresh database copies |
 | `pipeline/` | Transcript loading and template grouping (with families), Haiku, Codex and Fable labeling and the blind-third sheet, label agreement, staff policy-error checks, zone capacity counts, the document list, conflict register and format conversion, index build, and the findings document `docs/FINDINGS.md`; it uses the app's zone map (`app/scheduling/zones.py`) and settings |
-| `eval/` | Test-set builder (caller cards, fixtures), simulator, Codex grader, metrics and reports |
+| `eval/` | Test-set builder (caller cards, fixtures), simulator, harness and test run, conversation and retrieval grading through Codex, scoring, quick run, threshold curve, adversarial runner and cases, grader check and agent freeze |
 | `data/` | Document list, conflict register, converted documents (`data/kb_text/`), the hand transcription of the holiday-hours image, templates, labels, built index, test set, results |
 | `tests/` | Unit and flow tests run by `python -m pytest` |
 
@@ -744,12 +749,21 @@ The test evidence is kept as versioned files in `data/`, so held-out isolation a
 | `data/case_requests.csv` | The reviewed list of every request in each call beyond its labelled reason, quoting the caller's words, with its kind (knowledge, booking, action) and the reference it needs |
 | `data/knowledge_questions.jsonl` | The retrieval questions (from the test cases, plus answerable, stale-trap and unanswerable ones written by hand), each with its set, whether it falls under a handled reason, its call weight (questions from test cases), reference answer and evidence spans |
 | `data/results/retrieval/summary.json` | Retrieval measures for keyword-only, meaning-only and combined search on a named question set; coverage as the call-weighted share of the knowledge questions callers ask that the documents answer; the check that no excluded document is in the index; and the SDK versions, models, token, retry and timeout settings and spending cap used |
-| `data/results/retrieval/answers_to_grade.jsonl` | Answers from keyword-only search, combined search and the whole knowledge base, with the model, for grading on answer correctness (stale-trap accuracy is judged here) |
-| `data/results/<run>/attempts.jsonl` | One line per attempt: case, attempt number, first-run flag, conversation, database checks, model ids and settings, grader verdict and grader model |
-| `data/results/<run>/summary.json` | The computed numbers and their intervals for that run |
-| `data/grader_check.csv` | The pre-chosen sample, the author's blind grades and the grader's verdicts |
+| `data/results/retrieval/answers_to_grade.jsonl` | Answers from keyword-only search, combined search and the whole knowledge base, with the model and the passages each answer was written from, for grading on answer correctness (stale-trap accuracy is judged here) |
+| `data/results/retrieval/verdicts.jsonl`, `answer_scores.json` | Codex's verdict on each retrieval answer, and correctness, faithfulness, citation, refusal and stale-trap scores per search mode |
+| `data/results/retrieval/runs/<agent hash>/<N>/` | A copy of each graded retrieval run (answers and verdicts), kept under the hash of the agent it measured |
+| `data/results/threshold.json` | The threshold curve (containment and wrong confident answers at 0.20 to 0.75) over every graded run of the current agent pooled, the rule (0.25 floor, a wrong confident answer costs 2.5 correct contained ones; pooled threshold runs (D48)) and the chosen threshold; working-set questions only |
+| `data/results/adversarial/summary.json`, `cases.jsonl` | The adversarial runner's (`eval/run_adversarial.py`) pass rate, the booking-rule and instruction-extraction pass rates, failures and spend; and each case's conversation, failed checks and database actions |
+| `data/agent_freeze.json` | The agent freeze hash, the number of files and the paths it covers |
+| `data/results/<run>/attempts.jsonl` | One line per attempt, appended as each finishes and rewritten with grades: case, attempt number, first-run flag, conversation, done events, tickets, database checks, each purpose's model ids, SDK version and settings, the run settings, any error, grader verdict and grader model |
+| `data/results/<run>/verdicts.jsonl`, `ungraded-first.jsonl` | Codex's verdicts for the run, and each first-run attempt as it finished before grading (`ungraded-retry.jsonl` for retries) |
+| `data/results/<run>/summary.json` | The computed numbers and their intervals for that run, written even when the run stops early or fails; wrong confident answers are a count with their case ids |
+| `data/grader_check.csv` | The pre-chosen sample, with blind-grade columns for the author, Claude Fable 5.1 (which stands in for the author: Fable grades the grader check (D44)) and a second model; rewriting it keeps grades already given and refuses to drop any |
+| `data/results/grader_check_sample.json`, `grader_check.json` | Codex's verdicts for the sample, kept apart from the sheet; and the agree and disagree table |
 
-The held-out hash is recorded in git before any tuning; the final run checks the files still match it, and checks a second hash covering only the agent-behaviour files (core, routing, knowledge, accounts, scheduling, safety, replies, handoff, thresholds, prompts and the search index) recorded at the day-3 freeze, so web, operations and deployment code may still change. Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation, one retry, a separate test key, and an $8 stop per run.
+The held-out hash is recorded in git before any tuning. `eval/run.py` refuses held-out cases without `--final`, and with it refuses unless the held-out files still match that hash and the agent still matches a second hash recorded at the day-3 freeze (`eval/freeze.py`). That hash covers the agent-behaviour code (core, flows, routing, knowledge, accounts, scheduling, safety, replies, handoff, and `app/config.py` with its thresholds and models), the search index, and the data files the agent reads (`data/document_list.csv`, `data/kb_text/` and the internal documents), so web, operations and deployment code may still change. Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation (enforced during calls: the simulated caller and the agent's message deadline get only the time left), one retry, a separate test key, and an $8 stop per run that raises as soon as recorded spend crosses it; the cap also covers adversarial runs and the API grader fallback.
+
+How the scores are computed (`eval/scoring.py`): containment and both ceilings count redirects as contained; action-gap calls stay in the scope ceiling and leave only the adjusted ceiling. The quick run (`eval/quick_run.py`, 20 working-set cases) passes when two of up to three runs pass; a safety or booking failure in any run, a run with no attempts, a missing case, or a run stopped at the budget or on an error fails it outright, and it exits nonzero on a failure. The adversarial runner plays hand-written caller lines on fresh database copies and checks replies with its own checks, independent of the agent's: fixed money and waitlist promise phrasings, any six words in a row or terms found only in internal documents, and database checks (no booking, no members-only booking, moved, no cancellation).
 
 ## 14. Diagrams added or skipped
 

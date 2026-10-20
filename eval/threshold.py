@@ -43,6 +43,12 @@ def choose_threshold(points: list[Point], questions: int = 100) -> float:
     return best.threshold
 
 
+def pooled_verdicts(results: Path, agent_hash: str) -> list[dict]:
+    """Every graded run of this agent, each as {answer id: verdict}; one run's grades swing on a single answer."""
+    runs = sorted((results / "runs" / agent_hash).glob("*/verdicts.jsonl"))
+    return [{v["id"]: v for v in map(json.loads, path.open())} for path in runs]
+
+
 def main() -> None:
     from dotenv import load_dotenv
 
@@ -53,24 +59,32 @@ def main() -> None:
     load_dotenv(ROOT / ".env")
     chunks, embeddings = load_index(ROOT / "data" / "index")
     searcher = Searcher(chunks, VoyageEmbedder(input_type="query"), embeddings)
-    verdicts = {json.loads(l)["id"]: json.loads(l) for l in (ROOT / "data" / "results" / "retrieval" / "verdicts.jsonl").open()}
+    from eval.freeze import freeze_agent
+
+    agent = freeze_agent()
+    runs = pooled_verdicts(ROOT / "data" / "results" / "retrieval", agent)
+    if not runs:
+        raise SystemExit(f"no graded retrieval runs for agent {agent}; run eval.retrieval_eval and eval.grade_retrieval")
     questions = []
     for q in map(json.loads, (ROOT / "data" / "knowledge_questions.jsonl").open()):
         if q["set"] != "working":
             continue
-        verdict = verdicts.get(f"{q['qid']}|combined")
-        if verdict is None:
-            continue
-        score = max(r.meaning_score for r in searcher.search(q["question"], mode="combined"))
-        questions.append({"qid": q["qid"], "score": round(score, 4), "correct": bool(verdict["correct"]),
-                          "unanswerable": not q["evidence_spans"]})
+        score = None
+        for verdicts in runs:
+            verdict = verdicts.get(f"{q['qid']}|combined")
+            if verdict is None:
+                continue
+            if score is None:
+                score = max(r.meaning_score for r in searcher.search(q["question"], mode="combined"))
+            questions.append({"qid": q["qid"], "score": round(score, 4), "correct": bool(verdict["correct"]),
+                              "unanswerable": not q["evidence_spans"]})
     points = curve(questions)
     chosen = choose_threshold(points, len(questions))
-    report = {"set": "working", "questions": len(questions), "chosen": chosen, "rule": {"floor": FLOOR, "wrong_cost": WRONG_COST},
+    report = {"set": "working", "questions": len(questions), "runs": len(runs), "agent": agent, "chosen": chosen, "rule": {"floor": FLOOR, "wrong_cost": WRONG_COST},
               "points": [asdict(p) for p in points],
               "scores": questions,
-              "note": "Containment and wrong confident answers over the working-set knowledge questions, from the graded "
-                      "combined-search answers; the held-out questions are never used."}
+              "note": "Containment and wrong confident answers over the working-set knowledge questions, from every graded "
+                      "combined-search run of this agent pooled (each answer counts once); the held-out questions are never used."}
     (ROOT / "data" / "results" / "threshold.json").write_text(json.dumps(report, indent=1))
     print(json.dumps({k: v for k, v in report.items() if k != "scores"}, indent=1))
 

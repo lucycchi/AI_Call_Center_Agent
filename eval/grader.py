@@ -3,6 +3,7 @@ model name; an API fallback is switched on by hand (GRADER_BACKEND=api). The gra
 eval/grader_prompt.md, and every verdict is written out."""
 
 import json
+import re
 import os
 import random
 import subprocess
@@ -82,8 +83,11 @@ def codex_command(prompt: str, out: str) -> list[str]:
     return ["codex", "exec", "-m", CODEX_MODEL, "-s", "read-only", "--ephemeral", "-o", out, prompt]
 
 
+BUSY = re.compile(r"capacity|429|too many requests|rate limit", re.I)
+
+
 def codex_runner(prompt: str, attempts: int = 5, wait_s: float = 120) -> str:
-    """One Codex run; when the model is at capacity, wait and try again (up to five tries, two minutes apart)."""
+    """One Codex run; when the model is at capacity or rate-limited, wait and try again (up to five tries, two minutes apart)."""
     for attempt in range(1, attempts + 1):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder) / "verdicts.txt"
@@ -93,7 +97,7 @@ def codex_runner(prompt: str, attempts: int = 5, wait_s: float = 120) -> str:
                 return out.read_text()
             errors = [line for line in (result.stdout + result.stderr).splitlines() if "ERROR" in line]
             message = errors[-1] if errors else "no error message"
-        if "capacity" not in message.lower() or attempt == attempts:
+        if not BUSY.search(message) or attempt == attempts:
             raise GraderError(f"Codex returned no verdicts: {message}")
         time.sleep(wait_s)
     raise GraderError("Codex returned no verdicts")

@@ -615,6 +615,43 @@ can only propose a decision; only the author settles one.
 - **Choice:** The grading rubric (eval/grader_prompt.md) adds that a reference may cover more than one question asked, since each was written for every caller with that kind of question, and facts the question did not ask about do not fail an answer that leaves them out. The references themselves are unchanged and frozen. Guessing still fails, and a required disclaimer is still a key fact.
 - **Reason:** The author's choice. A caller would find those answers correct; the strict reading measured how closely an answer matched a template-wide reference rather than whether it answered the caller. The change is made before any held-out run, on working-set evidence only.
 
+## D46: The grader saw the held-out requests and reference answers once by accident during testing: keep the held-out set or pick a new one?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
+- **Options:**
+  - Record it and keep the held-out set
+  - Record it and pick a new held-out set
+- **Research:**
+  - [tests/eval/test_run_safety.py](tests/eval/test_run_safety.py): On 2026-10-20 a first version of the held-out guard test ran the real run command on the held-out set before the guard existed; with a fake key every agent call failed (no agent turns, $0), and the 15 empty conversations went once to Codex (gpt-5.6-sol, ephemeral), which saw the requests and reference answers; the untracked output was deleted and the test now cannot start a run.
+- **Choice:** Keep the frozen held-out set (D42) and record the exposure here; the held-out guard now refuses a held-out run without the final flag and matching hashes.
+- **Reason:** The author's choice. No agent results on held-out cases existed, so nothing was tuned on them (R10); Codex ran without memory and sees the same requests and reference answers at the final grading anyway.
+
+## D47: What should the agent do with a message in a language other than English?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
+- **Options:**
+  - Reply in English that it helps only in English, and hand off with a ticket
+  - Reply in English asking the caller to continue in English, with no ticket
+- **Research:**
+  - [docs/SPEC.md](docs/SPEC.md): Languages other than English are a non-goal; the adversarial set must cover another language (R20) and an unclear request goes to a handoff (R38). The saved adversarial run answered the Spanish case (a20) in Spanish without a handoff.
+- **Choice:** The agent replies in English that it can only help in English and that a team member will follow up, and opens a handoff ticket; the other-language case (a20) checks the handoff.
+- **Reason:** The author's choice. A caller who cannot continue in English still gets a person, and a reply in another language would go unchecked by the English-only reply checks.
+
+## D48: One answer graded differently between two runs moved the threshold rule's pick from 0.25 to 0.45: how should the threshold be chosen?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
+- **Options:**
+  - Apply the same rule over every graded run of the current agent, pooled
+  - Take the pick of the latest run alone
+  - Keep 0.25 and record the noise
+- **Research:**
+  - [data/results/threshold.json](data/results/threshold.json): On 25 working-set questions, the first rerun gave 0.25 (76% contained, 2 wrong) and the second 0.45 (64%, 2 wrong against 72%, 3 wrong at 0.25), decided by one answer (the warranty registration question) that guessed in one run and not the other; pooled, 0.25 nets 0.49 against 0.44.
+- **Choice:** The threshold script applies the same rule (0.25 floor, a wrong confident answer costs 2.5) over every graded combined-search run of the current agent, each answer counting once; each graded run is kept under the agent hash it measured.
+- **Reason:** The author's choice. With 25 questions one answer's run-to-run swing decides the pick, and pooling runs measures the agent rather than one draw of the writer; the rule itself is unchanged and only working-set questions are used.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take

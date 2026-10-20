@@ -169,3 +169,33 @@ def test_the_freeze_hash_covers_the_data_files_the_agent_reads(tmp_path):
     text = (root / "data/document_list.csv").read_text()
     (root / "data/document_list.csv").write_text(text.replace("faq/faq.md,current", "faq/faq.md,stale"))
     assert freeze_agent(root) != first
+
+
+def test_each_graded_retrieval_run_is_kept_under_the_agent_it_measured(tmp_path):
+    from eval.grade_retrieval import keep_run
+    (tmp_path / "answers_to_grade.jsonl").write_text("a\n")
+    (tmp_path / "verdicts.jsonl").write_text("v\n")
+    first = keep_run(tmp_path, "abc123")
+    second = keep_run(tmp_path, "abc123")
+    assert first != second and first.parent == tmp_path / "runs" / "abc123"
+    assert (second / "verdicts.jsonl").read_text() == "v\n" and (second / "answers_to_grade.jsonl").read_text() == "a\n"
+
+
+def test_the_threshold_pools_every_run_of_the_current_agent(tmp_path):
+    import json
+    from eval.threshold import pooled_verdicts
+    for agent, run, correct in [("now", "1", True), ("now", "2", False), ("old", "1", True)]:
+        folder = tmp_path / "runs" / agent / run
+        folder.mkdir(parents=True)
+        (folder / "verdicts.jsonl").write_text(json.dumps({"id": "q1|combined", "correct": correct}) + "\n")
+    runs = pooled_verdicts(tmp_path, "now")
+    assert sorted(v["q1|combined"]["correct"] for v in runs) == [False, True]
+
+
+def test_pooled_runs_count_each_answer_once_in_the_curve():
+    from eval.threshold import choose_threshold, curve
+    one = [{"qid": "q1", "score": 0.3, "correct": True}, {"qid": "q2", "score": 0.3, "correct": True}]
+    two = [{"qid": "q1", "score": 0.3, "correct": True}, {"qid": "q2", "score": 0.3, "correct": False}]
+    [point] = curve(one + two, [0.25])
+    assert point.containment == 0.75 and point.wrong_confident == 1
+    assert choose_threshold(curve(one + two), 4) == 0.25

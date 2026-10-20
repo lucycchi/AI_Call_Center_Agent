@@ -174,12 +174,14 @@ def test_the_rubric_settles_the_close_cases():
     assert "whatever its passages contained" in rubric
 
 
-def test_codex_at_capacity_is_retried(monkeypatch):
+@pytest.mark.parametrize("error", ["ERROR: Selected model is at capacity. Please try a different model.",
+                                   "ERROR: exceeded retry limit, last status: 429 Too Many Requests"])
+def test_codex_at_capacity_or_rate_limited_is_retried(monkeypatch, error):
     import eval.grader as grader
     calls = []
 
     class Result:
-        stdout, stderr = "ERROR: Selected model is at capacity. Please try a different model.", ""
+        stdout, stderr = error, ""
 
     def fake_run(command, **kwargs):
         calls.append(command)

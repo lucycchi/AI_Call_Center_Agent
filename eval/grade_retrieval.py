@@ -50,6 +50,19 @@ def answer_scores(items: list[dict], verdicts: list[Verdict]) -> dict:
     return scores
 
 
+def keep_run(results: Path, agent_hash: str) -> Path:
+    """A copy of this graded run under the agent it measured, so later runs add to it rather than replace it."""
+    import shutil
+
+    runs = results / "runs" / agent_hash
+    runs.mkdir(parents=True, exist_ok=True)
+    folder = runs / str(len([d for d in runs.iterdir() if d.is_dir()]) + 1)
+    folder.mkdir()
+    for name in ("answers_to_grade.jsonl", "verdicts.jsonl"):
+        shutil.copy(results / name, folder / name)
+    return folder
+
+
 def main() -> None:
     from dotenv import load_dotenv
 
@@ -64,6 +77,8 @@ def main() -> None:
     items = answer_items(answers, searcher)
     verdicts = grade(items, runner_for(), grader_model())
     write_verdicts(verdicts, RESULTS / "verdicts.jsonl")
+    from eval.freeze import freeze_agent
+    keep_run(RESULTS, freeze_agent())
     scores = answer_scores(items, verdicts)
     scores["grader_model"] = grader_model()
     scores["passages_searched_again"] = sum(1 for i in items if i.get("passages_searched_again"))
