@@ -617,7 +617,7 @@ can only propose a decision; only the author settles one.
 
 ## D46: The grader saw the held-out requests and reference answers once by accident during testing: keep the held-out set or pick a new one?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
 - **Options:**
   - Record it and keep the held-out set
@@ -629,7 +629,7 @@ can only propose a decision; only the author settles one.
 
 ## D47: What should the agent do with a message in a language other than English?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
 - **Options:**
   - Reply in English that it helps only in English, and hand off with a ticket
@@ -641,7 +641,7 @@ can only propose a decision; only the author settles one.
 
 ## D48: One answer graded differently between two runs moved the threshold rule's pick from 0.25 to 0.45: how should the threshold be chosen?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
 - **Options:**
   - Apply the same rule over every graded run of the current agent, pooled
