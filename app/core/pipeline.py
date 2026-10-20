@@ -15,13 +15,13 @@ from app.accounts.lookups import read_only
 from app.config import SETTINGS, real_now
 from app.accounts.lookups import is_action_request
 from app.core import deadline
-from app.core.language import unreadable
+from app.core.language import WORD, english_words, other_language
 from app.core.model_log import SINK
 from app.core.state import ConversationState, NotYourConversation
 from app.core.types import DoneEvent, Event, SentenceEvent, Turn
 from app.flows import scheduling
 from app.flows.account import account_answer
-from app.flows.identify import ASK, find_customer, has_identifier
+from app.flows.identify import ACCOUNT, ASK, PHONE, STREET, find_customer, has_identifier
 from app.flows.knowledge import answer
 from app.flows.protocol import FlowResult
 from app.handoff.flow import add_to_open_ticket, hand_off, safe
@@ -50,23 +50,32 @@ ENDING = re.compile(r"^\W*(?:(?:no|nope|um|uh|ok|okay|thanks|thank you|great)\W+
 ANYTHING_ELSE = "Is there anything else I can help you with?"
 # Lines that ask nothing ("hold on", "can you hear me", "you cut out"): never routed, never a ticket.
 FILLER = re.compile(r"\b(can you hear me|hold on|hang on|one sec(ond)?|(you|it|the line|the call) cut out|i'?m driving|"
-                    r"repeat that|say that again|dog is barking|bear with me|give me a (sec|second|moment|minute))\b", re.I)
-FILLER_WORDS = re.compile(r"\b(sorry|oh|um|uh|ok|okay|yeah|hi|hello|so|just|please|there|again|still|real quick|wait|"
-                          r"for a (sec|second|moment|minute)|could you|can you|would you|my|the|is|me|that|you|it)\b", re.I)
+                    r"repeat that|say that again|dog is barking|bear with me|give me (a|one) (sec|second|moment|minute))\b", re.I)
+FILLER_WORDS = re.compile(r"\b(sorry|oh|um|uh|ok|okay|yeah|hi|hello|so|just|please|there|again|still|real quick|wait|a bit|"
+                          r"(for )?a (sec|second|moment|minute)|could you|can you|would you|my|the|is|me|that|you|it)\b", re.I)
 TAKE_YOUR_TIME = "No problem, take your time."
 JOIN_CONSENT = re.compile(r"\b(add it|add that|add me|sign me up|let'?s do it|enrol+ me|go ahead and (add|join))\b", re.I)
 PLAN_WORDS = re.compile(r"\b(comfort club|maintenance plan|membership|the plan)\b", re.I)
 WARRANTY = re.compile(r"\b(warranty|warranties|covered|coverage|claim)\b", re.I)
 # "That's all", "that's everything" or "that's it" with no question in the message is a goodbye wherever it comes.
-GOODBYE_ANYWHERE = re.compile(r"\bthat'?s (all|everything|it)\b|\bthat covers it\b|\bnothing else\b", re.I)
+GOODBYE_ANYWHERE = re.compile(r"\bthat'?s (all|everything|it)( i (need|needed|wanted))?\b|\bthat covers it\b|\bnothing else\b|"
+                              r"\b(cheers|take care|thanks a bunch|appreciate it|have a (good|great|nice) (day|one|evening|weekend))\b",
+                              re.I)
+# Pleasantries, and remarks that ask for nothing ("I'm chatting on your website", "you just confirmed my appointment").
 GOODBYE_WORDS = re.compile(r"\b(oh|sorry|about that|i think|i (needed|wanted)|needed|anyway|no|nope|yes|yeah|great|perfect|cool|"
                            r"alright|all right|ok|okay|thanks|thank you|so much|very much|appreciate it|bye|goodbye|for now|"
-                           r"for today|i'?m good|then|really|have a (good|great|nice) (day|one)|you too)\b", re.I)
+                           r"for today|i'?m good|then|really|have a (good|great|nice) (day|one)|you too|for me|and|so|"
+                           r"for (your help|confirming|everything)|that'?s fine|good to know|"
+                           r"i'?m (chatting )?(on|with) (your website( chat)?|meridian)|"
+                           r"i'?m chatting|about my( \w+)? (tune-?up|appointment|visit)|this is (a )?chat|not a phone call|"
+                           r"you (just )?confirmed my( \w+)? appointment|i don'?t think it'?s the wrong number|"
+                           r"i can (hear you|see your messages)( fine)?|i'?ll hold off on the \w+ one)\b", re.I)
 GOODBYE = "Thanks for contacting Meridian Home Comfort. Have a great day."
 NOT_YOURS = "I can't open that conversation. Please start a new one."
 SCHEDULING_ACTIONS = ("book", "reschedule", "cancel", "confirm")
 BILLING_TAGS = ("dispute", "billing review")  # tickets that carry the invoice notes
 ACTION_VERBS = {"cancel": r"cancel", "reschedule": r"reschedule|move|change", "book": r"book"}
+NEGATION = re.compile(r"\b(not|don'?t|doesn'?t|won'?t|do not|no longer|anymore|never)\b", re.I)
 BARE_REPLY = re.compile(r"^\W*(?:(?:um|uh|oh)\W+)?(yes|yeah|yep|yup|no|nope|sure|ok|okay|correct)\W*(?:please|thanks)?\W*$", re.I)
 
 
@@ -96,6 +105,14 @@ def _decline_sentence(reason: str, city: str, service: str) -> str:
 def _only(text: str, phrases: re.Pattern, words: re.Pattern) -> bool:
     """The message is nothing but those phrases and pleasantries: no request is left in it."""
     return bool(phrases.search(text)) and not re.search(r"\w", words.sub(" ", phrases.sub(" ", text)))
+
+
+def _details_only(text: str, customer) -> bool:
+    """Nothing but the caller's name and account details ("linda foster mhc-10001")."""
+    words = f"{customer.name} {customer.city}".split()
+    for pattern in (ACCOUNT, PHONE, STREET, *(re.compile(rf"\b{re.escape(w)}\b", re.I) for w in words)):
+        text = pattern.sub(" ", text)
+    return not WORD.search(text)
 
 
 def _mood(text: str) -> str:
@@ -276,18 +293,17 @@ class AgentPipeline:
         # 3. Route, keeping follow-ups inside an active flow (R38, R40).
         history = self.store.history(turn.conversation_id)
         routed = self._route(turn.text, history, error_event)
-        # Another language or nonsense is handed off even if the router missed it (R38, D47).
-        unreadable_as = unreadable(turn.text)
-        if unreadable_as == "other language":
+        # Another language is handed off even if the router missed it (D47).
+        if other_language(turn.text):
             routed = RouteResult("handoff", True, [Request(turn.text, "handoff", "other language")])
-        elif unreadable_as == "nonsense" and not state.active_flow and not state.pending:
-            routed = RouteResult("handoff", False, [Request(turn.text, "handoff", "other")])
         flow_before = state.active_flow
         # A request for a person, or a reason the router named, is handed off even when the route is unclear (R38).
         names_a_handoff = any(r.route == "handoff" and r.detail in HANDOFF_TAGS and r.detail != "other" for r in routed.requests)
-        asks_nothing = "?" not in turn.text and _mood(turn.text) == "calm" and not names_a_handoff \
-            and not unreadable_as
-        if identified_now and not state.active_flow and not state.pending and not routed.clear and asks_nothing:
+        # The calm shortcuts below need a common English word, so gibberish ("asdf qwer") still goes to a person.
+        calm = _mood(turn.text) == "calm" and not names_a_handoff
+        asks_nothing = "?" not in turn.text and calm and english_words(turn.text) > 0
+        if identified_now and not state.active_flow and not state.pending and not routed.clear and calm \
+                and (english_words(turn.text) or _details_only(turn.text, identified_now)):
             # A message that only gave the caller's details: nothing to hand off.
             yield emit(f"Thanks, {identified_now.name.split()[0]}, I've found your account. What can I help you with?")
             yield finish("account", "answered", {"safety": "clear"}, [])
@@ -426,13 +442,14 @@ class AgentPipeline:
             # At an offer or a read-back, a reply starting with yes or no answers it, unless it names another action.
             # "Another action" means a verb for an action other than the flow's own ("book it" in a booking does not count).
             other = "|".join(v for k, v in ACTION_VERBS.items() if k != state.flow.get("kind"))
+            # A reply that picks a slot ("the first one", "Tuesday at 3") answers the offer too, unless it turns one down.
             answers_read_back = state.flow.get("step") in ("offer", "readback", "which") \
-                and (scheduling.AFFIRMATIVE.search(text) or scheduling.NO.search(text)) \
+                and (scheduling.AFFIRMATIVE.search(text) or scheduling.NO.search(text) or
+                     scheduling.picks_a_slot(text, state.flow, self.now) and not NEGATION.search(text)) \
                 and not re.search(rf"\b({other})\b", text, re.I)
             switched_action = routed.clear and state.active_flow == "scheduling" and first is not None \
                 and first.route == "scheduling" and first.detail in SCHEDULING_ACTIONS \
-                and first.detail != state.flow.get("kind") and not BARE_REPLY.match(text) and not answers_read_back \
-                and bool(re.search(rf"\b({ACTION_VERBS.get(first.detail, first.detail)})\b", text, re.I))
+                and first.detail != state.flow.get("kind") and not BARE_REPLY.match(text) and not answers_read_back
             if asked_for_person or switched_action:
                 state.flow, state.active_flow = {}, None
                 return routed.requests, False

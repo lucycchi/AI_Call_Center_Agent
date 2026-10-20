@@ -29,6 +29,8 @@ TIME_EXPR = re.compile(r"\b\d{1,2} ?[-–] ?\d{1,2}\b|\bat \d{1,2}\b|\bnoon\b|\b
 log = logging.getLogger("meridian.scheduling")
 NO = re.compile(r"^\W*(no|nope|neither|none of)\b", re.I)
 EARLIER = re.compile(r"\b(earlier|sooner|anything before|any earlier)\b", re.I)
+# "Yes, sooner if possible" asks for an earlier slot first; "yes, the earlier the better" is a plain yes.
+IF_SOONER = re.compile(r"\b(if|anything|any|unless)\b", re.I)
 # Ordinal words only: a bare "one" or "1" is too often part of a date or window ("the Tuesday one", "1 to 5").
 ORDINALS = [r"\b(option (?:1|one)|number (?:1|one)|#1)\b", r"\b(option (?:2|two)|number (?:2|two)|#2)\b",
             r"\b(option (?:3|three)|number (?:3|three)|#3)\b"]  # bare "first" or "second" is handled by NTH_WORD
@@ -85,23 +87,24 @@ NTH_WITH_NOUN = re.compile(r"\b(1st|2nd|3rd)\s+(?:one|option|slot|choice|time|wi
 
 
 # "First", "second" and "third" pick a slot next to a slot word, after "the", or opening the message
-# ("for a second", "first thing" and "the first of" do not).
-NTH_WORD = re.compile(r"\b(first|second|third)\s+(?:one|option|slot|choice|time|window)\b|"
-                      r"(?:^\W*|\bthe\s+)(first|second|third)\b(?!\s+(?:thing|of|time)\b)", re.I)
+# ("for a second", "first thing", "first off", "the second time it broke" and "the first of" do not).
+NTH_WORD = re.compile(r"\b(first|second|third)\s+(?:one|option|slot|choice|window)\b|"
+                      r"(?:^\W*|\bthe\s+)(first|second|third)\b(?!\s+(?:thing|of|time|times|week|weeks|weekend|day|days|month|"
+                      r"year|off|thoughts?)\b)", re.I)
+# An ordinal turned down ("not the first one", "the second doesn't work", "the first is too early") picks nothing.
+NOT_BEFORE = re.compile(r"\b(not|no|neither|nor|except|but)\s+(?:the\s+)?$", re.I)
+NOT_AFTER = re.compile(r"^[^.;,!?]*\b(too|doesn'?t|does not|won'?t|isn'?t|is not|can'?t|cannot|not|no good|bad)\b", re.I)
 
 
 def _numbered(text: str, choices: list[dict]) -> dict | None:
     """"2", "two please", "the 2nd one", "the third option": a slot by its number in the offer."""
-    match = BARE_NUMBER.match(text) or NTH_WITH_NOUN.search(text)
+    match = BARE_NUMBER.match(text) or next(
+        (m for m in [*NTH_WITH_NOUN.finditer(text), *NTH_WORD.finditer(text)]
+         if not NOT_BEFORE.search(text[:m.start()]) and not NOT_AFTER.search(text[m.end():])), None)
     if not match:
-        word = NTH_WORD.search(text)
-        if word:
-            index = NUMBERS[next(g for g in word.groups() if g).lower()]
-            return choices[index] if index < len(choices) else None
-    if match:
-        index = NUMBERS[match.group(1).lower()]
-        return choices[index] if index < len(choices) else None
-    return None
+        return None
+    index = NUMBERS[next(g for g in match.groups() if g).lower()]
+    return choices[index] if index < len(choices) else None
 
 
 def _pick(text: str, choices: list[dict], now, key_date="slot_date") -> dict | None:
@@ -137,6 +140,12 @@ def _pick(text: str, choices: list[dict], now, key_date="slot_date") -> dict | N
         if re.search(pattern, text, re.I):
             return choices[index]
     return None
+
+
+def picks_a_slot(text: str, flow: dict, now) -> bool:
+    """The message picks one of the slots or appointments on offer, or names a slot number, day or time."""
+    choices = flow.get("offered") if flow.get("step") in ("offer", "readback") else flow.get("appointments")
+    return bool(choices and _pick(text, choices, now) or _numbered(text, [0, 1, 2]) is not None or NAMES_A_TIME.search(text))
 
 
 def _read_back(flow: dict, what: str, fee_cents: int = 0) -> FlowResult:
@@ -250,7 +259,7 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
         return _read_back(flow, f"{SERVICE_NAMES[chosen['service_type']]} on {_when(chosen['slot_date'], chosen['window'])}")
     # Read-back: book only on a clear yes ("yes, the sooner the better" is a yes, not a request for earlier slots).
     yes = confirms(text, flow["chosen"]["slot_date"], flow["chosen"]["window"], now)
-    if EARLIER.search(text) and not yes:
+    if EARLIER.search(text) and (not yes or IF_SOONER.search(text)):
         return _earlier(db, customer, flow, now)
     if yes:
         chosen = flow["chosen"]
@@ -320,7 +329,7 @@ def _existing(db, seed_db, customer, state, text, now) -> FlowResult:
     appointment = flow["appointment"]
     target = flow.get("chosen") or appointment
     yes = confirms(text, target["slot_date"], target["window"], now)
-    if EARLIER.search(text) and flow.get("offered") and not yes:
+    if EARLIER.search(text) and flow.get("offered") and (not yes or IF_SOONER.search(text)):
         return _earlier(db, customer, flow, now)
     if yes:
         if _deadline_passed():

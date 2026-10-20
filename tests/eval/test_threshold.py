@@ -176,9 +176,11 @@ def test_each_graded_retrieval_run_is_kept_under_the_agent_it_measured(tmp_path)
     (tmp_path / "answers_to_grade.jsonl").write_text("a\n")
     (tmp_path / "verdicts.jsonl").write_text("v\n")
     first = keep_run(tmp_path, "abc123")
+    (tmp_path / "answers_to_grade.jsonl").write_text("b\n")  # a new answer set (the same one is kept only once)
     second = keep_run(tmp_path, "abc123")
     assert first != second and first.parent == tmp_path / "runs" / "abc123"
-    assert (second / "verdicts.jsonl").read_text() == "v\n" and (second / "answers_to_grade.jsonl").read_text() == "a\n"
+    assert (second / "verdicts.jsonl").read_text() == "v\n" and (second / "answers_to_grade.jsonl").read_text() == "b\n"
+    assert (first / "answers_to_grade.jsonl").read_text() == "a\n"
 
 
 def test_the_threshold_pools_every_run_of_the_current_agent(tmp_path):

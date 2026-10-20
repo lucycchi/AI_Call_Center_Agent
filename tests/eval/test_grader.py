@@ -206,7 +206,7 @@ class FakeOpenAI:
     def __init__(self):
         self.responses, self.calls = self, 0
 
-    def create(self, model, input):
+    def create(self, model, input, max_output_tokens):
         self.calls += 1
         usage = type("Usage", (), {"input_tokens": 1_000_000, "output_tokens": 0})()
         return type("Response", (), {"output_text": "[]", "usage": usage})()
@@ -216,6 +216,7 @@ def test_the_api_grader_fallback_runs_under_the_run_budget(monkeypatch):
     from eval.budget import BudgetExceeded, RunBudget
     from eval.grader import GraderError, api_runner
     monkeypatch.setenv("GRADER_MODEL", "some-model")
+    monkeypatch.setenv("GRADER_MAX_OUTPUT_TOKENS", "100000")
     monkeypatch.delenv("GRADER_PRICES_PER_MILLION", raising=False)
     with pytest.raises(GraderError):  # without prices the cap cannot be enforced, so it does not run
         api_runner("PROMPT", budget=RunBudget(8.0), client=FakeOpenAI())
@@ -223,11 +224,10 @@ def test_the_api_grader_fallback_runs_under_the_run_budget(monkeypatch):
     budget, client = RunBudget(8.0), FakeOpenAI()
     assert api_runner("PROMPT", budget=budget, client=client) == "[]"
     api_runner("PROMPT", budget=budget, client=client)
-    with pytest.raises(BudgetExceeded):
-        api_runner("PROMPT", budget=budget, client=client)  # $9 crosses the $8 cap
-    with pytest.raises(BudgetExceeded):
+    budget.spent_usd = 7.5  # $1 of output could still be written, which would cross the $8 cap
+    with pytest.raises(BudgetExceeded):  # so the call is refused before it is made, not charged after it overshoots
         api_runner("PROMPT", budget=budget, client=client)
-    assert client.calls == 3
+    assert client.calls == 2 and budget.spent_usd == 7.5  # the refused call was never made
 
 
 def _check_files(tmp_path, monkeypatch, n=40):

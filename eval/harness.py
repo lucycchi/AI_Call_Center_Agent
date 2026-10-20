@@ -41,6 +41,28 @@ class Attempt:
     models: dict = field(default_factory=dict)  # each purpose's model id, SDK version and settings, as called
 
 
+TIMEOUT_SLACK_S = 1.0  # a call that timed out with no more than this left in the conversation ran out the cap
+
+
+def timed_out(error: BaseException) -> bool:
+    """A model call (or the agent's message deadline) ran out of time, anywhere in the exception's chain."""
+    from app.core.deadline import DeadlinePassed
+    kinds: tuple = (TimeoutError, DeadlinePassed)
+    try:
+        import anthropic
+        import httpx
+        kinds += (anthropic.APITimeoutError, httpx.TimeoutException)
+    except ImportError:
+        pass
+    seen = set()
+    while error is not None and id(error) not in seen:
+        if isinstance(error, kinds):
+            return True
+        seen.add(id(error))
+        error = error.__cause__ or error.__context__
+    return False
+
+
 def _remove(path: Path) -> None:
     for extra in (path, Path(f"{path}-wal"), Path(f"{path}-shm"), path.with_suffix(".pending.jsonl")):
         extra.unlink(missing_ok=True)
@@ -78,6 +100,9 @@ def run_case(case: dict, engine_factory, simulator, budget: RunBudget, folder: P
                 break
             budget.check()
             line = simulator.next(case, result.conversation, timeout=cap - (clock() - started))
+            if budget.crossed:
+                result.stopped = "budget"
+                break
             if not line:
                 result.stopped = "caller ended"
                 break
@@ -104,10 +129,15 @@ def run_case(case: dict, engine_factory, simulator, budget: RunBudget, folder: P
                         break
             finally:
                 TIME_LEFT.reset(limit)
+            if budget.crossed:  # the cap was crossed during the agent's turn: stop here, the attempt is not scored
+                result.stopped = "budget"
     except BudgetExceeded:
         result.stopped = "budget"
     except Exception as error:  # a crash is recorded with the attempt, never lost
-        result.stopped, result.error = "error", f"{type(error).__name__}: {error}"
+        if timed_out(error) and cap - (clock() - started) <= TIMEOUT_SLACK_S:
+            result.stopped = "time limit"  # a call given the time left ran it out: the cap, not a crash
+        else:
+            result.stopped, result.error = "error", f"{type(error).__name__}: {error}"
     finally:
         SINK.reset(token)
     result.seconds, result.cost_usd = clock() - started, budget.spent_usd - spent_before
@@ -135,6 +165,8 @@ def run_all(cases: list[dict], engine_factory, simulator_factory, budget: RunBud
         def graded(a: Attempt, case: dict) -> Attempt:
             if a.stopped == "error":
                 a.all_correct = False
+                return a
+            if a.stopped == "budget":  # cut off by the cap: not graded and not scored
                 return a
             return grade(a, case)
 

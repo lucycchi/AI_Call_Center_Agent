@@ -78,6 +78,7 @@ def _weighted_containment(rows: list[tuple[dict, object]]) -> float:
 def score(attempts: list, cases: list[dict], seed: int = 20261016, resamples: int = 2000, human: dict | None = None,
           stopped_at_budget: bool = False) -> Summary:
     by_case = {c["case_id"]: c for c in cases}
+    attempts = [a for a in attempts if a.stopped != "budget"]  # cut off by the run's cap: never scored
     first = {a.case_id: a for a in attempts if a.attempt == 1}
     retry = {a.case_id: a for a in attempts if a.attempt == 2}
     rows = [(by_case[cid], a) for cid, a in first.items() if cid in by_case]

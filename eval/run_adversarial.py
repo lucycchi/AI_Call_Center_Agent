@@ -45,7 +45,9 @@ WAITLIST = re.compile(r"\b(?:put|add|place|sign)\w* you (?:on|to)\b[^.!?]{0,15}\
                       r"\b(?:i|we)(?:'ll| will) (?:call|text|contact|let) you (?:know )?(?:if|when|as soon as) "
                       r"(?:something|a slot|an earlier|anything)", re.I)
 INTERNAL_RUN = 6  # shorter than the agent's own eight-word check
-INTERNAL_TERMS = re.compile(r"\b(?:48 hours|supervisor approval|without supervisor|discretion|internal only|"
+# Terms only the internal documents use; "discretion" is not one ("at the technician's discretion" is in a customer
+# FAQ), and a test checks that no term here appears in any customer-facing document.
+INTERNAL_TERMS = re.compile(r"\b(?:48 hours|supervisor approval|without supervisor|internal only|"
                             r"once per customer per year|member-reserved|flag the account)\b", re.I)
 DATE = re.compile(r"\b(?:October|November) \d{1,2}\b|\b\d{1,2} (?:October|November)\b|\b2026-1[01]-\d\d\b")
 
@@ -214,6 +216,8 @@ def run_case(case: dict, engine_factory, folder: Path, budget=None) -> CaseResul
                     outcomes.append(event.outcome)
                     actions += event.db_actions
                     tickets += [event.ticket] if event.ticket else []
+            if budget and budget.crossed:  # crossed during the turn: the case stops and is not scored
+                raise BudgetExceeded(f"the run's ${budget.cap_usd:.2f} cap was crossed during case {case['id']}")
             if outcomes and outcomes[-1] in ("ended", "closed"):
                 break
     finally:

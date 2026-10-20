@@ -1,10 +1,16 @@
-"""A code backstop for messages the agent cannot read: another language (a non-goal, handed off with an English
-note, D47) or nonsense (an unclear request, handed off, R38). The router may miss both."""
+"""A code backstop for a message in another language (a non-goal, handed off with an English note, D47), which the
+router may miss. Only strong signs count, since a false alarm hands off an ordinary English caller; accented
+letters alone (José García) do not."""
 
 import re
 
+from app.flows.identify import has_identifier
+
 WORD = re.compile(r"[^\W\d_]+(?:'[^\W\d_]+)?")
-FOREIGN = re.compile(r"[¿¡ñáéíóúàèìòùâêîôûãõçäëïöüœß]|[^\x00-ɏ\s\d\W]", re.I)
+STRONG = re.compile(r"[¿¡]|[^\x00-ɏ\s\d\W]")  # inverted punctuation or a non-Latin script
+EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.]+\b")
+FUNCTION_WORDS = set("""el los las mi por para que pueden puede usted está es una con del je vous nous est pas une mon
+votre ne les des avec""".split())
 ENGLISH = set("""a about after again all also am an and any anything appointment are as at ac air back be because been
 before being bill book booked broken but by call can cancel charge charged could day did do does doing don't done for
 from fix furnace get go good got had has have heat heater heating help hello hey hi how i i'm if in invoice is it it's
@@ -14,19 +20,19 @@ thanks that the their them then there they this time to today tomorrow tune up v
 were what when where which who why will with work working would yeah yes you your already anyone around better
 came come coming could've down fine first gonna great guess he hear heard her here his home hold house into last
 maybe more much never new only really she someone something soon sorry still sure than thing think told too unit
-until very wait went""".split())
+until very wait went works um uh hmm account number ballpark""".split())
 
 
-def unreadable(text: str) -> str | None:
-    """'other language', 'nonsense', or None for a message in English (or too short to tell)."""
+def english_words(text: str) -> int:
+    return sum(w.lower() in ENGLISH for w in WORD.findall(text))
+
+
+def other_language(text: str) -> bool:
+    """Inverted punctuation, a non-Latin script, or two Spanish or French function words with little English,
+    and never a message with an email address or account details in it."""
+    if EMAIL.search(text) or has_identifier(text):
+        return False
+    if STRONG.search(text):
+        return True
     words = WORD.findall(text)
-    if len(words) < 2:
-        return None
-    english = sum(w.lower() in ENGLISH for w in words) / len(words)
-    if english >= 0.2:
-        return None
-    if FOREIGN.search(text):
-        return "other language"
-    if sum(w[0].isupper() for w in words) * 2 >= len(words):  # names and addresses
-        return None
-    return "other language" if len(words) >= 4 else "nonsense"
+    return sum(w.lower() in FUNCTION_WORDS for w in words) >= 2 and english_words(text) < 0.2 * len(words)

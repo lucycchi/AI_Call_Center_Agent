@@ -1046,27 +1046,68 @@ def test_nonsense_is_handed_off_not_answered_with_anything_else(chat):
     assert done.ticket and "anything else" not in reply
 
 
-@pytest.mark.parametrize("text, kind", [
-    ("Hola, mi aire acondicionado no enfría. ¿Pueden venir mañana?", "other language"),
-    ("Mon climatiseur ne marche pas, pouvez-vous venir demain?", "other language"),
-    ("asdf qwer zxcv ;;; 12345", "nonsense"),
-    ("okay, good to know", None), ("I'm José García, MHC-10003, can you book a tune-up?", None),
-    ("Linda Foster", None), ("hmm", None), ("Can I get a café-style schedule? My AC is broken", None)])
-def test_language_and_nonsense_detection(text, kind):
-    from app.core.language import unreadable
-    assert unreadable(text) == kind
+@pytest.mark.parametrize("text, foreign", [
+    ("Hola, mi aire acondicionado no enfría. ¿Pueden venir mañana?", True),
+    ("Mon climatiseur ne marche pas, pouvez-vous venir demain?", True), ("Привет, мой кондиционер сломан", True),
+    ("asdf qwer zxcv ;;; 12345", False), ("okay, good to know", False),
+    ("I'm José García, MHC-10003, can you book a tune-up?", False), ("Linda Foster", False), ("hmm", False),
+    ("Can I get a café-style schedule? My AC is broken", False)])
+def test_another_language_is_spotted_only_on_strong_signs(text, foreign):
+    from app.core.language import other_language
+    assert other_language(text) is foreign
 
 
 @pytest.mark.parametrize("text", ["Linda Foster, 4412 Oak Hollow Dr, Round Rock.", "Omar Patel 512-555-0142",
-                                  "Nadia Lee at 77 Pecan Street, Pflugerville"])
-def test_names_and_addresses_are_not_unreadable(text):
-    from app.core.language import unreadable
-    assert unreadable(text) is None
+                                  "Nadia Lee at 77 Pecan Street, Pflugerville", "I'd better hear from someone soon.",
+                                  "linda.foster@example.com", "michael chen, 9648 oak hollow dr round rock",
+                                  "Compressor rattling, thermostat blinking", "Thermostat display blinking constantly",
+                                  "Kitchen faucet drips constantly overnight", "Compressor making weird rattling noises",
+                                  "José García", "Zoë Smith", "linda foster mhc-10001", "gas smell", "pilot light",
+                                  "drain clogged", "either works", "earliest available", "renewal date", "sounds perfect",
+                                  "account number 48213", "¿linda.foster@example.com?", "Que pasa, MHC-10001 para mi"])
+def test_english_names_addresses_and_short_phrases_are_not_another_language(text):
+    from app.core.language import other_language
+    assert other_language(text) is False
 
 
-def test_a_short_english_complaint_is_not_unreadable():
-    from app.core.language import unreadable
-    assert unreadable("I'd better hear from someone soon.") is None
+def test_no_working_set_caller_line_is_taken_for_another_language():
+    import json
+    from app.core.language import other_language
+    lines = json.loads((Path(__file__).parent / "caller_lines.json").read_text())
+    assert len(lines) == 467 and [line for line in lines if other_language(line)] == []
+
+
+def test_french_is_handed_off_with_an_english_note(chat):
+    reply, done = chat["say"]("Mon climatiseur ne marche pas, pouvez-vous venir demain?")
+    assert reply.startswith("I can only help in English") and done.ticket
+
+
+@pytest.mark.parametrize("text", ["linda.foster@example.com", "michael chen, 9648 oak hollow dr round rock"])
+def test_details_given_at_an_identity_prompt_are_not_handed_off(chat, text):
+    chat["say"]("I want to book a repair")
+    reply, done = chat["say"](text)
+    assert not done.ticket and "only help in English" not in reply and not chat["store"].tickets()
+
+
+def test_a_name_and_account_number_in_lower_case_find_the_account(chat):
+    reply, done = chat["say"]("linda foster mhc-10001")
+    assert "Thanks, Linda, I've found your account" in reply and not done.ticket
+
+
+@pytest.mark.parametrize("text", ["pilot light", "drain clogged", "either works", "earliest available", "renewal date",
+                                  "sounds perfect", "account number 48213", "Compressor rattling, thermostat blinking",
+                                  "Kitchen faucet drips constantly overnight"])
+def test_short_english_phrases_go_to_normal_routing(chat, text):
+    chat["routes_add"](text.lower(), clear(request(text, "knowledge")))
+    reply, done = chat["say"](text)
+    assert not done.ticket and "only help in English" not in reply and "$129" in reply
+
+
+def test_a_short_unclear_english_phrase_gets_anything_else_but_gibberish_a_handoff(chat):
+    reply, done = chat["say"]("Um, Jordan Rivera.")
+    assert "anything else" in reply and not done.ticket
+    reply, done = chat["say"]("asdf qwer zxcv ;;; 12345", conversation="c2")
+    assert done.ticket and "anything else" not in reply and "only help in English" not in reply
 
 
 def test_picking_a_slot_in_a_reschedule_is_not_taken_for_a_new_booking(chat):
@@ -1076,3 +1117,92 @@ def test_picking_a_slot_in_a_reschedule_is_not_taken_for_a_new_booking(chat):
     chat["routes_add"]("the first one", clear(request("the first one", "scheduling", "book", "hvac_repair")))
     reply, _ = chat["say"]("the first one")
     assert "moving the hvac repair visit to monday" in reply.lower()
+
+
+def test_identifying_with_a_calm_question_finds_the_account(chat):
+    reply, done = chat["say"]("Hi, this is Linda Foster, MHC-10001. Can you help me?")
+    assert reply == "Thanks, Linda, I've found your account. What can I help you with?" and not done.ticket
+    reply, done = chat["say"]("I'm Linda Foster, MHC-10001. This is ridiculous, can you help me?", conversation="c2")
+    assert done.ticket and "found your account" not in reply
+
+
+@pytest.mark.parametrize("text", [
+    "Nope, that covers it. Thanks for your help!", "No, that's everything. Thanks for confirming!",
+    "That's all I need, thank you so much.", "Great, thank you. That covers it for me.",
+    "Okay, that's fine. Nope, that covers it for me.", "Thanks, that's all I need", "ok that's it for me, thanks",
+    "cheers", "take care", "thanks a bunch", "appreciate it", "have a good day", "Thanks, appreciate it. Take care!",
+    # Working-set lines that ended the chat before the goodbye fix (ace46b0) and must still end it.
+    "Okay good to know. I think that's everything for now.",
+    "Okay, thanks for confirming. That covers it for me.",
+    "Sorry, I'm on your website chat, so I don't think it's the wrong number. That's all I needed, thank you so much.",
+    "Sorry, this is chat, not a phone call, and you just confirmed my Thursday appointment. No, that's everything, thanks.",
+    "Thanks, that's all I needed. I'll hold off on the Wednesday one for now.",
+    "Yes, I can hear you fine, thanks. That's everything I needed.",
+    "Yes, I can see your messages fine. That's all I needed, thanks."])
+def test_a_closing_line_ends_the_chat(chat, text):
+    reply, done = chat["say"](text)
+    assert done.outcome == "ended" and "Have a great day" in reply
+
+
+@pytest.mark.parametrize("text", ["That's all, I'm confused", "I'm confused, you just confirmed my appointment. That's everything I needed, thanks.",
+                                  "Sorry, that last message confused me. That's everything I needed."])
+def test_a_confused_caller_is_not_closed_out(chat, text):
+    reply, done = chat["say"](text)
+    assert done.outcome != "ended"
+
+
+@pytest.mark.parametrize("text", ["Hold on, my dog is barking a bit. Give me one second.", "sorry, hang on a sec"])
+def test_a_line_that_asks_nothing_gets_the_filler_reply(chat, text):
+    reply, done = chat["say"](text)
+    assert reply == "No problem, take your time." and not done.ticket
+
+
+def test_a_new_scheduling_action_without_its_verb_switches_mid_booking(chat):
+    chat["routes_add"]("thursday visit anymore", clear(request("I don't need the Thursday visit anymore", "scheduling", "cancel")))
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    reply, _ = chat["say"]("Actually, I don't need the Thursday visit anymore")
+    assert "cancelling" in reply and "2026-10-22" in reply
+
+
+def test_asking_about_an_existing_appointment_mid_booking_switches(chat):
+    chat["routes_add"]("existing appointment", clear(request("when is my existing appointment", "scheduling", "confirm")))
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    reply, _ = chat["say"]("Before that, when is my existing appointment?")
+    assert "Scheduled appointment" in reply and "2026-10-22" in reply
+
+
+def test_asking_for_a_booking_mid_cancel_switches(chat):
+    chat["routes_add"]("tune-up instead", clear(request("schedule a tune-up instead", "scheduling", "book", "hvac_tune_up")))
+    chat["say"]("I'm Linda Foster, MHC-10001, cancel my appointment")
+    reply, _ = chat["say"]("wait, schedule a tune-up instead")
+    assert "Offer these slots" in reply and "tune-up" in reply.lower() and "cancelling" not in reply
+
+
+@pytest.mark.parametrize("text, index", [
+    ("The first option is too early; what's later?", None), ("The second doesn't work", None), ("not the first one", None),
+    ("the second time it broke", None), ("the third week of november", None), ("for a second", None),
+    ("wait a second", None), ("First off, the second slot please", 1), ("second thoughts, the third", 2),
+    ("I'll take the first, not the second", 0), ("the first one", 0), ("the 2nd one doesn't work", None)])
+def test_a_turned_down_or_unrelated_ordinal_picks_no_slot(text, index):
+    from app.flows.scheduling import _pick
+    choices = [{"slot_date": "2026-10-19", "window": "08:00-12:00"}, {"slot_date": "2026-10-20", "window": "12:00-16:00"},
+               {"slot_date": "2026-10-21", "window": "13:00-17:00"}]
+    assert _pick(text, choices, SETTINGS.now) == (None if index is None else choices[index])
+
+
+@pytest.mark.parametrize("text", ["Yes, sooner if possible", "Sure, if there's anything sooner I'd take it",
+                                  "yes but anything earlier?"])
+def test_a_yes_that_asks_for_anything_sooner_looks_for_earlier_slots(chat, text):
+    before = count(chat["db"], "select count(*) from appointments")
+    book_to_read_back(chat)
+    reply, _ = chat["say"](text)
+    assert count(chat["db"], "select count(*) from appointments") == before
+    assert "earliest" in reply
+
+
+def test_a_yes_that_asks_for_anything_sooner_at_a_reschedule_read_back_does_not_move_it(chat):
+    chat["say"]("I'm Linda Foster, MHC-10001, can you move my appointment")
+    chat["say"]("the 28th please")
+    chat["say"]("the first one")
+    reply, _ = chat["say"]("Yes, sooner if possible")
+    assert "Moved" not in reply and "earliest" in reply

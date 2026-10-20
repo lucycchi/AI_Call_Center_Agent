@@ -41,17 +41,26 @@ def _replies(conversation: list[dict]) -> list[str]:
     return replies
 
 
+HOUR_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine",
+              10: "ten", 11: "eleven", 12: "twelve"}
+DAY_PARTS = {8: "morning", 12: "afternoon", 13: "afternoon", 16: "evening"}  # the windows by their start hour
+
+
 def _hour_forms(hour: int) -> list[str]:
-    forms = {str(hour), f"{hour:02d}", str(hour % 12 or 12)}
+    forms = {str(hour), f"{hour:02d}", str(hour % 12 or 12), HOUR_WORDS[hour % 12 or 12]}
     return sorted(forms, key=len, reverse=True) + (["noon", "midday"] if hour == 12 else [])
 
 
 def names_slot(text: str, slot_date: str, window: str) -> bool:
-    """The reply names this date and window, in any of the usual spoken or written forms."""
+    """The reply names this date and window, in any of the usual spoken or written forms: "October 19", "19 October",
+    "Oct. 19", "10/19", "the 19th", "Monday the 19th", a weekday within the week ahead, "tomorrow"; "8am-12pm",
+    "8 to 12", "eight to noon", or the window's part of the day ("the morning window", "Tuesday afternoon")."""
     day = date.fromisoformat(slot_date)
     suffix = r"(?:st|nd|rd|th)?"
+    ordinal = r"(?:st|nd|rd|th)"
     dates = [re.escape(slot_date), rf"{day:%B}\s+{day.day}{suffix}\b", rf"\b{day.day}{suffix}\s+(?:of\s+)?{day:%B}",
-             rf"\b{day:%b}\.?\s+{day.day}{suffix}\b"]
+             rf"\b{day:%b}\.?\s+{day.day}{suffix}\b", rf"(?<![\d/])0?{day.month}/0?{day.day}(?:/(?:20)?\d\d)?(?![\d/])",
+             rf"\bthe\s+{day.day}{ordinal}\b", rf"\b{day:%A},?\s+(?:the\s+)?{day.day}{ordinal}\b"]
     from app.config import SETTINGS
     today = SETTINGS.now.date()
     if 0 <= (day - today).days < 7:
@@ -59,16 +68,21 @@ def names_slot(text: str, slot_date: str, window: str) -> bool:
     if day == today + timedelta(days=1):
         dates.append(r"\btomorrow\b")
     start, end = (int(part[:2]) for part in window.split("-"))
-    times = (rf"\b(?:{'|'.join(_hour_forms(start))})(?::00)?\s*(?:[ap]\.?m\.?)?\s*(?:to|-|–|—|until|and)\s*"
-             rf"(?:{'|'.join(_hour_forms(end))})(?::00)?(?!\d)")
-    return any(re.search(d, text, re.I) for d in dates) and bool(re.search(times, text, re.I))
+    times = [rf"\b(?:{'|'.join(_hour_forms(start))})(?::00)?\s*(?:[ap]\.?m\.?)?\s*(?:to|-|–|—|until|through|and)\s*"
+             rf"(?:{'|'.join(_hour_forms(end))})(?::00)?(?!\d)"]
+    part = DAY_PARTS.get(start)
+    if part:  # "the morning window" or "Tuesday afternoon", never a greeting such as "good morning"
+        times.append(rf"\b{part}\s+(?:window|slot|visit|appointment|time)\b|\bin\s+the\s+{part}\b|"
+                     rf"\b(?:mon|tues|wednes|thurs|fri|satur|sun)day\s+{part}\b")
+    return any(re.search(d, text, re.I) for d in dates) and any(re.search(t, text, re.I) for t in times)
 
 
 def _read_back_before(attempt, action: str, slot_date: str, window: str) -> bool:
-    """A reply before the one that reported the change named the slot the change went to."""
+    """The read-back turn named the slot the change went to: the agent's reply just before the one that reported the
+    change. An earlier reply, such as the offer that listed several slots, does not count."""
     replies = _replies(attempt.conversation)
     reported = next((n for n, event in enumerate(attempt.done_events) if action in event.get("db_actions", [])), None)
-    return reported is not None and any(names_slot(r, slot_date, window) for r in replies[:reported])
+    return bool(reported) and names_slot(replies[reported - 1], slot_date, window)
 
 
 def _freed(seed_status: str) -> str:
@@ -282,7 +296,8 @@ def _safety_released_first(attempt, kind: str) -> bool:
 def grade_attempts(attempts: list, cases: dict, runner, tickets=default_tickets, model: str | None = None,
                    on_verdicts=None) -> list:
     """Code checks, then Codex. A conversation passes only when Codex says so and every code check that applies to
-    it passed; a check that applies but is missing counts as failing."""
+    it passed; a check that applies but is missing counts as failing. on_verdicts(verdicts, attempts) is called after
+    each grading batch with that batch's verdicts and its newly graded attempts."""
     items, keep, required = [], [], []
     for attempt in attempts:
         case = cases[attempt.case_id]
@@ -293,10 +308,13 @@ def grade_attempts(attempts: list, cases: dict, runner, tickets=default_tickets,
         expected_reason = case.get("expected_handoff_reason")
         if case["expected_outcome"] == "handed_off":
             needed.append("handoff_reason_correct")
-            tagged = bool(expected_reason) and any(expected_reason in _tags(t) for t in opened)
+            if expected_reason:
+                tagged = any(expected_reason in _tags(t) for t in opened)
+            else:  # no reason expected: any reason passes, as long as the call was handed off
+                tagged = attempt.handed_off or bool(opened)
             if case["sub_reason"] in SAFETY_KIND:
                 tagged = tagged and _safety_released_first(attempt, SAFETY_KIND[case["sub_reason"]])
-            attempt.grades["handoff_reason_correct"] = tagged if expected_reason else None
+            attempt.grades["handoff_reason_correct"] = tagged
         items.append({"id": f"{attempt.case_id}|{attempt.attempt}", "type": "conversation", "requests": case["requests"],
                       "expected_outcome": case["expected_outcome"], "expected_handoff_reason": expected_reason,
                       "reference_answer": case.get("reference_answer"), "passages": _passages(case),
@@ -305,14 +323,23 @@ def grade_attempts(attempts: list, cases: dict, runner, tickets=default_tickets,
                       "transcript": attempt.conversation, "tickets": opened})
         keep.append(attempt)
         required.append(needed)
-    verdicts = grade(items, runner, model)
-    if on_verdicts:
-        on_verdicts(verdicts)
-    for attempt, verdict, needed in zip(keep, verdicts, required):
-        attempt.grades.update({"knowledge_correct": verdict.knowledge_correct, "lookup_correct": verdict.lookup_correct,
-                               "ticket_actionable": verdict.ticket_actionable, "requests": verdict.requests,
-                               "why": verdict.why, "grader_model": verdict.model})
-        attempt.grades = {k: v for k, v in attempt.grades.items() if v is not None}
-        code_ok = all(attempt.grades.get(k) is True for k in needed)
-        attempt.all_correct = verdict.correct is True and code_ok
+    position = [0]
+
+    def apply(verdicts):
+        """One graded batch: its attempts get their grades at once, then on_verdicts may save them, so a failure in
+        a later batch keeps this one."""
+        start = position[0]
+        position[0] += len(verdicts)
+        rows = list(zip(keep[start:position[0]], verdicts, required[start:position[0]]))
+        for attempt, verdict, needed in rows:
+            attempt.grades.update({"knowledge_correct": verdict.knowledge_correct, "lookup_correct": verdict.lookup_correct,
+                                   "ticket_actionable": verdict.ticket_actionable, "requests": verdict.requests,
+                                   "why": verdict.why, "grader_model": verdict.model})
+            attempt.grades = {k: v for k, v in attempt.grades.items() if v is not None}
+            code_ok = all(attempt.grades.get(k) is True for k in needed)
+            attempt.all_correct = verdict.correct is True and code_ok
+        if on_verdicts:
+            on_verdicts(verdicts, [attempt for attempt, _, _ in rows])
+
+    grade(items, runner, model, on_batch=apply)
     return keep

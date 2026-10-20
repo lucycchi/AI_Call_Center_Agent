@@ -1,7 +1,8 @@
 """Run test conversations on the separate test key (R12 to R17).
 
-Run: python -m eval.run --set working [--cases T1,T2] [--limit N] [--name RUN]
-Writes data/results/<RUN>/attempts.jsonl and summary.json. Conversations are graded by Codex and the database copy
+Run: python -m eval.run --set working [--cases T1,T2] [--limit N] [--name RUN] [--overwrite]
+Writes data/results/<RUN>/attempts.jsonl and summary.json; a folder that already holds attempts is refused unless
+--overwrite is given (never with --final). Conversations are graded by Codex and the database copy
 together; --provisional compares only the observed outcome with the expected one, without Codex."""
 
 import argparse
@@ -64,14 +65,34 @@ def engine_factory(client):
     return build
 
 
+class NoRetriesWithinCap:
+    """The Anthropic client for test runs: a call given a timeout (the time left in the conversation, or the agent's
+    message deadline cut to it) is made with no SDK retries, so a retry cannot run past the 60-second cap; a call
+    with no timeout keeps the pinned retry setting."""
+
+    def __init__(self, client):
+        self._client = client
+        self.messages = self
+
+    def _for(self, kwargs: dict):
+        return self._client.with_options(max_retries=0) if kwargs.get("timeout") is not None else self._client
+
+    def create(self, **kwargs):
+        return self._for(kwargs).messages.create(**kwargs)
+
+    def stream(self, **kwargs):
+        return self._for(kwargs).messages.stream(**kwargs)
+
+
 def build_client():
     import anthropic
 
     from app.config import SETTINGS
     from app.core.model_log import RecordingClient
     from eval.budget import require_eval_key
-    return RecordingClient(anthropic.Anthropic(api_key=require_eval_key(), max_retries=SETTINGS.eval_retries,
-                                               timeout=SETTINGS.anthropic_timeout_s), sdk_version=f"anthropic {anthropic.__version__}")
+    return RecordingClient(NoRetriesWithinCap(anthropic.Anthropic(api_key=require_eval_key(), max_retries=SETTINGS.eval_retries,
+                                                                  timeout=SETTINGS.anthropic_timeout_s)),
+                           sdk_version=f"anthropic {anthropic.__version__}")
 
 
 def run_settings(grader: str | None) -> dict:
@@ -85,20 +106,32 @@ def run_settings(grader: str | None) -> dict:
             "writer": {"model": SETTINGS.writer_model, "max_tokens": SETTINGS.eval_writer_max_tokens, "effort": "low"},
             "check": {"model": SETTINGS.router_model, "max_tokens": SETTINGS.router_max_tokens, "effort": "low"},
             "embedding_model": SETTINGS.embedding_model, "retrieval_threshold": SETTINGS.retrieval_threshold,
-            "retries": SETTINGS.eval_retries, "anthropic_timeout_s": SETTINGS.anthropic_timeout_s,
+            "retries": SETTINGS.eval_retries, "retries_within_cap": 0, "anthropic_timeout_s": SETTINGS.anthropic_timeout_s,
             "message_deadline_s": SETTINGS.message_deadline_s, "max_caller_turns": SETTINGS.eval_max_caller_turns,
             "conversation_seconds": SETTINGS.eval_conversation_seconds, "run_cap_usd": SETTINGS.eval_run_cap_usd,
             "grader": grader}
 
 
+def check_results_folder(out: Path, overwrite: bool, final: bool) -> None:
+    """A results folder that already holds attempts is never silently replaced: the run refuses unless --overwrite
+    was given, and --overwrite is never allowed with --final."""
+    if overwrite and final:
+        raise SystemExit("refusing: --overwrite is never allowed with --final; the final run writes a new folder")
+    if (out / "attempts.jsonl").exists() and not overwrite:
+        raise SystemExit(f"refusing to start: {out} already holds attempts; choose another --name, or pass --overwrite "
+                         "to replace them")
+
+
 def run_graded(cases: list[dict], name: str, cap_usd: float | None = None, *, out: Path | None = None, factory=None,
-               simulator_factory=None, runner=None, model: str | None = None, settings: dict | None = None):
+               simulator_factory=None, runner=None, model: str | None = None, settings: dict | None = None,
+               overwrite: bool = False):
     """First runs of every case, graded by Codex and the database together; one retry of each failed case, graded the
     same way; then the summary. Returns the attempts and the summary.
 
     Nothing finished is lost: each attempt is appended to attempts.jsonl (ungraded) the moment it ends, and the file is
     rewritten with grades after each grading batch; Codex's verdicts go to verdicts.jsonl. A conversation that crashes
-    is recorded as errored and the run goes on; a grading failure still writes a partial summary before it is raised."""
+    is recorded as errored and the run goes on; a grading failure still writes a partial summary before it is raised.
+    A results folder that already holds attempts is refused unless overwrite is set."""
     from dataclasses import asdict
 
     from app.config import SETTINGS
@@ -108,17 +141,18 @@ def run_graded(cases: list[dict], name: str, cap_usd: float | None = None, *, ou
     from eval.harness import attempt_line, run_case
     from eval.scoring import score
 
+    out = out or ROOT / "data" / "results" / name
+    check_results_folder(out, overwrite, final=False)
     if factory is None or simulator_factory is None:
         from eval.simulator import Simulator
         client = build_client()
         factory, simulator_factory = factory or engine_factory(client), simulator_factory or (lambda: Simulator(client))
-    runner, model = runner or runner_for(), model or grader_model()
+    budget, by_id = RunBudget(cap_usd or SETTINGS.eval_run_cap_usd), {c["case_id"]: c for c in cases}
+    runner, model = runner or runner_for(budget), model or grader_model()
     settings = settings if settings is not None else run_settings(model)
-    out = out or ROOT / "data" / "results" / name
     out.mkdir(parents=True, exist_ok=True)
     for stale in ("attempts.jsonl", "verdicts.jsonl", "ungraded-first.jsonl", "ungraded-retry.jsonl"):
         (out / stale).unlink(missing_ok=True)
-    budget, by_id = RunBudget(cap_usd or SETTINGS.eval_run_cap_usd), {c["case_id"]: c for c in cases}
     done, graded, stopped, failure = [], set(), False, None
 
     def save():
@@ -145,21 +179,27 @@ def run_graded(cases: list[dict], name: str, cap_usd: float | None = None, *, ou
                 break
         return finished
 
-    def keep_verdicts(verdicts):
+    def keep_verdicts(verdicts, attempts):
+        """Each grading batch is saved as it finishes: its verdicts appended, its attempts rewritten as graded."""
         with (out / "verdicts.jsonl").open("a") as handle:
             handle.write("".join(json.dumps({**asdict(v), "model": model}) + "\n" for v in verdicts))
+        for a in attempts:
+            a.grades["grader_model"] = model
+        graded.update(id(a) for a in attempts)
+        save()
 
     def grade_batch(batch):
         errored = [a for a in batch if a.stopped == "error"]
         for a in errored:  # a crashed conversation is a failure, and is not sent to Codex
             a.all_correct, a.grades["error"] = False, a.error
-        result = grade_attempts([a for a in batch if a.stopped != "error"], by_id, runner, model=model,
+        cut = [a for a in batch if a.stopped == "budget"]
+        for a in cut:  # cut off by the run's cap: not sent to Codex, not scored, not retried
+            a.all_correct, a.grades["stopped"] = None, "budget"
+        result = grade_attempts([a for a in batch if a.stopped not in ("error", "budget")], by_id, runner, model=model,
                                 on_verdicts=keep_verdicts)
-        for a in result:
-            a.grades["grader_model"] = model
         graded.update(id(a) for a in batch)
         save()
-        return result + errored
+        return result + errored + cut
 
     try:
         firsts = grade_batch(run_batch(cases, 1, "first"))
@@ -220,7 +260,11 @@ def main() -> None:
     parser.add_argument("--name", default="")
     parser.add_argument("--provisional", action="store_true", help="grade outcomes only, without Codex")
     parser.add_argument("--final", action="store_true", help="the final held-out measurement (checks the freeze hashes)")
+    parser.add_argument("--overwrite", action="store_true", help="replace the attempts already in the results folder "
+                        "(never with --final)")
     args = parser.parse_args()
+    if args.overwrite and args.final:
+        check_results_folder(Path(), overwrite=True, final=True)
     split = json.loads((ROOT / "data" / "split.json").read_text())
     ids = args.cases.split(",") if args.cases else split[args.set]
     refuse_held_out(ids, args.final)
@@ -229,12 +273,13 @@ def main() -> None:
     if args.limit:
         cases = cases[:args.limit]
     out = ROOT / "data" / "results" / (args.name or f"{args.set}-{datetime.now():%Y%m%d-%H%M%S}")
+    check_results_folder(out, args.overwrite, args.final)
     if args.provisional:
         client = build_client()
         summary = run_all(cases, engine_factory(client), lambda: Simulator(client), RunBudget(SETTINGS.eval_run_cap_usd),
                           grade=provisional_grade, out=out, settings=run_settings(None))
     else:
-        _, summary = run_graded(cases, out.name)
+        _, summary = run_graded(cases, out.name, overwrite=args.overwrite)
     print(json.dumps(summary.to_json(), indent=1))
     print(f"results in {out}")
 

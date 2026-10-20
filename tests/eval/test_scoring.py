@@ -155,8 +155,13 @@ def test_the_budget_raises_once_spend_reaches_the_cap():
         budget.check()
     recorded = RunBudget(1.0)
     recorded.record("write", "claude-sonnet-5-5", "anthropic", {}, 10, 10, 5, 900_000)
+    assert not recorded.crossed
+    # a model call inside the agent never raises (that would become a handoff reply); it marks the budget crossed,
+    # and the harness stops the attempt after the turn
+    recorded.record("write", "claude-sonnet-5-5", "anthropic", {}, 10, 10, 5, 200_000)
+    assert recorded.crossed
     with pytest.raises(BudgetExceeded):
-        recorded.record("write", "claude-sonnet-5-5", "anthropic", {}, 10, 10, 5, 200_000)
+        recorded.check()
 
 
 class FakeSonnet:

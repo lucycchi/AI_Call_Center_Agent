@@ -84,9 +84,19 @@ def passage_label(chunk) -> str:
     return f"[{chunk.document}, {chunk.heading}, {chunk.effective_date or 'undated'}] {chunk.text}"
 
 
+META = "answers_meta.json"  # beside the answers: the agent hash they were written under and the answers' own hash
+
+
+def file_sha256(path: Path) -> str:
+    import hashlib
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str], str], whole_kb: str, out: Path,
-                     model: str | None = None) -> None:
-    """Answers from the top five keyword-only and combined passages and from the whole knowledge base, for grading."""
+                     model: str | None = None, agent_hash: str | None = None) -> None:
+    """Answers from the top five keyword-only and combined passages and from the whole knowledge base, for grading.
+    With agent_hash, answers_meta.json beside them records that hash and the answers file's own hash, so grading can
+    refuse answers written under another agent."""
     partial = out.with_name(out.name + ".partial")  # replaces the previous answers only once every answer is written
     with partial.open("w") as handle:
         for q in questions:
@@ -99,6 +109,11 @@ def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str
                                          "answer": writer(q["question"], context), "model": model,
                                          "reference_answer": q.get("reference_answer"), "passages": passages}) + "\n")
     partial.replace(out)
+    if agent_hash is not None:
+        from datetime import datetime
+        (out.parent / META).write_text(json.dumps({"agent_hash": agent_hash, "answers_sha256": file_sha256(out),
+                                                   "answers": out.name, "model": model,
+                                                   "written_at": datetime.now().isoformat(timespec="seconds")}, indent=1))
 
 
 ANSWER_PROMPT = """You answer customer questions for Meridian Home Comfort using ONLY the company documents below.
@@ -186,7 +201,9 @@ def main(argv: list[str] | None = None) -> None:
 
         whole_kb = "\n\n".join(p.read_text() for p in sorted((ROOT / "data" / "kb_text").glob("*.md")))
         writer = sonnet_writer()
-        answer_both_ways(working, searcher, writer, whole_kb, out / "answers_to_grade.jsonl", model=SETTINGS.writer_model)
+        from eval.freeze import freeze_agent
+        answer_both_ways(working, searcher, writer, whole_kb, out / "answers_to_grade.jsonl", model=SETTINGS.writer_model,
+                         agent_hash=freeze_agent())
         cost = round(writer.spent[0], 4)
     report["settings"] = run_settings(cost)
     (out / "summary.json").write_text(json.dumps(report, indent=1))

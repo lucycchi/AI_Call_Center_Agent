@@ -44,9 +44,17 @@ def choose_threshold(points: list[Point], questions: int = 100) -> float:
 
 
 def pooled_verdicts(results: Path, agent_hash: str) -> list[dict]:
-    """Every graded run of this agent, each as {answer id: verdict}; one run's grades swing on a single answer."""
-    runs = sorted((results / "runs" / agent_hash).glob("*/verdicts.jsonl"))
-    return [{v["id"]: v for v in map(json.loads, path.open())} for path in runs]
+    """Every graded run of this agent, each as {answer id: verdict}; one run's grades swing on a single answer. An
+    answer set graded more than once counts once (its first kept run), so no answer is pooled twice."""
+    from eval.grade_retrieval import run_answers_hash
+    pooled, seen = [], set()
+    for path in sorted((results / "runs" / agent_hash).glob("*/verdicts.jsonl"), key=lambda p: (len(p.parent.name), p.parent.name)):
+        digest = run_answers_hash(path.parent)
+        if digest is not None and digest in seen:
+            continue
+        seen.add(digest)
+        pooled.append({v["id"]: v for v in map(json.loads, path.open())})
+    return pooled
 
 
 def main() -> None:

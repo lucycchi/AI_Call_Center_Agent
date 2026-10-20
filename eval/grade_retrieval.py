@@ -2,7 +2,8 @@
 base, scored pass or fail on correctness, faithfulness, citation accuracy and correct refusal.
 
 Run: python -m eval.grade_retrieval   (runs Codex; tell the author first)
-Writes data/results/retrieval/verdicts.jsonl and answer_scores.json."""
+Writes data/results/retrieval/verdicts.jsonl and answer_scores.json. Refuses answers written under another agent
+(answers_meta.json records the agent hash), and keeps each graded answer set under runs/<agent hash>/ only once."""
 
 import json
 from pathlib import Path
@@ -50,17 +51,53 @@ def answer_scores(items: list[dict], verdicts: list[Verdict]) -> dict:
     return scores
 
 
-def keep_run(results: Path, agent_hash: str) -> Path:
-    """A copy of this graded run under the agent it measured, so later runs add to it rather than replace it."""
+def answers_to_grade(results: Path, agent_hash: str) -> tuple[list[dict], dict]:
+    """The answers to grade and their record, refusing answers written under an agent other than the current one,
+    answers with no record of their agent, and answers changed since the record was written."""
+    from eval.retrieval_eval import META, file_sha256
+    answers_path, meta_path = results / "answers_to_grade.jsonl", results / META
+    if not meta_path.exists():
+        raise SystemExit(f"refusing to grade: {meta_path} is missing, so the agent the answers came from is unknown; "
+                         "run eval.retrieval_eval again to write fresh answers")
+    meta = json.loads(meta_path.read_text())
+    if meta.get("agent_hash") != agent_hash:
+        raise SystemExit(f"refusing to grade: the answers were written under agent {meta.get('agent_hash')}, but the "
+                         f"agent is now {agent_hash}; run eval.retrieval_eval again")
+    if meta.get("answers_sha256") != file_sha256(answers_path):
+        raise SystemExit(f"refusing to grade: {answers_path} changed after {META} was written")
+    return [json.loads(line) for line in answers_path.open()], meta
+
+
+ANSWERS_HASH = "answers_sha256"  # in each kept run: the hash of the answers it graded
+
+
+def keep_run(results: Path, agent_hash: str) -> Path | None:
+    """A copy of this graded run under the agent its answers were written under, so later runs add to it rather than
+    replace it. The same answer set is kept only once: if a kept run of this agent already graded identical answers,
+    nothing is kept and None is returned."""
     import shutil
 
+    from eval.retrieval_eval import file_sha256
     runs = results / "runs" / agent_hash
     runs.mkdir(parents=True, exist_ok=True)
+    digest = file_sha256(results / "answers_to_grade.jsonl")
+    if any(run_answers_hash(d) == digest for d in runs.iterdir() if d.is_dir()):
+        print(f"not kept: a run of agent {agent_hash} already graded these answers ({digest[:12]})")
+        return None
     folder = runs / str(len([d for d in runs.iterdir() if d.is_dir()]) + 1)
     folder.mkdir()
     for name in ("answers_to_grade.jsonl", "verdicts.jsonl"):
         shutil.copy(results / name, folder / name)
+    (folder / ANSWERS_HASH).write_text(digest + "\n")
     return folder
+
+
+def run_answers_hash(folder: Path) -> str | None:
+    """The hash of the answers a kept run graded: stored with it, or worked out from its copy for older runs."""
+    from eval.retrieval_eval import file_sha256
+    if (folder / ANSWERS_HASH).exists():
+        return (folder / ANSWERS_HASH).read_text().strip()
+    return file_sha256(folder / "answers_to_grade.jsonl") if (folder / "answers_to_grade.jsonl").exists() else None
 
 
 def main() -> None:
@@ -70,15 +107,16 @@ def main() -> None:
     from app.knowledge.index import load_index
     from app.knowledge.search import Searcher
 
+    from eval.freeze import freeze_agent
+
+    answers, meta = answers_to_grade(RESULTS, freeze_agent())  # refuses before anything is called
     load_dotenv(ROOT / ".env")
     chunks, embeddings = load_index(ROOT / "data" / "index")
     searcher = Searcher(chunks, VoyageEmbedder(input_type="query"), embeddings)
-    answers = [json.loads(line) for line in (RESULTS / "answers_to_grade.jsonl").open()]
     items = answer_items(answers, searcher)
     verdicts = grade(items, runner_for(), grader_model())
     write_verdicts(verdicts, RESULTS / "verdicts.jsonl")
-    from eval.freeze import freeze_agent
-    keep_run(RESULTS, freeze_agent())
+    keep_run(RESULTS, meta["agent_hash"])
     scores = answer_scores(items, verdicts)
     scores["grader_model"] = grader_model()
     scores["passages_searched_again"] = sum(1 for i in items if i.get("passages_searched_again"))

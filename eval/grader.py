@@ -54,7 +54,9 @@ def _verdict(raw: dict) -> Verdict:
                    why=raw.get("why", ""), model=raw.get("model", "unknown"), reported_model=raw.get("model", ""))
 
 
-def grade(items: list[dict], runner, model: str | None = None) -> list[Verdict]:
+def grade(items: list[dict], runner, model: str | None = None, on_batch=None) -> list[Verdict]:
+    """Batches of 20; on_batch receives each batch's verdicts as soon as that batch is graded, so a failure in a later
+    batch loses nothing already graded."""
     verdicts = []
     for start in range(0, len(items), BATCH):
         batch = items[start:start + BATCH]
@@ -67,10 +69,13 @@ def grade(items: list[dict], runner, model: str | None = None) -> list[Verdict]:
         missing = [i["id"] for i in batch if i["id"] not in by_id]
         if missing:
             raise GraderError(f"the grader returned no verdict for {missing}")
-        verdicts += [_verdict(by_id[i["id"]]) for i in batch]
-    if model:
-        for verdict in verdicts:
-            verdict.model = model
+        done = [_verdict(by_id[i["id"]]) for i in batch]
+        if model:
+            for verdict in done:
+                verdict.model = model
+        verdicts += done
+        if on_batch:
+            on_batch(done)
     return verdicts
 
 
@@ -103,13 +108,21 @@ def codex_runner(prompt: str, attempts: int = 5, wait_s: float = 120) -> str:
     raise GraderError("Codex returned no verdicts")
 
 
-_API_BUDGET = []  # one run budget for every fallback grading call in this process
+_API_BUDGET = []  # one run budget for fallback grading calls made outside a conversation run
+MAX_OUTPUT_TOKENS = 32_000  # the most a fallback grading call may write; GRADER_MAX_OUTPUT_TOKENS overrides it
+
+
+def input_token_estimate(prompt: str) -> int:
+    """A generous count of the prompt's tokens (one per three bytes; English runs nearer four), for the cost check."""
+    return len(prompt.encode()) // 3 + 1
 
 
 def api_runner(prompt: str, budget=None, client=None) -> str:
     """The fallback when Codex is unavailable: the OpenAI API with GRADER_MODEL, switched on by hand, under the run's
-    $8 cap. GRADER_PRICES_PER_MILLION ("input,output" US dollars) prices each call; without it the call is refused."""
-    from eval.budget import RunBudget
+    $8 cap. GRADER_PRICES_PER_MILLION ("input,output" US dollars) prices each call; without it the call is refused.
+    Before each call the most it could cost (the input estimate and every allowed output token) is checked against
+    what is left under the cap, and a call that could cross the cap is not made."""
+    from eval.budget import BudgetExceeded, RunBudget
 
     if budget is None:
         if not _API_BUDGET:
@@ -120,17 +133,29 @@ def api_runner(prompt: str, budget=None, client=None) -> str:
     except (KeyError, ValueError) as error:
         raise GraderError("set GRADER_PRICES_PER_MILLION to the grader model's prices so the run cap can be kept") from error
     budget.check()
+    max_output = int(os.environ.get("GRADER_MAX_OUTPUT_TOKENS", MAX_OUTPUT_TOKENS))
+    worst = (input_token_estimate(prompt) * price_in + max_output * price_out) / 1_000_000
+    if budget.spent_usd + worst > budget.cap_usd:
+        raise BudgetExceeded(f"grading call refused: it could cost up to ${worst:.2f}, and ${budget.spent_usd:.2f} of the "
+                             f"${budget.cap_usd:.2f} cap is spent")
     if client is None:
         from openai import OpenAI
         client = OpenAI()
-    response = client.responses.create(model=os.environ["GRADER_MODEL"], input=prompt)
+    response = client.responses.create(model=os.environ["GRADER_MODEL"], input=prompt, max_output_tokens=max_output)
     usage = response.usage
     budget.add((usage.input_tokens * price_in + usage.output_tokens * price_out) / 1_000_000)
     return response.output_text
 
 
-def runner_for():
-    return api_runner if os.environ.get("GRADER_BACKEND", "codex") == "api" else codex_runner
+def runner_for(budget=None):
+    """The grading runner; the API fallback charges its calls to the given run budget (the conversation run's own)."""
+    if os.environ.get("GRADER_BACKEND", "codex") != "api":
+        return codex_runner
+
+    def runner(prompt: str) -> str:
+        return api_runner(prompt, budget=budget)
+    runner.__name__ = "api_runner"
+    return runner
 
 
 def grader_model() -> str:
