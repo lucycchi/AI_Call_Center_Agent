@@ -1,7 +1,7 @@
 {
  "keyword": {
   "answers": 25,
-  "correct": 0.72,
+  "correct": 0.76,
   "faithful": 0.96,
   "citation_ok": 1.0,
   "refusal_ok": 1.0,
@@ -9,15 +9,15 @@
  },
  "combined": {
   "answers": 25,
-  "correct": 0.92,
-  "faithful": 0.96,
-  "citation_ok": 1.0,
-  "refusal_ok": 1.0,
+  "correct": 0.84,
+  "faithful": 0.72,
+  "citation_ok": 0.92,
+  "refusal_ok": 0.0,
   "stale_trap_correct": 1.0
  },
  "whole_kb": {
   "answers": 25,
-  "correct": 0.96,
+  "correct": 0.92,
   "faithful": null,
   "citation_ok": 1.0,
   "refusal_ok": 1.0,
@@ -26,6 +26,7 @@
  "grader_model": "gpt-5.6-sol",
  "passages_searched_again": 0,
  "grader_reported_model": [
+  "GPT-5",
   "gpt-5"
  ]
 }
