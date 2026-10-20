@@ -71,9 +71,9 @@ def test_the_chosen_rule_on_the_working_set_curve_and_its_floor():
     import json
     report = json.loads((ROOT / "data" / "results" / "threshold.json").read_text())
     points = [Point(**p) for p in report["points"]]
-    assert choose_threshold(points, report["questions"]) == 0.25
+    assert choose_threshold(points, report["questions"]) == report["chosen"]
     from app.config import SETTINGS
-    assert SETTINGS.retrieval_threshold == 0.25
+    assert SETTINGS.retrieval_threshold == report["chosen"]  # the agent uses the threshold the curve chose (D48)
 
 
 def test_knowledge_is_judged_over_every_graded_knowledge_request():
