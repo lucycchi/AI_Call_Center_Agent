@@ -1244,3 +1244,17 @@ def test_the_writer_gives_every_member_benefit_when_asked_whether_a_plan_saves_m
     assert "save them money" in RULES and "services it includes" in RULES
     # ...but never whether it would (or would likely) save money, which the facts cannot say (a guess fails).
     assert "never say whether it would save them money" in RULES
+
+
+def test_the_marker_in_a_booking_or_account_reply_is_dropped_without_a_handoff(chat):
+    # Quick run: the writer added the marker to identity prompts, account answers and slot offers.
+    from app.replies.checks import NOT_IN_DOCUMENTS
+    chat["writer_says"](lambda facts: [NOT_IN_DOCUMENTS] + facts)
+    reply, done = chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    assert "NOT IN" not in reply and "08:00-12:00" in reply and "Ticket #" not in reply
+    assert not [t for t in chat["store"].tickets() if t["reason_tag"] == "not enough evidence"]
+
+
+def test_the_writer_keeps_the_marker_to_questions_the_documents_should_answer():
+    from app.replies.writer import RULES
+    assert "never for booking, scheduling or account" in RULES

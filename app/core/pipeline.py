@@ -393,7 +393,8 @@ class AgentPipeline:
                     self._quietly(self.store.log_event, "blocked sentence",
                                   f"{stream.blocked_rule}: {stream.blocked_sentence}", turn.conversation_id)
                     handoffs.append(("blocked reply", stream.blocked_rule, turn.text))
-                elif stream.not_in_documents:  # the writer found the facts do not answer it: a ticket follows
+                elif stream.not_in_documents and any(r.reply_type in ("policy answer", "price answer") for r in written):
+                    # the documents do not answer the caller's question: a ticket follows (only for a knowledge answer)
                     handoffs.append(("not enough evidence", "", turn.text))
             except Exception as error:
                 log.error("writer failed: %s", error)

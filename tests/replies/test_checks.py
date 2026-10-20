@@ -200,11 +200,13 @@ def test_the_money_check_evaluation_counts_misses_and_over_blocks():
     assert report["missed_promises"] == ["I'll waive it."] and report["over_blocked"] == []
 
 
-def test_the_not_in_documents_marker_is_never_released_and_ends_the_reply():
+def test_the_not_in_documents_marker_is_never_released_and_later_sentences_still_are():
+    # A slot offer after a misplaced marker must still reach the caller (quick run).
     from app.replies.checks import NOT_IN_DOCUMENTS
     stream = CheckedStream(iter(["The diagnostic fee is $89.", f"{NOT_IN_DOCUMENTS}", "Anything else?"]),
                            money_check=lambda s, p: True)
-    assert list(stream) == ["The diagnostic fee is $89."] and stream.not_in_documents and not stream.blocked_rule
+    assert list(stream) == ["The diagnostic fee is $89.", "Anything else?"] and stream.not_in_documents
+    assert not stream.blocked_rule
     joined = CheckedStream(iter([f"Members get 15 percent off repairs. {NOT_IN_DOCUMENTS}."]), money_check=lambda s, p: True)
     assert list(joined) == ["Members get 15 percent off repairs."] and joined.not_in_documents
     alone = CheckedStream(iter([NOT_IN_DOCUMENTS]))

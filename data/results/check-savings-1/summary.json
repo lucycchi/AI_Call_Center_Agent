@@ -1,0 +1,68 @@
+{
+ "containment": 0.0,
+ "containment_without_redirects": 0.0,
+ "scope_ceiling": 1.0,
+ "adjusted_ceiling": 0.0,
+ "action_gap": 1.0,
+ "wrong_confident": 0,
+ "knowledge_accuracy": 1.0,
+ "routing_accuracy": 1.0,
+ "handoff_correct_safety_and_booking": 1.0,
+ "handoff_correct_other": null,
+ "booking_correct": 1.0,
+ "lookup_correct": null,
+ "clean_declines": 0,
+ "flaky": [],
+ "interval_low": 0.0,
+ "interval_high": 0.0,
+ "scenarios": 1,
+ "weighted_calls": 4,
+ "human_baseline": null,
+ "human_baseline_excluding_actions": null,
+ "stopped_at_budget": false,
+ "wrong_confident_cases": [],
+ "wrong_confident_share": 0.0,
+ "scope_ceiling_without_redirects": 1.0,
+ "adjusted_ceiling_without_redirects": 0.0,
+ "extra": {
+  "spent_usd": 0.0676,
+  "grader_model": "gpt-5.6-sol",
+  "settings": {
+   "sdk_version": "anthropic 1.15.0",
+   "now": "2026-10-16T09:00:00-05:00",
+   "simulator": {
+    "model": "claude-sonnet-5-5",
+    "max_tokens": 300,
+    "effort": "low"
+   },
+   "router": {
+    "model": "claude-haiku-5-5",
+    "max_tokens": 2000,
+    "effort": "low"
+   },
+   "writer": {
+    "model": "claude-sonnet-5-5",
+    "max_tokens": 800,
+    "effort": "low"
+   },
+   "check": {
+    "model": "claude-haiku-5-5",
+    "max_tokens": 2000,
+    "effort": "low"
+   },
+   "embedding_model": "voyage-4",
+   "retrieval_threshold": 0.25,
+   "retries": 1,
+   "simulator_retries_within_cap": 0,
+   "anthropic_timeout_s": 20,
+   "message_deadline_s": 15,
+   "max_caller_turns": 12,
+   "conversation_seconds": 60,
+   "run_cap_usd": 8.0,
+   "grader": "gpt-5.6-sol"
+  },
+  "ticket_actionable": 1.0,
+  "errored": [],
+  "ungraded": []
+ }
+}

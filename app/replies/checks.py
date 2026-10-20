@@ -50,6 +50,7 @@ FOLLOW_UP_PROMISE = re.compile(r"\b(?:a |our )?(?:team member|someone|member of 
                                r"\bi(?:'ll| will| have|'ve)\s+pass(?:ed)?\b(?![^.]*\bif you)", re.I)
 # The writer's sentence for "the facts do not answer this"; never shown, it ends the reply with a handoff.
 NOT_IN_DOCUMENTS = "[NOT IN DOCUMENTS]"
+MARKER = re.compile(re.escape(NOT_IN_DOCUMENTS) + r"[^\w$(]*")  # with any punctuation glued to it
 BREAKER_ADVICE = re.compile(r"\breset\w*\b[^.]*\bbreaker|\bbreaker\b[^.]*\breset|\bflip\w*\b[^.]*\bbreaker", re.I)
 
 
@@ -85,10 +86,10 @@ class CheckedStream:
     def __iter__(self) -> Iterator[str]:
         so_far = ""
         for sentence in self._sentences:
-            if NOT_IN_DOCUMENTS in sentence:  # what came before it on the same line is still a sentence to check
-                self.not_in_documents, sentence = True, sentence.split(NOT_IN_DOCUMENTS)[0].strip()
+            if NOT_IN_DOCUMENTS in sentence:  # never released; the rest of the line and later sentences still are
+                self.not_in_documents, sentence = True, " ".join(MARKER.sub(" ", sentence).split())
                 if not sentence:
-                    return
+                    continue
             result = check_sentence(sentence, so_far, self._burning)
             if result.ok and touches_money(sentence):
                 previous = re.split(r"(?<=[.!?])\s+", so_far)[-1] if so_far else ""
@@ -99,5 +100,3 @@ class CheckedStream:
                 return
             so_far = f"{so_far} {sentence}".strip()
             yield sentence
-            if self.not_in_documents:
-                return
