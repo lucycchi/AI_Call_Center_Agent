@@ -431,7 +431,8 @@ class AgentPipeline:
                 and not re.search(rf"\b({other})\b", text, re.I)
             switched_action = routed.clear and state.active_flow == "scheduling" and first is not None \
                 and first.route == "scheduling" and first.detail in SCHEDULING_ACTIONS \
-                and first.detail != state.flow.get("kind") and not BARE_REPLY.match(text) and not answers_read_back
+                and first.detail != state.flow.get("kind") and not BARE_REPLY.match(text) and not answers_read_back \
+                and bool(re.search(rf"\b({ACTION_VERBS.get(first.detail, first.detail)})\b", text, re.I))
             if asked_for_person or switched_action:
                 state.flow, state.active_flow = {}, None
                 return routed.requests, False

@@ -1067,3 +1067,12 @@ def test_names_and_addresses_are_not_unreadable(text):
 def test_a_short_english_complaint_is_not_unreadable():
     from app.core.language import unreadable
     assert unreadable("I'd better hear from someone soon.") is None
+
+
+def test_picking_a_slot_in_a_reschedule_is_not_taken_for_a_new_booking(chat):
+    # The router may label "the first one" a booking; without a booking verb the reschedule carries on (a24).
+    chat["routes_add"]("move my appointment", clear(request("move my appointment tomorrow to Monday", "scheduling", "reschedule")))
+    chat["say"]("I'm Nadia Lee, MHC-36446. Can you move my appointment tomorrow to Monday?")
+    chat["routes_add"]("the first one", clear(request("the first one", "scheduling", "book", "hvac_repair")))
+    reply, _ = chat["say"]("the first one")
+    assert "moving the hvac repair visit to monday" in reply.lower()
