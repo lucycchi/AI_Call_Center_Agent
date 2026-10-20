@@ -654,7 +654,7 @@ can only propose a decision; only the author settles one.
 
 ## D49: Should the quick run fail outright when a booking was missed because the simulated caller never chose a slot?
 
-- **Status:** settled
+- **Status:** proposed
 - **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
 - **Options:**
   - Fail outright only on real booking faults; a booking the caller never confirmed is a missed request
