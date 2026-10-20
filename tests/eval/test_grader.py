@@ -339,3 +339,18 @@ def test_a_grade_is_not_carried_onto_a_changed_answer(tmp_path, monkeypatch):
     assert all(not r["fable_correct (yes or no)"] and r["answer"] == "a new answer" for r in again)
     [archived] = list((tmp_path / "grader_check_archive").glob("*.csv"))
     assert "yes" in archived.read_text()
+
+
+def test_items_the_grader_leaves_out_are_asked_again_once():
+    from eval.grader import GraderError, grade
+    items = [{"id": f"c{k}|1", "type": "conversation"} for k in range(3)]
+    calls = []
+
+    def runner(prompt):
+        calls.append(prompt)
+        ids = [i["id"] for i in json.loads(prompt.split("ITEMS:", 1)[1])]
+        keep = ids[:-1] if len(calls) == 1 else ids  # the first answer leaves one item out
+        return json.dumps([{"id": i, "correct": True} for i in keep])
+    assert [v.id for v in grade(items, runner)] == [i["id"] for i in items] and len(calls) == 2
+    with pytest.raises(GraderError):
+        grade(items, lambda prompt: json.dumps([]))

@@ -1,5 +1,5 @@
 {
- "hash": "9ba18893a206ccbd15a7295134a2c122a7346ae52054f48576e11d10a6985b9f",
+ "hash": "cfe0472409be496d646ce67830d4d185d9930f0f4c40dc8e3764bb6c45325419",
  "files": 61,
  "covers": [
   "app/core",
@@ -20,6 +20,6 @@
   "call_data/knowledge_base/services/scheduling_guide.md",
   "call_data/knowledge_base/services/technician_arrival_and_etas.md"
  ],
- "frozen_at": "2026-10-20T13:18:28",
+ "frozen_at": "2026-10-20T13:35:06",
  "note": "The final held-out run checks the agent still matches this hash."
 }

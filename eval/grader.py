@@ -54,18 +54,25 @@ def _verdict(raw: dict) -> Verdict:
                    why=raw.get("why", ""), model=raw.get("model", "unknown"), reported_model=raw.get("model", ""))
 
 
+def _ask(runner, batch: list[dict]) -> dict:
+    raw = runner(f"{PROMPT}\n\nITEMS:{json.dumps(batch)}")
+    try:
+        answers = json.loads(raw[raw.find("["): raw.rfind("]") + 1])
+    except ValueError as error:
+        raise GraderError(f"the grader did not return a JSON list: {raw[:120]!r}") from error
+    return {a.get("id"): a for a in answers}
+
+
 def grade(items: list[dict], runner, model: str | None = None, on_batch=None) -> list[Verdict]:
     """Batches of 20; on_batch receives each batch's verdicts as soon as that batch is graded, so a failure in a later
     batch loses nothing already graded."""
     verdicts = []
     for start in range(0, len(items), BATCH):
         batch = items[start:start + BATCH]
-        raw = runner(f"{PROMPT}\n\nITEMS:{json.dumps(batch)}")
-        try:
-            answers = json.loads(raw[raw.find("["): raw.rfind("]") + 1])
-        except ValueError as error:
-            raise GraderError(f"the grader did not return a JSON list: {raw[:120]!r}") from error
-        by_id = {a.get("id"): a for a in answers}
+        by_id = _ask(runner, batch)
+        missing = [i for i in batch if i["id"] not in by_id]
+        if missing:  # the grader sometimes leaves an item out; ask once more for just those
+            by_id.update(_ask(runner, missing))
         missing = [i["id"] for i in batch if i["id"] not in by_id]
         if missing:
             raise GraderError(f"the grader returned no verdict for {missing}")
