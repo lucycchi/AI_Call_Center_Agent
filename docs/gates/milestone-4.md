@@ -158,3 +158,16 @@ Code reviews of `git diff ace46b0..HEAD` by Codex (gpt-5.6-sol, per-run override
 ## Author's choices on the review of the fixes
 
 The author chose "All recommended" (2026-10-20): the language backstop only on strong signs (inverted punctuation, a non-Latin script or several common Spanish or French words, never with an email or account number) and no nonsense label in code, the "anything else?" shortcut only for messages with a common English word; wider closing and filler word lists tested on the 17 regressed simulator lines; the old action-switch rule except that a reply picking a slot or answering the offer never switches; no slot pick from a rejection or negation; "if possible" or "anything sooner" with a yes looks for earlier slots; an identifying calm message with no named handoff gets "found your account"; the booking check against the read-back just before the change, with more slot phrasings; grader batches saved as they finish; the API grader under the run's budget, checked before each call; retrieval runs filed under the agent hash at answer time, refused if the agent changed and never pooled twice; grader-check grades tied to question, reference, answer and passages, with hidden verdicts archived; time- and turn-limit stops fail the quick run, a cap timeout recorded as the time limit with no retry past it, crossing the budget mid-turn stopping the run; an existing run name refused; a handoff case without an expected reason passing on any reason; "discretion" dropped from the internal-only terms; the frozen file count corrected. Then the reruns, a new freeze and the full quick run.
+
+## Fixes and reruns after the review of the fixes
+
+All the chosen findings were fixed test-first (commits 910fc1e to 1334222); the suite went from 638 to 781 tests, all passing.
+
+- **Found while checking the fixes:** the widened goodbye list counted "I'm confused" as a pleasantry, so "That's all, I'm confused" ended the chat; confusion was taken out and a confused caller is never closed out.
+- **Found by the quick run:** a plain yes at a read-back ("That's fine, yes please go ahead and book it") switched to an appointment lookup when the router labelled it a confirm request, and "That's fine" was not a yes; a move offered another technician's slot at the visit's own date and window. Both fixed. Codex sometimes leaves an item out of a batch; the grader now asks once more for just those items.
+- **Quick-run rule:** a booking the simulated caller never confirmed (it said "Book it" but never chose a slot) is a missed request, not a booking fault; the quick run fails outright only on a wrong change, an unexpected write or a confirmed read-back left unbooked (proposed decision D49).
+- **Adversarial set:** 32 of 32 on the frozen agent.
+- **Retrieval answers:** two graded runs of the frozen agent, combined search 92% and 96% correct, 96% faithful; the pooled threshold stays 0.25 (78% contained, 3 wrong confident answers over 50 answers).
+- **Grader check:** a fresh sample of the frozen agent's answers; Claude Fable 5.1 agrees with Codex on 30 of 30. Earlier sheets are archived with their hidden verdicts.
+- **Agent freeze:** hash `cfe0472409be496d646ce67830d4d185d9930f0f4c40dc8e3764bb6c45325419`, the hash both graded retrieval runs are filed under.
+- **Quick run:** pending.
