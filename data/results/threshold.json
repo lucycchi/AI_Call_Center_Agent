@@ -2,7 +2,7 @@
  "set": "working",
  "questions": 50,
  "runs": 2,
- "agent": "cfe0472409be496d646ce67830d4d185d9930f0f4c40dc8e3764bb6c45325419",
+ "agent": "eff8df91d869d27d5fbe139007b7493971910b7dc20e07949901103b096f119c",
  "chosen": 0.25,
  "rule": {
   "floor": 0.25,
@@ -11,43 +11,43 @@
  "points": [
   {
    "threshold": 0.2,
-   "containment": 0.82,
-   "wrong_confident": 3
+   "containment": 0.8,
+   "wrong_confident": 4
   },
   {
    "threshold": 0.25,
-   "containment": 0.78,
-   "wrong_confident": 3
+   "containment": 0.76,
+   "wrong_confident": 4
   },
   {
    "threshold": 0.3,
-   "containment": 0.78,
-   "wrong_confident": 3
+   "containment": 0.76,
+   "wrong_confident": 4
   },
   {
    "threshold": 0.35,
-   "containment": 0.78,
-   "wrong_confident": 3
+   "containment": 0.76,
+   "wrong_confident": 4
   },
   {
    "threshold": 0.4,
-   "containment": 0.74,
-   "wrong_confident": 3
+   "containment": 0.72,
+   "wrong_confident": 4
   },
   {
    "threshold": 0.45,
-   "containment": 0.66,
-   "wrong_confident": 3
+   "containment": 0.64,
+   "wrong_confident": 4
   },
   {
    "threshold": 0.5,
-   "containment": 0.58,
-   "wrong_confident": 3
+   "containment": 0.56,
+   "wrong_confident": 4
   },
   {
    "threshold": 0.55,
-   "containment": 0.3,
-   "wrong_confident": 3
+   "containment": 0.28,
+   "wrong_confident": 4
   },
   {
    "threshold": 0.6,
@@ -85,13 +85,13 @@
   },
   {
    "qid": "case-T2603f4e6",
-   "score": 0.4726,
+   "score": 0.4721,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "case-T2603f4e6",
-   "score": 0.4726,
+   "score": 0.4721,
    "correct": true,
    "unanswerable": false
   },
@@ -109,26 +109,26 @@
   },
   {
    "qid": "case-T7d8fb3e5",
-   "score": 0.6047,
+   "score": 0.6051,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "case-T7d8fb3e5",
-   "score": 0.6047,
+   "score": 0.6051,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "case-T9e29febc",
-   "score": 0.5734,
+   "score": 0.5733,
    "correct": false,
    "unanswerable": false
   },
   {
    "qid": "case-T9e29febc",
-   "score": 0.5734,
-   "correct": true,
+   "score": 0.5733,
+   "correct": false,
    "unanswerable": false
   },
   {
@@ -157,25 +157,25 @@
   },
   {
    "qid": "case-Tc36da844",
-   "score": 0.6009,
+   "score": 0.6003,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "case-Tc36da844",
-   "score": 0.6009,
+   "score": 0.6003,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "case-Tf7d382d9",
-   "score": 0.4056,
+   "score": 0.4052,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "case-Tf7d382d9",
-   "score": 0.4056,
+   "score": 0.4052,
    "correct": true,
    "unanswerable": false
   },
@@ -205,25 +205,25 @@
   },
   {
    "qid": "answerable-9",
-   "score": 0.5309,
+   "score": 0.5312,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "answerable-9",
-   "score": 0.5309,
+   "score": 0.5312,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "answerable-4",
-   "score": 0.5201,
+   "score": 0.5208,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "answerable-4",
-   "score": 0.5201,
+   "score": 0.5208,
    "correct": true,
    "unanswerable": false
   },
@@ -241,13 +241,13 @@
   },
   {
    "qid": "answerable-8",
-   "score": 0.5494,
+   "score": 0.5498,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "answerable-8",
-   "score": 0.5494,
+   "score": 0.5498,
    "correct": true,
    "unanswerable": false
   },
@@ -265,13 +265,13 @@
   },
   {
    "qid": "stale_trap-2",
-   "score": 0.5043,
+   "score": 0.5048,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "stale_trap-2",
-   "score": 0.5043,
+   "score": 0.5048,
    "correct": true,
    "unanswerable": false
   },
@@ -301,13 +301,13 @@
   },
   {
    "qid": "stale_trap-1",
-   "score": 0.4068,
+   "score": 0.4064,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "stale_trap-1",
-   "score": 0.4068,
+   "score": 0.4064,
    "correct": true,
    "unanswerable": false
   },
@@ -349,13 +349,13 @@
   },
   {
    "qid": "unanswerable-3",
-   "score": 0.337,
+   "score": 0.3369,
    "correct": true,
    "unanswerable": true
   },
   {
    "qid": "unanswerable-3",
-   "score": 0.337,
+   "score": 0.3369,
    "correct": true,
    "unanswerable": true
   },
