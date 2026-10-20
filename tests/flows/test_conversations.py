@@ -1032,3 +1032,38 @@ def test_a_message_in_another_language_gets_an_english_note_and_a_handoff(chat):
 def test_the_router_offers_an_other_language_detail():
     from app.routing.router import DETAILS, RULES
     assert "other language" in DETAILS and "not written in English" in RULES
+
+
+def test_another_language_is_handed_off_even_when_the_router_misses_it(chat):
+    chat["routes_add"]("aire acondicionado", clear(request("¿Pueden venir mañana?", "scheduling", "book", "hvac_repair")))
+    reply, done = chat["say"]("Hola, mi aire acondicionado no enfría. ¿Pueden venir mañana?")
+    assert reply.startswith("I can only help in English") and done.ticket
+
+
+def test_nonsense_is_handed_off_not_answered_with_anything_else(chat):
+    chat["routes_add"]("asdf", {"clear": False, "requests": [request("asdf qwer zxcv", "handoff", "other")]})
+    reply, done = chat["say"]("asdf qwer zxcv ;;; 12345")
+    assert done.ticket and "anything else" not in reply
+
+
+@pytest.mark.parametrize("text, kind", [
+    ("Hola, mi aire acondicionado no enfría. ¿Pueden venir mañana?", "other language"),
+    ("Mon climatiseur ne marche pas, pouvez-vous venir demain?", "other language"),
+    ("asdf qwer zxcv ;;; 12345", "nonsense"),
+    ("okay, good to know", None), ("I'm José García, MHC-10003, can you book a tune-up?", None),
+    ("Linda Foster", None), ("hmm", None), ("Can I get a café-style schedule? My AC is broken", None)])
+def test_language_and_nonsense_detection(text, kind):
+    from app.core.language import unreadable
+    assert unreadable(text) == kind
+
+
+@pytest.mark.parametrize("text", ["Linda Foster, 4412 Oak Hollow Dr, Round Rock.", "Omar Patel 512-555-0142",
+                                  "Nadia Lee at 77 Pecan Street, Pflugerville"])
+def test_names_and_addresses_are_not_unreadable(text):
+    from app.core.language import unreadable
+    assert unreadable(text) is None
+
+
+def test_a_short_english_complaint_is_not_unreadable():
+    from app.core.language import unreadable
+    assert unreadable("I'd better hear from someone soon.") is None

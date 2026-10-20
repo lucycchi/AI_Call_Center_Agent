@@ -15,6 +15,7 @@ from app.accounts.lookups import read_only
 from app.config import SETTINGS, real_now
 from app.accounts.lookups import is_action_request
 from app.core import deadline
+from app.core.language import unreadable
 from app.core.model_log import SINK
 from app.core.state import ConversationState, NotYourConversation
 from app.core.types import DoneEvent, Event, SentenceEvent, Turn
@@ -275,10 +276,17 @@ class AgentPipeline:
         # 3. Route, keeping follow-ups inside an active flow (R38, R40).
         history = self.store.history(turn.conversation_id)
         routed = self._route(turn.text, history, error_event)
+        # Another language or nonsense is handed off even if the router missed it (R38, D47).
+        unreadable_as = unreadable(turn.text)
+        if unreadable_as == "other language":
+            routed = RouteResult("handoff", True, [Request(turn.text, "handoff", "other language")])
+        elif unreadable_as == "nonsense" and not state.active_flow and not state.pending:
+            routed = RouteResult("handoff", False, [Request(turn.text, "handoff", "other")])
         flow_before = state.active_flow
         # A request for a person, or a reason the router named, is handed off even when the route is unclear (R38).
         names_a_handoff = any(r.route == "handoff" and r.detail in HANDOFF_TAGS and r.detail != "other" for r in routed.requests)
-        asks_nothing = "?" not in turn.text and _mood(turn.text) == "calm" and not names_a_handoff
+        asks_nothing = "?" not in turn.text and _mood(turn.text) == "calm" and not names_a_handoff \
+            and not unreadable_as
         if identified_now and not state.active_flow and not state.pending and not routed.clear and asks_nothing:
             # A message that only gave the caller's details: nothing to hand off.
             yield emit(f"Thanks, {identified_now.name.split()[0]}, I've found your account. What can I help you with?")
