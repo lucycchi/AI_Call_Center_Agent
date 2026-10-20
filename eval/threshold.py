@@ -43,6 +43,12 @@ def choose_threshold(points: list[Point], questions: int = 100) -> float:
     return best.threshold
 
 
+def _agent_wrote(folder: Path) -> bool:
+    answers = folder / "answers_to_grade.jsonl"
+    combined = [a for a in map(json.loads, answers.open()) if a.get("mode") == "combined"] if answers.exists() else []
+    return bool(combined) and all(a.get("writer") == "agent" for a in combined)
+
+
 def pooled_verdicts(results: Path, agent_hash: str) -> list[dict]:
     """Every graded run of this agent, each as {answer id: verdict}; one run's grades swing on a single answer. An
     answer set graded more than once counts once (its first kept run), so no answer is pooled twice."""
@@ -51,6 +57,8 @@ def pooled_verdicts(results: Path, agent_hash: str) -> list[dict]:
     for path in sorted((results / "runs" / agent_hash).glob("*/verdicts.jsonl"), key=lambda p: (len(p.parent.name), p.parent.name)):
         digest = run_answers_hash(path.parent)
         if digest is not None and digest in seen:
+            continue
+        if not _agent_wrote(path.parent):  # answers from the simple prompt measure search, not the agent's replies
             continue
         seen.add(digest)
         pooled.append({v["id"]: v for v in map(json.loads, path.open())})

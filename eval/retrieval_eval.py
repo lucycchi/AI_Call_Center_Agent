@@ -93,8 +93,12 @@ def file_sha256(path: Path) -> str:
 
 
 def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str], str], whole_kb: str, out: Path,
-                     model: str | None = None, agent_hash: str | None = None) -> None:
+                     model: str | None = None, agent_hash: str | None = None,
+                     agent_answer: Callable[[str], str] | None = None) -> None:
     """Answers from the top five keyword-only and combined passages and from the whole knowledge base, for grading.
+    With agent_answer, the combined answers are the agent's own (its knowledge flow, writer and checks), so the answer
+    measures and the threshold curve describe the agent; keyword-only and whole-knowledge-base answers keep the simple
+    prompt, a comparison of search methods (R30).
     With agent_hash, answers_meta.json beside them records that hash and the answers file's own hash, so grading can
     refuse answers written under another agent."""
     partial = out.with_name(out.name + ".partial")  # replaces the previous answers only once every answer is written
@@ -105,8 +109,10 @@ def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str
             for mode, context in contexts:
                 # The exact passages the answer was written from, so it is graded against them, not a later search.
                 passages = [passage_label(c) for c in found.get(mode, [])]
+                by_agent = agent_answer is not None and mode == "combined"
+                reply = agent_answer(q["question"]) if by_agent else writer(q["question"], context)
                 handle.write(json.dumps({"qid": q["qid"], "kind": q["kind"], "mode": mode, "question": q["question"],
-                                         "answer": writer(q["question"], context), "model": model,
+                                         "answer": reply, "writer": "agent" if by_agent else "simple prompt", "model": model,
                                          "reference_answer": q.get("reference_answer"), "passages": passages}) + "\n")
     partial.replace(out)
     if agent_hash is not None:
@@ -146,6 +152,28 @@ class BudgetExceeded(RuntimeError):
 
 
 WRITER_EFFORT = "low"
+
+
+AGENT_HANDOFF = "I'll pass your question to a team member, who will follow up."
+
+
+def agent_answerer(searcher, client, money_check) -> Callable[[str], str]:
+    """The agent's own answer to a knowledge question: its knowledge flow picks the facts and reply type (with the
+    threshold at 0, so the curve can apply each threshold afterwards), its writer writes, and its sentence checks
+    release each sentence; a blocked sentence ends the reply with a handoff, as in the pipeline."""
+    from app.flows.knowledge import answer
+    from app.replies.checks import CheckedStream
+    from app.replies.writer import write
+
+    def ask(question: str) -> str:
+        result = answer(question, searcher, 0.0)
+        if result.reply_type == "handoff":
+            return AGENT_HANDOFF
+        stream = CheckedStream(write(result.reply_type, result.facts, [{"role": "caller", "content": question}], client),
+                               money_check=money_check)
+        released = list(stream)
+        return " ".join(released + ([AGENT_HANDOFF] if stream.blocked_rule else []))
+    return ask
 
 
 def sonnet_writer(cap_usd: float | None = None) -> Callable[[str, str], str]:
@@ -201,10 +229,19 @@ def main(argv: list[str] | None = None) -> None:
 
         whole_kb = "\n\n".join(p.read_text() for p in sorted((ROOT / "data" / "kb_text").glob("*.md")))
         writer = sonnet_writer()
+        from app.core.model_log import SINK
+        from app.replies.money_check import MoneyCheck
+        from eval.budget import RunBudget
         from eval.freeze import freeze_agent
-        answer_both_ways(working, searcher, writer, whole_kb, out / "answers_to_grade.jsonl", model=SETTINGS.writer_model,
-                         agent_hash=freeze_agent())
-        cost = round(writer.spent[0], 4)
+        from eval.run import build_client
+        client, budget = build_client(), RunBudget(SETTINGS.eval_run_cap_usd)
+        token = SINK.set(budget.record)  # the agent's own calls (writer and money check) count against the cap
+        try:
+            answer_both_ways(working, searcher, writer, whole_kb, out / "answers_to_grade.jsonl", model=SETTINGS.writer_model,
+                             agent_hash=freeze_agent(), agent_answer=agent_answerer(searcher, client, MoneyCheck(client)))
+        finally:
+            SINK.reset(token)
+        cost = round(writer.spent[0] + budget.spent_usd, 4)
     report["settings"] = run_settings(cost)
     (out / "summary.json").write_text(json.dumps(report, indent=1))
     print(json.dumps({k: v for k, v in report.items() if k in ("set", "questions", "coverage", "coverage_basis", "keyword",

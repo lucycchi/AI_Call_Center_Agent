@@ -85,11 +85,54 @@ def test_the_threshold_pools_each_answer_set_once(tmp_path):
         folder.mkdir(parents=True)
         (folder / "verdicts.jsonl").write_text(json.dumps({"id": "q1|combined", "correct": correct}) + "\n")
         (folder / "answers_sha256").write_text(digest)
+        (folder / "answers_to_grade.jsonl").write_text(json.dumps({"mode": "combined", "writer": "agent", "a": run}) + "\n")
     runs = pooled_verdicts(tmp_path, "now")
     assert sorted(v["q1|combined"]["correct"] for v in runs) == [False, True]  # run 2 repeats run 1's answers
     legacy = tmp_path / "runs" / "old"
     for run in ("1", "2"):  # older runs with no stored hash are told apart by their answers file
         (legacy / run).mkdir(parents=True)
         (legacy / run / "verdicts.jsonl").write_text(json.dumps({"id": "q1|combined", "correct": True}) + "\n")
-        (legacy / run / "answers_to_grade.jsonl").write_text("same answers\n")
+        (legacy / run / "answers_to_grade.jsonl").write_text(json.dumps({"mode": "combined", "writer": "agent"}) + "\n")
     assert len(pooled_verdicts(tmp_path, "old")) == 1
+
+
+def test_combined_answers_come_from_the_agents_own_knowledge_flow_and_writer(tmp_path):
+    # The answer measures (R31) and the threshold curve (R32) must describe the agent, not a separate prompt.
+    from eval.retrieval_eval import answer_both_ways
+    out = tmp_path / "answers_to_grade.jsonl"
+    answer_both_ways([{"qid": "q1", "question": "fee?", "kind": "answerable", "reference_answer": "$89"}], Searcher(),
+                     lambda q, c: "simple prompt", whole_kb="KB", out=out, agent_answer=lambda q: "the agent's reply")
+    by_mode = {a["mode"]: a for a in map(json.loads, out.open())}
+    assert by_mode["combined"]["answer"] == "the agent's reply" and by_mode["combined"]["writer"] == "agent"
+    assert by_mode["keyword"]["answer"] == by_mode["whole_kb"]["answer"] == "simple prompt"
+
+
+class Stream:
+    def __init__(self, text):
+        self.text_stream = iter([text])
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class FakeClient:
+    def __init__(self, text):
+        self.text, self.prompts = text, []
+        self.messages = self
+
+    def stream(self, **kwargs):
+        self.prompts.append(kwargs)
+        return Stream(self.text)
+
+
+def test_the_agent_answerer_writes_with_the_agents_rules_and_checks():
+    from app.replies.writer import RULES
+    from eval.retrieval_eval import agent_answerer
+    client = FakeClient("The diagnostic fee is $89 (faq/customer_faq.md). I'll waive it for you.")
+    ask = agent_answerer(Searcher(), client, money_check=lambda sentence, previous: "waive" not in sentence)
+    reply = ask("What is the diagnostic fee?")
+    assert client.prompts[0]["system"] == RULES and "diagnostic fee is $89" in reply
+    assert "waive" not in reply and "team member" in reply  # a blocked sentence ends the reply with a handoff

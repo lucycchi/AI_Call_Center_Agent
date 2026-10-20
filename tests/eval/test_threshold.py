@@ -190,6 +190,7 @@ def test_the_threshold_pools_every_run_of_the_current_agent(tmp_path):
         folder = tmp_path / "runs" / agent / run
         folder.mkdir(parents=True)
         (folder / "verdicts.jsonl").write_text(json.dumps({"id": "q1|combined", "correct": correct}) + "\n")
+        (folder / "answers_to_grade.jsonl").write_text(json.dumps({"mode": "combined", "writer": "agent", "run": run}) + "\n")
     runs = pooled_verdicts(tmp_path, "now")
     assert sorted(v["q1|combined"]["correct"] for v in runs) == [False, True]
 
@@ -213,3 +214,15 @@ def test_the_quick_run_command_loads_the_test_key_before_running(monkeypatch):
     with pytest.raises(SystemExit):
         quick.main()
     assert order == ["env", "run"]
+
+
+def test_the_threshold_pools_only_runs_whose_combined_answers_the_agent_wrote(tmp_path):
+    import json
+    from eval.threshold import pooled_verdicts
+    for run, writer in [("1", "simple prompt"), ("2", "agent"), ("3", None)]:
+        folder = tmp_path / "runs" / "now" / run
+        folder.mkdir(parents=True)
+        (folder / "verdicts.jsonl").write_text(json.dumps({"id": "q1|combined", "correct": run == "2"}) + "\n")
+        line = {"qid": "q1", "mode": "combined", "answer": f"a{run}"} | ({"writer": writer} if writer else {})
+        (folder / "answers_to_grade.jsonl").write_text(json.dumps(line) + "\n")
+    assert [v["q1|combined"]["correct"] for v in pooled_verdicts(tmp_path, "now")] == [True]
