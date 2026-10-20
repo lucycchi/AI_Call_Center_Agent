@@ -1,15 +1,11 @@
 {
- "both_right": 20,
- "both_wrong": 7,
- "fable_only": 3,
+ "both_right": 22,
+ "both_wrong": 8,
+ "fable_only": 0,
  "grader_only": 0,
- "agreement": 0.9,
+ "agreement": 1.0,
  "note": "fable graded blind; this is model-vs-model agreement, not a human check",
  "checker": "Claude Fable 5.1, standing in for the author (D44)",
  "graded": 30,
- "disagreements": [
-  "case-Tc36da844|whole_kb",
-  "case-T9e29febc|keyword",
-  "unanswerable-2|combined"
- ]
+ "disagreements": []
 }
