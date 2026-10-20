@@ -1,6 +1,8 @@
 {
  "set": "working",
- "questions": 25,
+ "questions": 50,
+ "runs": 2,
+ "agent": "f7ecfd29d6725dd96953c769bf444a51a730befdf6628faeb126d5a47c49fd68",
  "chosen": 0.25,
  "rule": {
   "floor": 0.25,
@@ -9,43 +11,43 @@
  "points": [
   {
    "threshold": 0.2,
-   "containment": 0.8,
-   "wrong_confident": 2
+   "containment": 0.78,
+   "wrong_confident": 5
   },
   {
    "threshold": 0.25,
-   "containment": 0.76,
-   "wrong_confident": 2
+   "containment": 0.74,
+   "wrong_confident": 5
   },
   {
    "threshold": 0.3,
-   "containment": 0.76,
-   "wrong_confident": 2
+   "containment": 0.74,
+   "wrong_confident": 5
   },
   {
    "threshold": 0.35,
-   "containment": 0.76,
-   "wrong_confident": 2
+   "containment": 0.74,
+   "wrong_confident": 5
   },
   {
    "threshold": 0.4,
-   "containment": 0.72,
-   "wrong_confident": 2
+   "containment": 0.7,
+   "wrong_confident": 5
   },
   {
    "threshold": 0.45,
    "containment": 0.64,
-   "wrong_confident": 2
+   "wrong_confident": 4
   },
   {
    "threshold": 0.5,
    "containment": 0.56,
-   "wrong_confident": 2
+   "wrong_confident": 4
   },
   {
    "threshold": 0.55,
    "containment": 0.28,
-   "wrong_confident": 2
+   "wrong_confident": 4
   },
   {
    "threshold": 0.6,
@@ -76,8 +78,26 @@
    "unanswerable": false
   },
   {
+   "qid": "case-T0a995037",
+   "score": 0.5147,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
    "qid": "case-T2603f4e6",
-   "score": 0.4721,
+   "score": 0.4723,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "case-T2603f4e6",
+   "score": 0.4723,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "case-T738adaab",
+   "score": 0.5625,
    "correct": true,
    "unanswerable": false
   },
@@ -94,9 +114,27 @@
    "unanswerable": false
   },
   {
+   "qid": "case-T7d8fb3e5",
+   "score": 0.6051,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
    "qid": "case-T9e29febc",
-   "score": 0.5733,
+   "score": 0.5735,
    "correct": false,
+   "unanswerable": false
+  },
+  {
+   "qid": "case-T9e29febc",
+   "score": 0.5735,
+   "correct": false,
+   "unanswerable": false
+  },
+  {
+   "qid": "case-Tbaf67f84",
+   "score": 0.6457,
+   "correct": true,
    "unanswerable": false
   },
   {
@@ -112,9 +150,27 @@
    "unanswerable": false
   },
   {
-   "qid": "case-Tc36da844",
-   "score": 0.6003,
+   "qid": "case-Tbc5df324",
+   "score": 0.5373,
    "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "case-Tc36da844",
+   "score": 0.6002,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "case-Tc36da844",
+   "score": 0.6002,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "case-Tf7d382d9",
+   "score": 0.4052,
+   "correct": false,
    "unanswerable": false
   },
   {
@@ -125,7 +181,19 @@
   },
   {
    "qid": "answerable-1",
-   "score": 0.3526,
+   "score": 0.3518,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "answerable-1",
+   "score": 0.3518,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "answerable-3",
+   "score": 0.634,
    "correct": true,
    "unanswerable": false
   },
@@ -137,7 +205,19 @@
   },
   {
    "qid": "answerable-9",
-   "score": 0.5312,
+   "score": 0.5309,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "answerable-9",
+   "score": 0.5309,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "answerable-4",
+   "score": 0.5208,
    "correct": true,
    "unanswerable": false
   },
@@ -149,7 +229,13 @@
   },
   {
    "qid": "answerable-6",
-   "score": 0.5859,
+   "score": 0.5858,
+   "correct": false,
+   "unanswerable": false
+  },
+  {
+   "qid": "answerable-6",
+   "score": 0.5858,
    "correct": false,
    "unanswerable": false
   },
@@ -160,14 +246,38 @@
    "unanswerable": false
   },
   {
+   "qid": "answerable-8",
+   "score": 0.5498,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
    "qid": "answerable-2",
-   "score": 0.2365,
+   "score": 0.2369,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "answerable-2",
+   "score": 0.2369,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "stale_trap-2",
-   "score": 0.5048,
+   "score": 0.5043,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "stale_trap-2",
+   "score": 0.5043,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "stale_trap-7",
+   "score": 0.5902,
    "correct": true,
    "unanswerable": false
   },
@@ -184,6 +294,18 @@
    "unanswerable": false
   },
   {
+   "qid": "stale_trap-6",
+   "score": 0.6869,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "stale_trap-1",
+   "score": 0.4068,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
    "qid": "stale_trap-1",
    "score": 0.4068,
    "correct": true,
@@ -191,19 +313,43 @@
   },
   {
    "qid": "stale_trap-0",
-   "score": 0.4541,
+   "score": 0.4544,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "stale_trap-0",
+   "score": 0.4544,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "stale_trap-4",
-   "score": 0.5138,
+   "score": 0.5142,
+   "correct": true,
+   "unanswerable": false
+  },
+  {
+   "qid": "stale_trap-4",
+   "score": 0.5142,
    "correct": true,
    "unanswerable": false
   },
   {
    "qid": "unanswerable-4",
-   "score": 0.4446,
+   "score": 0.4443,
+   "correct": true,
+   "unanswerable": true
+  },
+  {
+   "qid": "unanswerable-4",
+   "score": 0.4443,
+   "correct": true,
+   "unanswerable": true
+  },
+  {
+   "qid": "unanswerable-3",
+   "score": 0.3369,
    "correct": true,
    "unanswerable": true
   },
@@ -215,10 +361,16 @@
   },
   {
    "qid": "unanswerable-2",
-   "score": 0.493,
+   "score": 0.4923,
+   "correct": true,
+   "unanswerable": true
+  },
+  {
+   "qid": "unanswerable-2",
+   "score": 0.4923,
    "correct": true,
    "unanswerable": true
   }
  ],
- "note": "Containment and wrong confident answers over the working-set knowledge questions, from the graded combined-search answers; the held-out questions are never used."
+ "note": "Containment and wrong confident answers over the working-set knowledge questions, from every graded combined-search run of this agent pooled (each answer counts once); the held-out questions are never used."
 }

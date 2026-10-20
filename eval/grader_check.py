@@ -2,7 +2,10 @@
 verdicts, for the author to grade blind; then the full agree and disagree table.
 
 Run: python -m eval.grader_check sheet     writes data/grader_check.csv (no grader verdicts in it); grades already in
-                                           the sheet are kept, and it refuses if any would be dropped
+                                           the sheet are kept, and it refuses if any would be dropped or its answer
+                                           changed
+     python -m eval.grader_check sheet --new
+                                           archives the old sheet under data/grader_check_archive/ and starts again
      python -m eval.grader_check table     reads Claude Fable 5.1's blind grades (it stands in for the author, D44),
                                            or the author's if the author column is filled, and writes
                                            data/results/grader_check.json
@@ -36,14 +39,24 @@ def _graded(row: dict) -> dict:
     return {column: row[column] for column, _ in COLUMNS.values() if (row.get(column) or "").strip()}
 
 
-def write_sheet() -> None:
+def write_sheet(new: bool = False) -> None:
+    """new: start a fresh sheet for new answers, archiving the old one with its grades."""
     verdicts = [Verdict(**json.loads(line)) for line in (RESULTS / "verdicts.jsonl").open()]
     answers = {f"{a['qid']}|{a['mode']}": a for a in map(json.loads, (RESULTS / "answers_to_grade.jsonl").open())}
     sample = choose_check_sample(verdicts, n=30, seed=11)
-    existing = {r["id"]: _graded(r) for r in csv.DictReader(SHEET.open())} if SHEET.exists() else {}
-    dropped = sorted(i for i, grades in existing.items() if grades and i not in {v.id for v in sample})
+    old = list(csv.DictReader(SHEET.open())) if SHEET.exists() else []
+    if new and old:
+        archive = SHEET.parent / "grader_check_archive"
+        archive.mkdir(exist_ok=True)
+        (archive / f"{len(list(archive.glob('*.csv'))) + 1}.csv").write_text(SHEET.read_text())
+        old = []
+    # A grade belongs to the answer text it was given for; a changed answer needs grading again.
+    existing = {r["id"]: _graded(r) for r in old}
+    dropped = sorted(r["id"] for r in old if _graded(r) and (r["id"] not in {v.id for v in sample}
+                                                             or answers.get(r["id"], {}).get("answer") != r["answer"]))
     if dropped:
-        raise SystemExit(f"refusing to rewrite {SHEET}: it holds grades for {dropped}, which are no longer in the sample")
+        raise SystemExit(f"refusing to rewrite {SHEET}: it holds grades for {dropped}, which are no longer in the sample "
+                         "or whose answers changed; run with --new to archive it and start again")
     HIDDEN.write_text(json.dumps({v.id: v.correct for v in sample}, indent=1))
     columns = BASE + [column for column, _ in COLUMNS.values()]
     with SHEET.open("w", newline="") as handle:
@@ -84,4 +97,4 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["table"]:
         write_table(sys.argv[2] if len(sys.argv) > 2 else None)
     else:
-        write_sheet()
+        write_sheet(new="--new" in sys.argv[1:])

@@ -318,3 +318,24 @@ def test_answers_keep_the_passages_they_were_written_from_and_are_graded_against
     assert not items[1].get("passages_searched_again")
     old = answer_items([{k: v for k, v in answers[1].items() if k != "passages"}], Searcher("Searched again."))
     assert old[0]["passages_searched_again"] is True and "Searched again." in old[0]["passages"][0]
+
+
+def test_a_grade_is_not_carried_onto_a_changed_answer(tmp_path, monkeypatch):
+    check, csvmod = _check_files(tmp_path, monkeypatch)
+    check.write_sheet()
+    rows = list(csvmod.DictReader(check.SHEET.open()))
+    for row in rows:
+        row["fable_correct (yes or no)"] = "yes"
+    with check.SHEET.open("w", newline="") as handle:
+        writer = csvmod.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    answers = check.RESULTS / "answers_to_grade.jsonl"
+    answers.write_text(answers.read_text().replace('"answer": "a"', '"answer": "a new answer"'))
+    with pytest.raises(SystemExit):  # the old grades would be lost or misattached
+        check.write_sheet()
+    check.write_sheet(new=True)
+    again = list(csvmod.DictReader(check.SHEET.open()))
+    assert all(not r["fable_correct (yes or no)"] and r["answer"] == "a new answer" for r in again)
+    [archived] = list((tmp_path / "grader_check_archive").glob("*.csv"))
+    assert "yes" in archived.read_text()

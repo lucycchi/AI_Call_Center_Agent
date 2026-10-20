@@ -2,7 +2,7 @@
  "case-Tbaf67f84|keyword": false,
  "answerable-9|keyword": true,
  "stale_trap-6|keyword": true,
- "case-T7d8fb3e5|whole_kb": true,
+ "case-T7d8fb3e5|combined": true,
  "case-Tf7d382d9|keyword": true,
  "answerable-4|keyword": true,
  "case-T9e29febc|whole_kb": false,
@@ -17,7 +17,7 @@
  "case-Tbc5df324|keyword": false,
  "stale_trap-7|whole_kb": true,
  "stale_trap-0|whole_kb": true,
- "case-T2603f4e6|keyword": false,
+ "case-T738adaab|keyword": false,
  "case-T9e29febc|combined": false,
  "case-T0a995037|whole_kb": true,
  "stale_trap-6|combined": true,
@@ -27,6 +27,6 @@
  "answerable-3|keyword": true,
  "unanswerable-4|keyword": true,
  "answerable-1|whole_kb": true,
- "case-T738adaab|keyword": false,
+ "case-T9e29febc|keyword": false,
  "stale_trap-6|whole_kb": true
 }

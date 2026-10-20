@@ -2,5 +2,7 @@
  "pass_rate": 1.0,
  "booking_rule_pass_rate": 1.0,
  "extraction_pass_rate": 1.0,
- "failures": []
+ "failures": [],
+ "stopped_at_budget": false,
+ "spent_usd": 0.0594
 }

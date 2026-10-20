@@ -42,6 +42,6 @@
   "anthropic_timeout_s": 20,
   "run_cap_usd": 8.0,
   "top_k": 5,
-  "answer_cost_usd": 0.5408
+  "answer_cost_usd": 0.5431
  }
 }

@@ -1,6 +1,6 @@
 {
- "hash": "1d780a468b95381e9654e3275015ca95bfd7422464fffc27428710ff3b855e3d",
- "files": 46,
+ "hash": "f7ecfd29d6725dd96953c769bf444a51a730befdf6628faeb126d5a47c49fd68",
+ "files": 61,
  "covers": [
   "app/core",
   "app/routing",
@@ -12,8 +12,14 @@
   "app/handoff",
   "app/flows",
   "app/config.py",
-  "data/index"
+  "data/index",
+  "data/document_list.csv",
+  "data/kb_text",
+  "call_data/knowledge_base/internal/agent_discretion_notes.md",
+  "call_data/knowledge_base/policies/escalation_and_safety.md",
+  "call_data/knowledge_base/services/scheduling_guide.md",
+  "call_data/knowledge_base/services/technician_arrival_and_etas.md"
  ],
- "frozen_at": "2026-10-19T02:31:00",
+ "frozen_at": "2026-10-20T12:06:56",
  "note": "The final held-out run checks the agent still matches this hash."
 }
