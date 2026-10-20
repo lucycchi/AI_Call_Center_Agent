@@ -24,7 +24,8 @@ def _message(ticket_id: int, reason_tag: str, identified: bool = True) -> str:
     if reason_tag in ("emergency", "burning smell"):
         return (f"This is flagged as an emergency for our team: Ticket #{ticket_id}. They will contact you as a "
                 f"priority.{ask} You can keep asking me other questions here.")
-    return (f"I've passed this to our team: Ticket #{ticket_id}. Someone will contact you within one business day.{ask} "
+    english = "I can only help in English, so I've" if reason_tag == "other language" else "I've"
+    return (f"{english} passed this to our team: Ticket #{ticket_id}. Someone will contact you within one business day.{ask} "
             f"You can keep asking me other questions here.")
 
 

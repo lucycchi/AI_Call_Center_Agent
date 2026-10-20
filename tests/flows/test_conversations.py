@@ -1018,3 +1018,17 @@ def test_a_yes_saying_sooner_is_better_at_a_reschedule_read_back_moves_it(chat):
     chat["say"]("the first one")
     reply, _ = chat["say"]("yes, the earlier the better")
     assert "Moved" in reply
+
+
+def test_a_message_in_another_language_gets_an_english_note_and_a_handoff(chat):
+    # Languages other than English are a non-goal; the caller still gets a person (D47).
+    chat["routes_add"]("aire acondicionado", {"clear": True, "requests": [
+        request("Hola, mi aire acondicionado no enfría. ¿Pueden venir mañana?", "handoff", "other language")]})
+    reply, done = chat["say"]("Hola, mi aire acondicionado no enfría. ¿Pueden venir mañana?")
+    assert reply.startswith("I can only help in English") and "Ticket #" in reply
+    assert [t["reason_tag"] for t in chat["store"].tickets()] == ["other language"]
+
+
+def test_the_router_offers_an_other_language_detail():
+    from app.routing.router import DETAILS, RULES
+    assert "other language" in DETAILS and "not written in English" in RULES

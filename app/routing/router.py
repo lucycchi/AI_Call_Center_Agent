@@ -9,7 +9,8 @@ from app.core import deadline
 
 ROUTES = ["knowledge", "account", "scheduling", "handoff", "redirect"]
 DETAILS = ["none", "balance", "invoice", "membership", "system", "charged twice", "action", "book", "reschedule", "cancel",
-           "confirm", "dispute", "complaint", "late technician", "commercial", "person", "other", "hiring", "wrong number"]
+           "confirm", "dispute", "complaint", "late technician", "commercial", "person", "other", "hiring", "wrong number",
+           "other language"]
 SERVICES = ["none", "hvac_repair", "hvac_tune_up", "plumbing", "estimate"]
 SCHEMA = {
     "type": "object", "additionalProperties": False, "required": ["clear", "requests"],
@@ -26,7 +27,7 @@ Split the message into its separate requests, in the caller's words, and give ea
 - knowledge: questions answered from company documents (prices, fees, hours, service area, membership terms, warranty terms, payment methods, being charged twice).
 - account: questions about the caller's own account, including when their own membership renews or charges: balance or invoice ("balance", "invoice"), membership tier or renewal ("membership"), system brand or install date ("system"); any request to take an action on money or membership, such as a payment link, autopay, cancelling the membership or auto-renew, upgrading, joining, or a fee waiver ("action").
 - scheduling: book a visit ("book", with the service: hvac_repair, hvac_tune_up for a tune-up, plumbing, or estimate for a system replacement), or reschedule, cancel or confirm an existing appointment.
-- handoff: a disputed charge or quote, or a refund ("dispute"); a complaint or a manager ("complaint"); a technician who is late ("late technician"); commercial work ("commercial"); asking for a person ("person"); anything else outside these ("other").
+- handoff: a disputed charge or quote, or a refund ("dispute"); a complaint or a manager ("complaint"); a technician who is late ("late technician"); commercial work ("commercial"); asking for a person ("person"); a message not written in English ("other language"); anything else outside these ("other").
 - redirect: job enquiries ("hiring") or a wrong number ("wrong number");
   a caller asking whether this is a different business ("is this Meridian Dental?") has the wrong number.
 Asking whether or how something can be done ("can I still cancel before then?", "how do I set up autopay?") is a

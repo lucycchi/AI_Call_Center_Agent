@@ -37,7 +37,7 @@ REDIRECTS = {"hiring": "We don't take job applications by phone; openings and ap
              "wrong number": "This is Meridian Home Comfort, a heating, cooling and plumbing company in the Austin area; "
                              "it sounds like you may have the wrong number."}
 HANDOFF_TAGS = {"dispute": "dispute", "complaint": "complaint", "late technician": "late technician",
-                "commercial": "commercial", "person": "other", "other": "other"}
+                "commercial": "commercial", "person": "other", "other language": "other language", "other": "other"}
 SAFETY_TAGS = {"danger": "emergency", "burning": "burning smell", "urgent": "emergency"}
 ANGRY = re.compile(r"\b(ridiculous|unacceptable|furious|angry|done with|worst|terrible|sick of)\b|!{2,}", re.I)
 OFFER_RETURN = "Offer to return to the booking afterwards."
