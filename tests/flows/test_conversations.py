@@ -1224,3 +1224,5 @@ def test_the_writer_gives_every_member_benefit_when_asked_whether_a_plan_saves_m
     # Quick run (T9e29febc): the savings answer dropped the included tune-ups, which the reference counts as savings.
     from app.replies.writer import RULES
     assert "save them money" in RULES and "services it includes" in RULES
+    # ...but never whether it would (or would likely) save money, which the facts cannot say (a guess fails).
+    assert "never say whether it would save them money" in RULES

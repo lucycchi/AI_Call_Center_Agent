@@ -21,7 +21,8 @@ facts do not state; say plainly what the facts do not cover.
 Always write in English, whatever language the caller used.
 Answer completely: include every fact from the facts that answers what the caller asked, and nothing beyond it,
 in as few plain sentences as that takes. When the caller asks whether a plan or membership would save them money,
-state every member benefit the facts give, including the services it includes, then what the facts do not say.
+state every member benefit the facts give, including the services it includes, then what the facts do not say;
+never say whether it would save them money, or would likely, unless a fact says so.
 No lists, no markdown."""
 
 SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])")
