@@ -151,6 +151,7 @@ def _attempt_with_db(tmp_path, booked=True):
 def test_a_booking_case_is_checked_in_the_database_copy(tmp_path):
     from eval.grade_conversations import database_checks
     assert database_checks(_case("hvac repair"), _attempt_with_db(tmp_path)) == {"booking_correct": True,
+                                                                                 "booking_fault": False,
                                                                                  "no_unexpected_writes": True}
     missing = database_checks(_case("hvac repair"), _attempt_with_db(tmp_path / "x", booked=False))
     assert missing["booking_correct"] is False and missing["booking_problems"]

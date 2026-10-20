@@ -94,3 +94,42 @@ def test_the_read_back_accepts_the_usual_spoken_forms(text, slot_date, window):
 def test_the_read_back_still_rejects_the_wrong_slot(text, slot_date, window):
     from eval.grade_conversations import names_slot
     assert not names_slot(text, slot_date, window), text
+
+
+def _no_booking(db, conversation) -> Attempt:
+    return Attempt("c1", db_path=str(db), conversation=conversation, done_events=[{"db_actions": []}] * 3)
+
+
+def test_a_booking_the_caller_never_confirmed_is_a_miss_not_a_fault(tmp_path):
+    # Quick run T9e29febc: the caller said "Book it" but never chose one of the offered slots (D49).
+    conversation = [{"role": "caller", "text": "I need a repair"}, {"role": "agent", "text": OFFER + " Which one suits you?"},
+                    {"role": "caller", "text": "Book it."}, {"role": "agent", "text": "Which opening would you like?"},
+                    {"role": "caller", "text": "No, that's it. Thanks."}]
+    checks = _checks(_case(), _no_booking(_db(tmp_path), conversation))
+    assert checks["booking_correct"] is False and checks["booking_fault"] is False
+
+
+def test_a_confirmed_read_back_with_nothing_booked_is_a_fault(tmp_path):
+    conversation = [{"role": "caller", "text": "I need a repair"}, {"role": "agent", "text": OFFER},
+                    {"role": "caller", "text": "The morning one."},
+                    {"role": "agent", "text": "Just to confirm: an HVAC repair on Monday, October 19, 8:00 AM to 12:00 PM. "
+                                              "Can you give me a clear yes?"},
+                    {"role": "caller", "text": "Yes, please book it."}, {"role": "agent", "text": "Done."}]
+    checks = _checks(_case(), _no_booking(_db(tmp_path), conversation))
+    assert checks["booking_correct"] is False and checks["booking_fault"] is True
+
+
+def test_a_wrong_booking_is_a_fault(tmp_path):
+    wrong = _offered_then_read_back(_db(tmp_path, sql=_book(56)), "Monday, October 19, 12:00 PM to 4:00 PM")
+    assert _checks(_case(), wrong)["booking_fault"] is True
+
+
+def test_the_quick_run_fails_hard_only_on_booking_faults():
+    from eval.harness import Attempt
+    from eval.quick_run import judge
+    case = {"case_id": "c1", "calls_weight": 1, "reason": "new booking", "sub_reason": "hvac repair",
+            "expected_outcome": "contained", "requests": []}
+    missed = Attempt("c1", stopped="caller ended", grades={"booking_correct": False, "booking_fault": False})
+    faulty = Attempt("c1", stopped="caller ended", grades={"booking_correct": False, "booking_fault": True})
+    assert not any("booking check failed" in r for r in judge([missed], {"c1": case}).reasons)
+    assert any("booking check failed" in r for r in judge([faulty], {"c1": case}).reasons)

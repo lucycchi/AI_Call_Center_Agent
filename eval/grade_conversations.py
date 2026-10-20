@@ -126,6 +126,17 @@ def _seed_status(slot_id: int) -> str:
         return seed.execute("select status from appointment_slots where slot_id = ?", (slot_id,)).fetchone()[0]
 
 
+def _confirmed_a_read_back(attempt) -> bool:
+    """The caller gave a plain yes straight after an agent read-back ("Just to confirm ... clear yes")."""
+    from app.flows.scheduling import YES
+    turns = attempt.conversation
+    for before, after in zip(turns, turns[1:]):
+        if before["role"] == "agent" and after["role"] == "caller" and \
+                re.search(r"\b(just to confirm|to read it back|clear yes)\b", before["text"], re.I) and YES.search(after["text"]):
+            return True
+    return False
+
+
 def database_checks(case: dict, attempt) -> dict:
     """What the database copy shows against what the case expected, measured from the copy as the call started (the
     seed with the case's fixtures), so planted rows are never taken for the agent's. Problems go in "booking_problems"."""
@@ -144,8 +155,13 @@ def database_checks(case: dict, attempt) -> dict:
                 problems += [f"appointment {row[0]} was booked" for row in scheduled]
             else:
                 booked = sorted(_slot_of(db, row[2])[2] for row in scheduled)
+                missed_only = False
                 if booked != expected:
                     problems.append(f"booked {booked or 'nothing'}, expected {expected}")
+                    # Fewer bookings than expected, none of them wrong, and no confirmed read-back left unbooked:
+                    # the caller never chose a slot, a missed request rather than a booking fault (D49).
+                    missed_only = all(service in expected for service in booked) and len(booked) < len(expected) \
+                        and not _confirmed_a_read_back(attempt)
                 for row in scheduled:
                     slot_date, window, service = _slot_of(db, row[2])
                     problems += _slot_problems(db, start, row[2], case, None)
@@ -154,6 +170,7 @@ def database_checks(case: dict, attempt) -> dict:
                 allowed_appointments |= {row[0] for row in new}
                 allowed_slots |= {row[2] for row in new}
             checks["booking_correct"] = not problems
+            checks["booking_fault"] = bool(problems) and not (missed_only and len(problems) == 1)
         appointment = case.get("appointment")
         kind = case["sub_reason"]
         if appointment and kind in ("cancel appointment", "reschedule", "confirm"):
@@ -188,6 +205,7 @@ def database_checks(case: dict, attempt) -> dict:
                 allowed_slots.add(old_slot)
             problems += own
             checks["booking_correct"] = not own
+            checks["booking_fault"] = bool(own)
     unexpected = [f"{table} {key} changed" for table in now for key in set(now[table]) | set(start[table])
                   if now[table].get(key) != start[table].get(key)
                   and not (table == "appointments" and key in allowed_appointments)

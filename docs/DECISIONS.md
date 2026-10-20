@@ -652,6 +652,19 @@ can only propose a decision; only the author settles one.
 - **Choice:** The threshold script applies the same rule (0.25 floor, a wrong confident answer costs 2.5) over every graded combined-search run of the current agent, each answer counting once; each graded run is kept under the agent hash it measured.
 - **Reason:** The author's choice. With 25 questions one answer's run-to-run swing decides the pick, and pooling runs measures the agent rather than one draw of the writer; the rule itself is unchanged and only working-set questions are used.
 
+## D49: Should the quick run fail outright when a booking was missed because the simulated caller never chose a slot?
+
+- **Status:** settled
+- **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
+- **Options:**
+  - Fail outright only on real booking faults; a booking the caller never confirmed is a missed request
+  - Keep any booking miss a hard failure and rerun
+  - Keep it strict and tell the simulated caller to always pick a slot
+- **Research:**
+  - [data/results/quick-20261020-140337-run1/attempts.jsonl](data/results/quick-20261020-140337-run1/attempts.jsonl): The quick run on the frozen agent failed only on the retry of the join-the-plan-and-book case (T9e29febc): the simulated caller said "Book it" but never chose one of the three offered slots, and the agent correctly would not pick one; bookings were otherwise 100% correct, routing 100%, knowledge 91%, no wrong confident answers.
+- **Choice:** The booking check records a booking fault for a wrong database change, an unexpected write, or a confirmed read-back left unbooked; fewer bookings than expected with none wrong and no confirmed read-back is a missed request, failing that conversation but not the quick run outright.
+- **Reason:** The author's choice. The quick run's hard stop exists to catch the agent changing the database wrongly; a caller who never chooses a slot is a conversation the agent could not finish, which already counts against containment.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
