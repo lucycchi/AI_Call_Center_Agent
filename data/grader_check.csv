@@ -1,211 +1,240 @@
 id,question,answer,reference_answer,author_correct (yes or no),claude_correct (yes or no),fable_correct (yes or no),fingerprint
-answerable-6|keyword,How much does it cost to clear a clogged drain?,"The documents I have don't list a price for clearing a clogged drain line, so I can't give you a cost. I'll pass your question to a team member who can get you an accurate quote.
+case-Tbaf67f84|keyword,What does the Comfort Club membership actually include? And how much is it? Does it cover plumbing?,"Here is what the documents say about the Comfort Club.
 
-In the meantime, here is what the documents do say:
-- If water is pooling at the indoor unit, it is most likely a clogged condensate drain line. Turn the system off to prevent overflow damage, and don't pour bleach into the line unless a technician tells you to.
-- If you need help after hours for an active water leak, our emergency line is available 24/7. An after-hours dispatch fee of $149 applies in addition to the repair cost.",Drain clearing typically costs $149 to $290 depending on access; the technician confirms the final price on site.,,,no,8665d63f66ae19df
-case-T7d8fb3e5|combined,I need to file a warranty claim. The unit you installed last year stopped working.,"I'm sorry your system stopped working. Here's how to file a claim and what to expect:
-
-**Filing the claim:** Call us to schedule a warranty diagnostic. If the failure is covered, there's no diagnostic fee. If the technician determines it isn't covered, the standard $89 diagnostic fee applies.
-
-**What may be covered, since the unit was installed last year:**
-- **Labor:** All full system installations carry a 2-year Meridian labor warranty, so labor should still be within that period. If you were a Comfort Club member when it was installed, the labor warranty is 5 years.
-- **Parts:** Manufacturer parts warranties are separate and vary by brand. For example, compressor and parts coverage is 10 years for Trane, Carrier, Lennox, Goodman, Rheem, and American Standard when the unit is registered. We register every installed unit with the manufacturer within 30 days of installation.
-
-Whether your specific failure is covered is determined by the technician at the diagnostic visit. I can't say in advance whether it will be.
-
-If you tell me the brand of your unit, I can share the manufacturer warranty terms listed in our documents for it.","A full system installation has a 2-year Meridian labor warranty, so a unit installed within the last year is covered; a warranty diagnostic is booked and there is no diagnostic fee if the failure is covered.",,,yes,aa688a9e816d5300
-stale_trap-4|combined,Is the after-hours emergency fee $129?,"No, the after-hours emergency dispatch fee is $149 for non-members, not $129. It is charged in addition to the cost of the repair. (The $129 figure you may be thinking of is the price of a seasonal tune-up for non-members.)
-
-- Comfort Club and Comfort Club Plus members have the after-hours dispatch fee waived.
-- On holidays, the emergency dispatch fee is $199.
-
-The after-hours emergency line is available 24/7 for no-heat, no-cool, and active water leaks.","No. After-hours emergency dispatch is $149, waived for Comfort Club members.",,,yes,683cc9b8d2227107
-answerable-1|keyword,Do you service Manor?,"Yes, we do. Manor (ZIP 78653) was newly added to our residential service area in April 2026.
-
-If you'd like to book a visit, I can help with that. Just let me know what's going on with your system.",Yes. Manor (78653) was added to the service area in April 2026.,,,yes,b2876b0721921576
-stale_trap-0|keyword,Is the diagnostic fee still $79?,"No, the diagnostic fee is $89, not $79. It's applied as a credit toward the repair if you approve the repair during the same visit. The fee is waived for Comfort Club members. It's also waived if the technician finds the failure is covered under warranty.
-
-Let me know if you'd like to know anything else about fees or scheduling.","No, the diagnostic visit is $89, credited toward a repair approved on the same visit, and waived for Comfort Club members.",,,yes,41e6b2e19ca1ff4f
-stale_trap-7|whole_kb,Can I pay the technician with a check?,"No. We don't accept checks or cash from technicians in the field.
-
-You can pay with Visa, Mastercard, American Express, Discover, or ACH. Card numbers are never taken over the phone. Instead, our agents send a secure payment link by text or email, and the link is valid for 24 hours.
-
-Financing is also available on repairs over $1,000 and on all system replacements. Approval takes about 5 minutes.",No. Technicians do not accept checks or cash; payment is by card or ACH through a secure link.,,,yes,fb32f8376b12beaf
-case-Tbc5df324|keyword,My system is 18 years old and I'm thinking about replacing it. What would that cost?,"I'm sorry, but the documents I have don't include pricing for system replacements, so I can't give you a cost estimate. I'll pass your question to a team member who can help you with a quote.
-
-Here is what the documents do say that may be useful as you plan:
-
-- **Financing:** Financing is available on all system replacements through our financing partner. Approval takes about 5 minutes.
-- **Installation warranty:** Full system installations come with a 2-year labor warranty. If you're a Comfort Club member at the time of installation, that extends to 5 years.
-- **Parts warranty:** Meridian registers every installed unit with the manufacturer within 30 days of install. Registered units get the full manufacturer parts warranty (for example, 10 years on the compressor and parts for the brands we list).
-
-A team member will follow up with you about pricing for your replacement.","Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, depending on tonnage, efficiency rating, ductwork condition and brand.",,,no,de75100a692d094c
-case-Tbaf67f84|whole_kb,What does the Comfort Club membership actually include? And how much is it? Does it cover plumbing?,"**Comfort Club (Standard) includes:**
-- Two seasonal tune-ups per year (one cooling, one heating)
-- Priority scheduling, so members are booked ahead of non-members
-- Diagnostic fee ($89) waived on all service calls
-- 15% off all repairs (parts and labor)
-- No after-hours dispatch fee on emergency calls
-- Annual reminder and filter-change notifications
-- $500 off any full system replacement
-
-**Price:**
-- $189 per year per system, or $16.99 per month (the monthly plan has a 12-month minimum commitment)
-- Each additional system at the same address is $99 per year
-
-**Does it cover plumbing?**
-Standard does not include plumbing discounts or services. Comfort Club Plus ($269 per year per system, annual billing only) adds:
-- Annual water heater flush and inspection
-- Annual whole-home plumbing inspection
-- 15% off plumbing repairs
-- Everything in Standard
-
-Standard members pay the regular rate for plumbing repairs and the water heater flush ($119).
-
-**Good to know:**
-- Late-cancellation fees (inside 24 hours) still apply to members: $49.
-- Standard members can upgrade to Plus at any time. The $80 difference is prorated for the months remaining in the term.
-- Memberships are tied to the service address. They transfer to a new homeowner at the same address, but not to a new address.
-
-I can pass along any other questions to a team member if you'd like.","The Comfort Club costs $189 a year per system or $16.99 a month (12-month minimum), $99 per additional system. It includes two seasonal tune-ups a year, priority scheduling, the $89 diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is $269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off plumbing repairs.",,,yes,4e858fa31fdf61dc
-case-Tf7d382d9|whole_kb,"Did you guys register my new unit with the, uh, manufacturer? I never got anything.","The documents say that Meridian registers every installed unit with the manufacturer within 30 days of installation. So if your unit was installed by us, registration should have been done or should be done within that 30-day window. Registration is required for the full parts warranty term. Unregistered units typically receive only 5 years.
-
-The documents don't say whether we send customers a confirmation when registration is completed, and I can't look up your account to confirm that your specific unit was registered. I'll pass this to a team member so they can check your installation record and confirm the registration status and send you the details.
-
-To help them, it would be useful to have the service address and the approximate install date. Would you like me to pass that along?",Meridian registers every installed unit with the manufacturer within 30 days of installation; registration is required for the full parts warranty term.,,,yes,d01e3c14d4257478
-stale_trap-7|keyword,Can I pay the technician with a check?,"I don't have information about which payment methods the technician accepts, including checks. I'll pass your question to a team member, who can confirm how you can pay.",No. Technicians do not accept checks or cash; payment is by card or ACH through a secure link.,,,no,701b30eaf2ed1e2f
-answerable-8|keyword,Do you do duct cleaning?,"We don't do duct cleaning ourselves. We partner with a third party for it, so if you'd like, ask us for a referral and we can point you to them.",Meridian does not do duct cleaning itself; it partners with a third party and can give a referral.,,,yes,72ce89e89cd440c3
-unanswerable-4|whole_kb,What is my technician's license number?,"The documents I have don't include technician license numbers, so I can't give you that. I'll pass your question to a team member who can help.
-
-For context, you'll receive a text the morning of your appointment with your technician's name and photo, and a second text when they're 30 minutes away. A team member can follow up on the license number separately.",(cannot be answered: should hand off),,,yes,e24dba4757bd84fe
-stale_trap-4|keyword,Is the after-hours emergency fee $129?,"No, the after-hours emergency dispatch fee is $149 for non-members, not $129. It is charged in addition to the repair cost. (The $129 figure in our documents is the price of a seasonal tune-up for non-members.)
-
-A few related details:
-- **Holidays:** The emergency dispatch fee is $199.
-- **Comfort Club and Comfort Club Plus members:** The after-hours dispatch fee is waived.
-- **When the emergency line is available:** 24/7 for no-heat, no-cool, and active water leaks.","No. After-hours emergency dispatch is $149, waived for Comfort Club members.",,,yes,b9621003691faf72
-case-T738adaab|keyword,I got an email saying my membership is renewing. When does it actually charge? And I can still cancel before then?,"You can still cancel before then. According to our Comfort Club terms, members may cancel auto-renewal at any time before the renewal date.
-
-The documents I have don't say what date or time the renewal charge actually goes through, so I can't tell you when yours will charge. I'll pass that question to a team member, who can check your account and confirm the exact renewal date. If you want to cancel, I'd do it soon rather than waiting.
-
-A few things to know about cancellation:
-- **Annual plans:** Once a tune-up has been performed in the current term, the plan is non-refundable. If no tune-up has been performed, a prorated refund is available within the first 60 days.
-- **Monthly plans:** If you cancel before the 12-month minimum, you're charged the remaining balance of the minimum term.
-
-If you tell me whether you're on an annual or monthly plan, I can explain which of these applies to you.",Yes. Members can cancel auto-renewal at any time before the renewal date. An annual plan bills once on the enrollment date and renews on the same date each year.,,,no,a79759de6163ab8c
-case-T0a995037|keyword,How much is the maintenance plan?,"The documents I have don't list the price of the Comfort Club plan, so I can't give you an amount. I'll pass your question to a team member who can confirm current pricing.
-
-Here is what the documents do say about cost:
-- Standard members can upgrade to Plus for a difference of $80, prorated for the months remaining in the current term.
-- Annual plans bill once on the enrollment date. Monthly plans bill each month and require a 12-month minimum commitment.
-- Existing members keep their enrollment price until their next renewal date, when the current price applies.
-
-If you tell me whether you're interested in the annual or monthly option, I'll include that when I pass your question along.","The Comfort Club costs $189 a year per system or $16.99 a month (12-month minimum), $99 per additional system. It includes two seasonal tune-ups a year, priority scheduling, the $89 diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is $269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off plumbing repairs.",,,no,1c723be5b272d0b0
-case-Tc36da844|combined,My Trane compressor died and the system is only three years old. Is that under warranty? How much is labor on a compressor?,"**Warranty:** Trane covers compressors for 10 years, so a compressor failure at three years should be covered for the part, as long as the unit was registered with the manufacturer. Meridian registers every unit it installs within 30 days of installation. If your system wasn't installed by Meridian, or the registration was missed, unregistered units typically only receive 5 years. That would still cover a three-year-old system.
-
-**Labor:** The manufacturer warranty covers the part only. Compressor replacement labor typically runs **$600 to $900**, and the technician quotes the exact price on site before any work begins. Permit, disposal, and after-hours fees are itemized separately when they apply.
-
-**Meridian labor warranty:** If Meridian installed your system, you may still be within our labor warranty. Full installations carry 2 years of labor coverage, or 5 years if you were a Comfort Club member at the time of installation. At three years, you would be covered for labor only if you had the 5-year Comfort Club term. I can't confirm from the documents whether that applies to you, so a team member can check your installation record.
-
-There is also an $89 diagnostic visit, which is credited toward the repair.
-
-Would you like me to pass your details to a team member to confirm your registration and labor coverage?","If the unit is registered, the manufacturer covers the compressor part for 10 years. The standard 2-year Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable unless the customer was a Comfort Club member when it was installed (members get a 5-year labor warranty, which staff confirm); compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",,,yes,42580154950a842b
-answerable-3|whole_kb,How much is a tune-up?,"A seasonal tune-up costs **$129 per system** for non-members.
-
-If you're a Comfort Club or Comfort Club Plus member, two tune-ups per year (one cooling, one heating) are included at no extra charge.
-
-Each tune-up includes a refrigerant level check, electrical connection check, coil cleaning, condensate line flush, thermostat calibration, filter check, and a written system health report.
-
-Would you like to know more about Comfort Club membership?",A seasonal tune-up is $129 for non-members and included for Comfort Club members.,,,yes,e19084b0d47d3dcf
-answerable-8|whole_kb,Do you do duct cleaning?,"We don't do duct cleaning ourselves. We partner with a third party for it, so if you'd like a referral, just ask and we'll point you to them.
-
-If you have other HVAC or plumbing needs, I'm happy to help with those.",Meridian does not do duct cleaning itself; it partners with a third party and can give a referral.,,,yes,7d4b6d9cfa300020
-answerable-3|combined,How much is a tune-up?,"A seasonal tune-up costs **$129 per system** for non-members.
-
-For members, tune-ups are included at no extra charge. Comfort Club and Comfort Club Plus members each get 2 tune-ups per year.
-
-The tune-up covers a refrigerant level check, electrical connection check, coil cleaning, condensate line flush, thermostat calibration, filter check, and a written system health report.",A seasonal tune-up is $129 for non-members and included for Comfort Club members.,,,yes,2a6d9094a9051af5
-case-Tbaf67f84|keyword,What does the Comfort Club membership actually include? And how much is it? Does it cover plumbing?,"Here's what the documents tell me about the Comfort Club.
-
-**What it includes (per the fee schedule):**
-- Diagnostic visits: waived (non-members pay $89)
-- After-hours emergency dispatch: waived (non-members pay $149)
-- Seasonal tune-ups: 2 per year included for each system (non-members pay $129 each)
-- Repair discount: 15%
-- Full system replacement credit: $500
-- No-show fee: $0 (the late cancellation fee of $49 under 24 hours still applies)
-
-**Price:**
-- Annual: $189 for 1 system
-- Monthly: $16.99 for 1 system
+**Price**
+- Annual membership (1 system): $189
+- Monthly membership (1 system): $16.99
 - Additional systems: $99 per year each
 
-**Plumbing:**
-The Comfort Club does not include a plumbing repair discount (0%), and the water heater flush is $119, the same as for non-members. Only Comfort Club Plus includes a 15% plumbing repair discount and the water heater flush. Comfort Club Plus costs $269 per year and is not offered monthly.
+**What's included (per the fee schedule)**
+- Diagnostic visit: waived (non-members pay $89)
+- After-hours emergency dispatch: waived (non-members pay $149)
+- Seasonal tune-up: 2 per year included per system (non-members pay $129 each)
+- Repair discount: 15%
+- Full system replacement credit: $500
+- No-show fee: $0 (non-members pay $89)
 
-The documents describe the Comfort Club as an annual maintenance membership for residential HVAC systems, but they don't give any further detail on what it covers beyond the fee schedule. If you'd like more detail, I can pass your question to a team member.","The Comfort Club costs $189 a year per system or $16.99 a month (12-month minimum), $99 per additional system. It includes two seasonal tune-ups a year, priority scheduling, the $89 diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is $269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off plumbing repairs.",,,no,b7b4347bf84b344b
-answerable-4|keyword,Do you offer financing?,"Yes, we offer financing through our financing partner. It's available on repairs over $1,000 and on all system replacements. Approval takes about 5 minutes.
+**What's not included**
+- Late cancellations (less than 24 hours' notice) still carry a $49 fee.
+- Water heater flush is $119, the same as for non-members.
 
-If you'd like to get started or have questions about specific terms, I can pass your question to a team member.","Yes, on repairs over $1,000 and all system replacements, through a financing partner; approval takes about 5 minutes.",,,yes,633ecb798d3494b5
-answerable-8|combined,Do you do duct cleaning?,"We don't do duct cleaning ourselves. We partner with a third-party provider, though, so you can ask us for a referral and we'll point you in the right direction.
+**Plumbing**
+Comfort Club does not include a plumbing repair discount (0%). Comfort Club Plus members get a 15% plumbing repair discount, and the Plus plan also includes the water heater flush. Comfort Club Plus costs $269 per year and is not offered monthly.
 
-If you'd like help with anything else, such as a maintenance tune-up or an HVAC or plumbing issue, just let me know.",Meridian does not do duct cleaning itself; it partners with a third party and can give a referral.,,,yes,e53a526075be46d6
-answerable-6|combined,How much does it cost to clear a clogged drain?,"The documents list two kinds of drain clearing, so the price depends on which drain you mean:
+The documents don't give a detailed description of the plan beyond the fees and discounts above. If you'd like more detail, such as exactly what a tune-up covers, I can pass your question to a team member.","The Comfort Club costs $189 a year per system or $16.99 a month (12-month minimum), $99 per additional system. It includes two seasonal tune-ups a year, priority scheduling, the $89 diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is $269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off plumbing repairs.",,,no,2fe76f61e2ec8e1c
+answerable-9|keyword,Is there a fee to cancel my appointment?,"It depends on when you cancel:
 
-- **Household plumbing drain clearing:** $149 to $290, depending on access.
-- **Condensate drain line clearing (the HVAC indoor unit's drain):** $120 to $190.
+- **More than 24 hours before your appointment window:** No fee.
+- **Within 24 hours of the window:** There is a $49 late-cancellation fee.
 
-If you're seeing water pooling at your indoor unit or a blank thermostat, that's usually the condensate drain line. In that case, turn the system off to prevent overflow damage and book a visit. Please don't pour bleach into the line unless a technician tells you to.
+The same applies if you need to reschedule. Also, if nobody is home at the address when the technician arrives (a no-show), you'll be charged the full diagnostic fee.",Cancelling or rescheduling more than 24 hours before the window is free; inside 24 hours there is a $49 late-cancellation fee.,,,yes,7c84d94d32a3bba7
+stale_trap-6|keyword,Does my membership move with me to my new house?,"No, your membership won't move with you to a new house. Memberships are tied to the service address. They transfer to a new homeowner at the same address, but they do not transfer to a new address.
 
-If you're not sure which drain is affected, I can pass your question to a team member.",Drain clearing typically costs $149 to $290 depending on access; the technician confirms the final price on site.,,,no,b38cbed219894436
-stale_trap-6|whole_kb,Does my membership move with me to my new house?,"No. Comfort Club memberships are tied to the service address, so they don't transfer to a new address. The membership stays with your current home and passes to the new homeowner if they take over at that same address.
+So if you sell your current home, the new owner can keep the membership there. For your new house, you would need a new membership. I don't have information in my documents about any special pricing or process for that. If you'd like, I can pass that question to a team member.",No. A membership stays with the service address and transfers to the next homeowner there; it does not move to a new address.,,,yes,3dc90f70afe241e6
+case-T7d8fb3e5|combined,I need to file a warranty claim. The unit you installed last year stopped working.,"I'm sorry your system stopped working. Here's how to file a claim and what to expect, based on our documents.
 
-If you'd like coverage at your new house, I can pass your question to a team member to help with enrolling there. I don't have details in my documents about any special terms for moving members, so I don't want to guess on that.",No. A membership stays with the service address and transfers to the next homeowner there; it does not move to a new address.,,,yes,b118606d95b9b588
-stale_trap-1|keyword,"I heard cancellations need 48 hours notice, is that right?","Not quite. According to our policy, the cutoff is 24 hours, not 48:
+**Filing a claim:** Call us to schedule a warranty diagnostic. If the technician finds the failure is covered, there's no diagnostic fee. If it's found not to be covered, the standard $89 diagnostic fee applies.
 
-- **More than 24 hours before your appointment window:** cancelling or rescheduling is free.
-- **Inside 24 hours:** there is a $49 late-cancellation fee.
-- **No-shows** (nobody home at the address) are charged the full diagnostic fee.
+**Why your unit is likely still under warranty:** Because we installed the system last year, you should be within our labor warranty window:
+- **Labor warranty:** 2 years on full system installations, or 5 years if you were a Comfort Club member when it was installed.
+- **Manufacturer parts warranty:** This is separate and varies by brand. For example, Trane, Carrier, Lennox, Rheem, and American Standard cover compressor and parts for 10 years, and Goodman does too. The full term requires the unit to be registered. We register every installed unit with the manufacturer within 30 days of install. Manufacturer warranties cover the part only, and labor to replace a warranted part is covered by our labor warranty while it's active.
 
-If you have a specific appointment you're thinking about changing, let me know and I can pass your question to a team member.",No. Cancelling more than 24 hours before the window is free; inside 24 hours there is a $49 fee.,,,yes,342e61c748df06d0
-unanswerable-2|combined,What's the exact price of a new Trane XR16 heat pump?,"I don't have an exact price for a Trane XR16 heat pump in the documents I have, so I'll pass your question to a team member who can help.
+Whether your specific failure is covered will be determined at the diagnostic visit.
 
-What I can tell you is that a full residential split system typically costs $8,000 to $16,000 installed. The final price depends on tonnage, efficiency rating (SEER2), ductwork condition, and brand. Meridian also offers a free in-home estimate with a Comfort Advisor, available Monday to Saturday. Financing is available, and Comfort Club members receive $500 off.
+**Helpful to have when you call:** the brand of your unit and the approximate install date.
 
-A team member can follow up about the specific model and an exact quote.",(cannot be answered: should hand off),,,yes,3d5026b151e1ea69
-answerable-1|combined,Do you service Manor?,"Yes, we do. Manor (ZIP 78653) was newly added to our residential service area in April 2026, along with Dripping Springs (78620).
+If you tell me your brand, I can share the parts coverage terms listed for it. If you have other questions about your specific situation, I can pass them to a team member.","A full system installation has a 2-year Meridian labor warranty, so a unit installed within the last year is covered; a warranty diagnostic is booked and there is no diagnostic fee if the failure is covered.",,,yes,4615e08bea7f80a4
+case-Tf7d382d9|keyword,"Did you guys register my new unit with the, uh, manufacturer? I never got anything.","According to our Warranty Policy, Meridian registers every installed unit with the manufacturer within 30 days of installation. So if your unit was installed by us, it should have been registered, or will be registered, within that window.
 
-If you'd like to schedule a visit, our phone support is open Monday–Friday 7:00am–7:00pm and Saturday 8:00am–4:00pm. A diagnostic visit is $89, which is credited toward the repair if you approve it during the same visit.",Yes. Manor (78653) was added to the service area in April 2026.,,,yes,20ab76acb5244b57
-stale_trap-2|whole_kb,Isn't the repair warranty only 90 days?,"No. According to our Warranty Policy, repairs performed by Meridian carry a **1-year labor warranty** on the specific part that was repaired or replaced, not 90 days.
+I can't see your individual account, so I can't confirm whether your specific unit's registration has been completed or whether a confirmation was sent to you. I'll pass this to a team member so they can check your registration status and follow up with you.
 
-Here is how it works:
-- If the same part fails within 1 year, the return visit and labor are free.
-- Parts are covered too if Meridian supplied them.
-- The warranty does not cover different components, pre-existing conditions noted on the original invoice, or failures caused by lack of maintenance, power surges, or customer modifications.
+It may help to have your installation date and service address ready. Registration matters because it's required for the full manufacturer parts warranty term. Unregistered units typically receive only 5 years.",Meridian registers every installed unit with the manufacturer within 30 days of installation; registration is required for the full parts warranty term.,,,yes,06cb3642626e28a7
+answerable-4|keyword,Do you offer financing?,"Yes, we do. Financing is available through our financing partner on repairs over $1,000 and on all system replacements. Approval takes about 5 minutes.
 
-The ""90 days"" figure may be what you're thinking of from the manufacturer warranty transfer window. Manufacturer parts warranties can usually be transferred to a new homeowner within 90 days of a home sale. That is a separate matter from the repair warranty.
-
-To file a claim, call us to schedule a warranty diagnostic. There is no diagnostic fee if the failure is covered. If the technician finds it isn't covered, the standard $89 diagnostic fee applies.",No. Meridian repairs carry a 1-year labor warranty on the part repaired.,,,yes,e96c115d0cbdf870
-case-T9e29febc|whole_kb,"Two things. My AC is blowing warm and I want to get someone out, and I want to know if joining the maintenance plan would save me money on this.","I'm sorry your AC is blowing warm air. Here's how to get someone out and whether the plan would save you money.
+If you'd like details beyond that, such as rates or terms, I can pass your question to a team member.","Yes, on repairs over $1,000 and all system replacements, through a financing partner; approval takes about 5 minutes.",,,yes,c994a40d68fac3cc
+case-T9e29febc|whole_kb,"Two things. My AC is blowing warm and I want to get someone out, and I want to know if joining the maintenance plan would save me money on this.","I'm sorry your AC is blowing warm air. Here is how to get someone out, and how the plan would affect the cost.
 
 **Before booking, a few quick checks (these sometimes fix the problem):**
 1. Make sure the thermostat is set to COOL and the set point is below the room temperature.
 2. Check the air filter and replace it if it's dirty. A clogged filter is the most common cause of weak airflow.
 3. Check the breaker panel. Reset any tripped breaker once. If it trips again, stop and book a visit.
 4. Look at the outdoor unit. If it's covered in debris or the fan isn't spinning, book a visit.
-5. If the indoor coil is iced over, turn the system OFF (fan ON) for 2 hours to thaw before the technician arrives.
+5. If the indoor coil is iced over, turn the system OFF (with the fan ON) for 2 hours to thaw it before the technician arrives.
 
-**Booking:** Standard windows are 8am–12pm, 12pm–4pm, and 1pm–5pm. A 4pm–7pm window is available Tuesday and Thursday only. If you have no cooling and need help outside business hours, our 24/7 emergency line is available. Please also confirm you're in our service area (Austin metro). I can't confirm your specific location without your city or ZIP code.
+If those don't help, we can schedule a visit. Standard windows are 8am–12pm, 12pm–4pm, and 1pm–5pm. A 4pm–7pm window is available Tuesday and Thursday only. If it's after hours, our emergency line is open 24/7 for no-cool situations.
 
-**Would the Comfort Club save you money?**
-- The diagnostic visit is $89 for non-members. It's credited toward the repair if you approve the repair during the same visit. Comfort Club members have it waived.
-- Members get 15% off repairs (parts and labor), and no after-hours dispatch fee ($149 for non-members).
-- Standard Comfort Club is $189 per year (or $16.99 per month with a 12-month minimum). Plus is $269 per year.
+**Would the Comfort Club save you money on this visit?**
+Yes, in these ways:
+- **Diagnostic fee:** It's $89 for non-members and waived for members. If you approve the repair during the same visit, the $89 is credited toward the repair, so the savings there depend on whether you repair.
+- **Repairs:** Members get 15% off parts and labor.
+- **After-hours:** Members pay no $149 dispatch fee on emergency calls. Non-members pay $149 on top of the repair cost.
+- **Priority scheduling:** Members are booked ahead of non-members.
 
-**The math:** If the repair is approved during the visit, the $89 diagnostic is credited toward it, so the diagnostic fee isn't an extra cost for you. The plan's savings on this call would come mainly from the 15% repair discount, plus the after-hours fee waiver if you need an emergency visit. For example, a $250 repair would save you about $37.50. Typical repair ranges are in our price book, but the technician confirms the final price on site. So the $189 membership likely wouldn't pay for itself on this one visit unless the repair is large (roughly $1,260 or more for the discount alone to cover it) or you call after hours. It would add value over time through the two included tune-ups per year (normally $129 each for non-members), priority scheduling, and the discounts.
+**Cost of membership:**
+- Comfort Club (Standard): $189 per year, or $16.99 per month (12-month minimum).
+- Comfort Club Plus: $269 per year. It adds plumbing and water heater benefits, which likely don't matter for an AC problem.
+- Both include two tune-ups per year, which would otherwise cost $129 each for non-members.
 
-I don't have details on whether a membership","Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't say whether those benefits apply to a visit booked on the day you join, so a team member confirms that when setting up the membership.",,,no,2013960f66d15be4
-unanswerable-3|keyword,Do you give a discount for veterans?,"The documents I have don't mention a veterans discount. The only discounts listed are the 15% repair discount for Comfort Club and Comfort Club Plus members, and the 15% plumbing repair discount for Plus members only.
+**Does it come out ahead?** I can't say for sure, because the final repair price is confirmed by the technician on site. As an example, a typical capacitor replacement runs $180–$260, so a 15% discount would save roughly $27–$39. On a small repair, the $189 membership wouldn't pay for itself on this visit alone. On a larger repair, such as a blower motor ($550–","Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't say whether those benefits apply to a visit booked on the day you join, so a team member confirms that when setting up the membership.",,,no,5353ada83f4ae442
+answerable-8|whole_kb,Do you do duct cleaning?,"We don't do duct cleaning ourselves, but we partner with a third-party company for it. If you ask us for a referral, we can point you to them.
 
-I'll pass your question to a team member, who can tell you whether any veteran-specific offers are available.",(cannot be answered: should hand off),,,yes,baa2ec94806b4735
+Is there anything else I can help you with, like HVAC repair, maintenance tune-ups, or plumbing?",Meridian does not do duct cleaning itself; it partners with a third party and can give a referral.,,,yes,dd73ed11c6c8926a
+answerable-1|combined,Do you service Manor?,"Yes. Manor (ZIP 78653) was added to our residential service area in April 2026, so we can service homes there.
+
+If you'd like to schedule a visit, our phone support team is available Monday–Friday 7:00am–7:00pm and Saturday 8:00am–4:00pm. Our diagnostic fee is $89, and it is credited toward the repair if you approve the repair during the same visit.",Yes. Manor (78653) was added to the service area in April 2026.,,,yes,267cd4d844d99aa5
+answerable-6|keyword,How much does it cost to clear a clogged drain?,"The documents I have don't list a price for clearing a clogged drain line, so I can't give you a cost. I'll pass your question to a team member who can get you an accurate quote.
+
+In the meantime, here is what the documents say:
+- If you see water pooling at the indoor unit, it is most likely a clogged condensate drain line. Turn the system off to prevent overflow damage and book a visit.
+- Please don't pour bleach into the line unless a technician tells you to.
+- If you need help outside regular hours, the after-hours emergency line covers active water leaks. It has a $149 after-hours dispatch fee in addition to the repair cost.",Drain clearing typically costs $149 to $290 depending on access; the technician confirms the final price on site.,,,no,a66ceac3959a181c
+unanswerable-3|combined,Do you give a discount for veterans?,"I don't see anything in our documents about a veterans discount, so I can't say whether one is available. I'll pass your question to a team member, who can confirm and follow up with you.
+
+In the meantime, the discounts I can confirm are tied to membership. Comfort Club and Comfort Club Plus members get 15% off HVAC repairs (parts and labor), and Plus members also get 15% off plumbing repairs.",(cannot be answered: should hand off),,,yes,2afe785e43e30028
+answerable-4|whole_kb,Do you offer financing?,"Yes, we offer financing through our financing partner. It's available on:
+
+- Repairs over $1,000
+- All system replacements
+
+Approval takes about 5 minutes.
+
+If you'd like to apply or have questions about specific terms, I can pass your question to a team member.","Yes, on repairs over $1,000 and all system replacements, through a financing partner; approval takes about 5 minutes.",,,yes,b69c65681ebdc6c8
+case-Tbc5df324|whole_kb,My system is 18 years old and I'm thinking about replacing it. What would that cost?,"Replacing a full residential split system typically costs **$8,000 to $16,000** installed. The final price depends on tonnage, efficiency rating (SEER2), ductwork condition, and brand.
+
+- **Free in-home estimate:** A Comfort Advisor can give you an exact quote. Advisors are available Monday through Saturday.
+- **Comfort Club discount:** Members get $500 off a full system replacement. Standard and Plus members both qualify.
+- **Financing:** Available on all system replacements through our financing partner. Approval takes about 5 minutes.
+- **Warranty:** Installations carry a 2-year labor warranty from Meridian. If you're a Comfort Club member at the time of installation, that extends to 5 years. Manufacturer parts warranties are separate and vary by brand.
+- **Extra fees:** Permit fees ($85–$185, varies by city) and equipment disposal ($75–$150) may be itemized separately.
+
+I can help set up a free estimate appointment if you'd like.","Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, depending on tonnage, efficiency rating, ductwork condition and brand.",,,yes,e2cafef4888dd61e
+answerable-6|combined,How much does it cost to clear a clogged drain?,"The cost depends on which drain you mean:
+
+- **Household plumbing drain** (sinks, tubs, etc.): $149 to $290, depending on access.
+- **Air conditioning condensate drain line** (for example, water pooling at the indoor unit): $120 to $190.
+
+If you tell me which type of drain is clogged, I can point you to the right price. If you're seeing water pooling at your indoor unit, turn the system off to prevent overflow damage and book a visit. Please don't pour bleach into the line unless a technician instructs you to.",Drain clearing typically costs $149 to $290 depending on access; the technician confirms the final price on site.,,,no,072eab0be99d83b2
+case-T0a995037|keyword,How much is the maintenance plan?,"The documents I have don't list the price of the Comfort Club maintenance plan, so I can't give you an amount. I'll pass your question to a team member who can share current pricing.
+
+Here is what the documents do say:
+- The Standard and Plus tiers differ by $80, which is prorated if you upgrade mid-term.
+- Plans can be billed annually or monthly. Monthly plans require a 12-month minimum commitment.
+- Existing members keep their enrollment price until their next renewal date, and then the current price applies.
+
+A team member will follow up with the pricing for each tier and billing option.","The Comfort Club costs $189 a year per system or $16.99 a month (12-month minimum), $99 per additional system. It includes two seasonal tune-ups a year, priority scheduling, the $89 diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is $269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off plumbing repairs.",,,no,a75f70feb0c36f9b
+case-Tbc5df324|keyword,My system is 18 years old and I'm thinking about replacing it. What would that cost?,"I'm sorry, but the documents I have don't include pricing for system replacements, so I can't give you a cost estimate. I'll pass your question to a team member who can help with a quote for your home.
+
+Here is what the documents do cover that may be useful as you plan:
+
+- **Financing:** Financing is available on all system replacements through our financing partner, and approval takes about 5 minutes.
+- **Installation labor warranty:** Full system installations come with a 2-year labor warranty. Comfort Club members at the time of installation receive an extended 5-year labor warranty.
+- **Manufacturer parts warranty:** Meridian registers every installed unit with the manufacturer within 30 days of install. Registered units get the full parts warranty term, which is 10 years on compressor and parts for the brands we list (Trane, Carrier, Lennox, Goodman, Rheem, American Standard). Heat exchanger coverage is 20 years, or lifetime (limited) for Goodman.
+
+A team member will follow up with you about pricing.","Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, depending on tonnage, efficiency rating, ductwork condition and brand.",,,no,b596a97dad4d4644
+stale_trap-7|whole_kb,Can I pay the technician with a check?,"No. We don't accept checks or cash from technicians in the field. 
+
+Here's what we do accept:
+- Visa, Mastercard, American Express, Discover, and ACH
+- Card numbers are never taken over the phone. Instead, an agent sends a secure payment link by text or email, valid for 24 hours.
+
+If your repair is over $1,000, or you're considering a system replacement, financing is also available through our financing partner, and approval takes about 5 minutes.",No. Technicians do not accept checks or cash; payment is by card or ACH through a secure link.,,,yes,72b5d1af34d7130a
+stale_trap-0|whole_kb,Is the diagnostic fee still $79?,"No, the diagnostic fee is $89 for non-members, not $79. If you approve the repair during the same visit, the $89 is credited toward the repair cost. Comfort Club and Comfort Club Plus members have the diagnostic fee waived.
+
+If you'd like help booking a visit or have questions about membership, just let me know.","No, the diagnostic visit is $89, credited toward a repair approved on the same visit, and waived for Comfort Club members.",,,yes,c8f91ed573e10cab
+case-T738adaab|keyword,I got an email saying my membership is renewing. When does it actually charge? And I can still cancel before then?,"You can cancel before it renews. Our Comfort Club terms say members may cancel auto-renewal at any time before the renewal date.
+
+The documents I have don't say what date or time the renewal charge actually goes through, so I can't tell you when it will charge. I'll pass that question to a team member, who can check your account and confirm your exact renewal date. If you want to cancel, I'd do it before that date.
+
+A few things depend on your plan type:
+- **Annual plan:** If a tune-up has already been performed this term, it's non-refundable. If no tune-up has been done, a prorated refund is available within the first 60 days.
+- **Monthly plan:** If you cancel before the 12-month minimum, you'll be charged the remaining balance of the minimum term.
+
+If you tell me which plan you're on, I can explain what applies to you.",Yes. Members can cancel auto-renewal at any time before the renewal date. An annual plan bills once on the enrollment date and renews on the same date each year.,,,no,cd2d1ea306d889a3
+case-T9e29febc|combined,"Two things. My AC is blowing warm and I want to get someone out, and I want to know if joining the maintenance plan would save me money on this.","Sorry your AC is blowing warm. Here's what I can tell you from our documents.
+
+**Before you book**
+A few quick checks may help, or at least speed up the visit:
+1. Make sure the thermostat is set to COOL and the set point is below the room temperature.
+2. Check the air filter and replace it if it's dirty. A clogged filter is the most common cause of weak airflow.
+3. Check the breaker panel. Reset any tripped breaker once. If it trips again, stop and book a visit.
+4. Check the outdoor unit. If it's covered in debris or the fan isn't spinning, book a visit.
+5. If the indoor coil is iced over, turn the system OFF (with the fan ON) for 2 hours to thaw before the technician arrives.
+
+**Would the plan save you money on this call?**
+Likely yes. Comfort Club (Standard) is $189 per year for one system, or $16.99 per month. Members get:
+- The $89 diagnostic fee waived on all service calls
+- 15% off all repairs, parts and labor
+- Priority scheduling, so members are booked ahead of non-members
+- No after-hours dispatch fee on emergency calls
+- Two seasonal tune-ups per year (a tune-up is $129 for non-members)
+
+So the $89 diagnostic fee and 15% off the repair would offset part of the membership cost on this visit. Whether it comes out ahead overall depends on what the repair costs. The tune-ups included in the plan add value too.
+
+Comfort Club Plus is $269 per year and adds a water heater flush and inspection, a whole-home plumbing inspection, and 15% off plumbing repairs. It isn't relevant to an AC issue.
+
+I don't have information in my documents on whether you can join and have the benefits apply to a visit that's already scheduled, or on repair pricing for your specific problem. I'll pass those questions to a team member, who can also help schedule your visit. Would you like me to do that?","Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't say whether those benefits apply to a visit booked on the day you join, so a team member confirms that when setting up the membership.",,,no,18214cad5d7dd3a7
+case-T0a995037|whole_kb,How much is the maintenance plan?,"Meridian's Comfort Club maintenance plan comes in two levels:
+
+**Comfort Club (Standard)**
+- $189 per year per system, or $16.99 per month (the monthly plan has a 12-month minimum commitment)
+- Each additional system at the same address is $99 per year
+- Includes two seasonal tune-ups per year (one cooling, one heating), priority scheduling, a waived $89 diagnostic fee, 15% off repairs, no after-hours dispatch fee, and $500 off a full system replacement
+
+**Comfort Club Plus**
+- $269 per year per system (monthly billing is not offered for Plus)
+- Each additional system at the same address is $99 per year
+- Includes everything in Standard, plus an annual water heater flush and inspection, an annual whole-home plumbing inspection, and 15% off plumbing repairs
+
+If you're not a member, a single seasonal tune-up is $129 per system.
+
+Would you like to know anything else about the plans, such as billing, cancellation, or upgrading?","The Comfort Club costs $189 a year per system or $16.99 a month (12-month minimum), $99 per additional system. It includes two seasonal tune-ups a year, priority scheduling, the $89 diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is $269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off plumbing repairs.",,,yes,7e5f49ec13feefa9
+stale_trap-6|combined,Does my membership move with me to my new house?,"No. Your Comfort Club membership is tied to the service address, so it does not transfer to a new address. It would stay with your current home and transfer to the new homeowner there, if they are at the same address.
+
+If you'd like coverage at your new house, I can pass your question to a team member to ask about setting up a membership for the new address.",No. A membership stays with the service address and transfers to the next homeowner there; it does not move to a new address.,,,yes,b160072e21dc57cd
+stale_trap-7|keyword,Can I pay the technician with a check?,"The documents I have don't say which payment methods the technician can accept, including checks. I'll pass your question to a team member, who can confirm how you can pay for your visit.",No. Technicians do not accept checks or cash; payment is by card or ACH through a secure link.,,,no,ec20ae2dc6345cde
+stale_trap-4|whole_kb,Is the after-hours emergency fee $129?,"No, the after-hours emergency dispatch fee is **$149** for non-members. It is charged in addition to the repair cost.
+
+- **Comfort Club and Comfort Club Plus members:** the after-hours dispatch fee is waived.
+- **Holidays:** the emergency dispatch fee is $199. This applies on the days when only the emergency line is open, such as July 4, Thanksgiving, Christmas Day, and New Year's Day.
+
+The after-hours emergency line is available 24/7 for no-heat, no-cool, and active water leaks.","No. After-hours emergency dispatch is $149, waived for Comfort Club members.",,,yes,837c6d8543f18023
+answerable-2|keyword,Do you come out to San Marcos?,"No, we don't currently service San Marcos. It's outside our service area, and we don't travel outside the area, so a trip fee isn't an option either.
+
+If you're in a nearby area, we do serve Austin proper, Round Rock, Cedar Park, Pflugerville, Georgetown, Leander, Hutto, Kyle, and Buda. We also recently added Dripping Springs (78620) and Manor (78653).
+
+If you'd like to check whether a specific ZIP code is covered, tell me the ZIP and I'll check it against our list.",No. San Marcos is not in the service area.,,,yes,59858adac167f223
+answerable-3|keyword,How much is a tune-up?,"A seasonal tune-up costs $129 per system for non-members.
+
+For Comfort Club and Comfort Club Plus members, tune-ups are included at no extra charge, up to 2 per year per system.
+
+Each tune-up includes a refrigerant level check, electrical connection check, coil cleaning, condensate line flush, thermostat calibration, filter check, and a written system health report.",A seasonal tune-up is $129 for non-members and included for Comfort Club members.,,,yes,bb5a7e0a3988a61d
+unanswerable-4|keyword,What is my technician's license number?,"The documents I have don't include technicians' license numbers. They only say you'll get a text the morning of your appointment with your technician's name and photo, plus another text when they're 30 minutes away.
+
+I'll pass your question to a team member so they can get you the license number.",(cannot be answered: should hand off),,,yes,094268d9c003bb90
+answerable-1|whole_kb,Do you service Manor?,"Yes. Manor (ZIP 78653) was newly added to our service area in April 2026, according to our latest Service Area update.
+
+If you'd like to book a visit, I can help with that. A diagnostic visit is $89, and it's credited toward the repair if you approve the repair during the same visit. Comfort Club members don't pay the diagnostic fee.",Yes. Manor (78653) was added to the service area in April 2026.,,,yes,b36a9edcc9c98f7d
+case-T9e29febc|keyword,"Two things. My AC is blowing warm and I want to get someone out, and I want to know if joining the maintenance plan would save me money on this.","Sorry your AC is blowing warm air. Here is what the documents say on both points.
+
+**Quick checks before the visit**
+1. Make sure the thermostat is set to COOL and the set point is below the room temperature.
+2. Check the air filter and replace it if it's dirty. A clogged filter is the most common cause of weak airflow.
+3. Check the breaker panel. Reset any tripped breaker once. If it trips again, stop and book a visit.
+4. Look at the outdoor unit. If it's covered in debris or the fan isn't spinning, book a visit.
+5. If the indoor coil is iced over, turn the system OFF with the fan ON for 2 hours to thaw it before the technician arrives.
+
+**Would the Comfort Club save you money on this call?**
+Probably yes. Standard membership ($189 per year, or $16.99 per month) includes:
+- The $89 diagnostic fee waived on all service calls
+- 15% off all repairs (parts and labor)
+- Priority scheduling, so members are booked ahead of non-members
+- No after-hours dispatch fee on emergency calls
+
+So joining would waive the $89 diagnostic fee and take 15% off any repair. Whether it comes out ahead overall depends on the cost of your repair, and I can't estimate that because the documents don't include repair prices. Membership also includes two seasonal tune-ups per year.
+
+The documents don't say whether you can join and have the benefits apply to a visit you're booking right now, or how soon after signing up they take effect. I'll pass that question to a team member so you get a definite answer before you commit.
+
+I can also pass along your request to book the service visit. Would you like me to do that?","Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't say whether those benefits apply to a visit booked on the day you join, so a team member confirms that when setting up the membership.",,,no,88a7621af2847ce7
+stale_trap-6|whole_kb,Does my membership move with me to my new house?,"No. A Comfort Club membership is tied to the service address, so it does not transfer to a new address. It does stay with the home and can transfer to a new homeowner at the address it was set up for.
+
+If you'd like help with coverage at your new house, I can pass your question to a team member. Please also check that your new address is in our service area.",No. A membership stays with the service address and transfers to the next homeowner there; it does not move to a new address.,,,yes,1a23638d7e64bf9e

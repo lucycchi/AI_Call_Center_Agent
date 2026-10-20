@@ -1,0 +1,11 @@
+{
+ "both_right": 22,
+ "both_wrong": 8,
+ "fable_only": 0,
+ "grader_only": 0,
+ "agreement": 1.0,
+ "note": "fable graded blind; this is model-vs-model agreement, not a human check",
+ "checker": "Claude Fable 5.1, standing in for the author (D44)",
+ "graded": 30,
+ "disagreements": []
+}
