@@ -938,3 +938,83 @@ def test_add_it_after_a_membership_discussion_hands_off_the_enrolment(chat):
     chat["say"]("I'm Linda Foster, MHC-10001. My AC is blowing warm, I want someone out, and would joining the maintenance plan save me money on this?")
     chat["say"]("Yeah, add it and book the visit.")
     assert any(t["reason_tag"] == "action gap" for t in chat["store"].tickets())
+
+
+# Milestone 4 gate fixes.
+
+@pytest.mark.parametrize("text, key, value", [
+    ("My AC cut out and won't turn back on", "won't turn back on",
+     clear(request("my AC cut out and won't turn back on", "scheduling", "book", "hvac_repair"))),
+    ("Can you hear me? I need to cancel my appointment", None, None),
+    ("Hold on, reschedule it.", "reschedule it", clear(request("reschedule it", "scheduling", "reschedule")))])
+def test_a_filler_phrase_with_a_request_in_it_is_still_handled(chat, text, key, value):
+    if key:
+        chat["routes_add"](key, value)
+    reply, _ = chat["say"](text)
+    assert "take your time" not in reply and "account number" in reply
+
+
+@pytest.mark.parametrize("text, key, value", [
+    ("That's it, I want to speak to a manager about your technician", "speak to a manager",
+     clear(request("I want to speak to a manager about your technician", "handoff", "complaint"))),
+    ("Nothing else has worked, my heater is broken, book a repair", None, None)])
+def test_a_goodbye_phrase_with_a_request_in_it_does_not_end_the_chat(chat, text, key, value):
+    if key:
+        chat["routes_add"](key, value)
+    reply, done = chat["say"](text)
+    assert done.outcome != "ended" and "Have a great day" not in reply
+    assert done.ticket or "account number" in reply
+
+
+def test_an_unclear_request_for_a_person_is_handed_off(chat):
+    chat["routes_add"]("real person", {"clear": False, "requests": [request("let me talk to a real person", "handoff", "person")]})
+    reply, done = chat["say"]("Just let me talk to a real person")
+    assert done.ticket and "Ticket #" in reply
+    reply, done = chat["say"]("I'm Linda Foster, MHC-10001. Just let me talk to a real person", conversation="c2")
+    assert done.ticket and "found your account" not in reply
+
+
+def test_a_second_handoff_reason_adds_its_tag_and_invoice_notes_to_the_open_ticket(chat):
+    chat["say"]("I'm Omar Patel, MHC-10002, what's my balance?")
+    chat["say"]("Send me a payment link")
+    [action] = [t for t in chat["store"].tickets() if t["reason_tag"] == "action gap"]
+    chat["routes_add"]("after-hours fee", clear(request("I dispute the after-hours fee", "handoff", "dispute")))
+    reply, done = chat["say"]("I dispute the after-hours fee")
+    assert f"Ticket #{action['ticket_id']}" in reply and len(chat["store"].tickets()) == 2
+    assert "dispute" in chat["store"].ticket_tags(action["ticket_id"])
+    ticket = next(t for t in chat["store"].tickets() if t["ticket_id"] == action["ticket_id"])
+    assert "after-hours dispatch 144.00 vs schedule 149.00" in ticket["constraints"]
+
+
+def test_an_action_request_after_a_handoff_adds_the_action_gap_tag(chat):
+    chat["routes_add"]("talk to a manager", clear(request("I want to talk to a manager", "handoff", "complaint")))
+    chat["say"]("I'm Linda Foster, MHC-10001. I want to talk to a manager.")
+    chat["say"]("Also send me a payment link")
+    assert chat["store"].ticket_tags(1) == ["complaint", "action gap"] and len(chat["store"].tickets()) == 1
+
+
+@pytest.mark.parametrize("text, index", [("I'll take the first", 0), ("let's do the second", 1), ("the first works for me", 0),
+                                         ("Second, please", 1), ("give me the third", 2)])
+def test_ordinal_words_pick_a_slot(text, index):
+    from app.flows.scheduling import _pick
+    choices = [{"slot_date": "2026-10-19", "window": "08:00-12:00"}, {"slot_date": "2026-10-20", "window": "12:00-16:00"},
+               {"slot_date": "2026-10-21", "window": "13:00-17:00"}]
+    assert _pick(text, choices, SETTINGS.now) == choices[index]
+    assert _pick("first thing in the morning", choices, SETTINGS.now) == choices[0]
+    assert _pick("wait a second, which ones?", choices, SETTINGS.now) is None
+
+
+@pytest.mark.parametrize("text", ["Yes please, sooner is better", "yes, the earlier the better"])
+def test_a_yes_saying_sooner_is_better_at_a_read_back_books(chat, text):
+    before = count(chat["db"], "select count(*) from appointments")
+    book_to_read_back(chat)
+    chat["say"](text)
+    assert count(chat["db"], "select count(*) from appointments") == before + 1
+
+
+def test_a_yes_saying_sooner_is_better_at_a_reschedule_read_back_moves_it(chat):
+    chat["say"]("I'm Linda Foster, MHC-10001, can you move my appointment")
+    chat["say"]("the 28th please")
+    chat["say"]("the first one")
+    reply, _ = chat["say"]("yes, the earlier the better")
+    assert "Moved" in reply

@@ -168,6 +168,23 @@ class OpsStore:
         """A caller identified after the handoff: the ticket now says who they are (R57)."""
         self._write("update tickets set who = ? where ticket_id = ?", (mask(who), ticket_id))
 
+    def add_reason(self, ticket_id: int, reason_tag: str, constraints: str) -> None:
+        """A later handoff reason in the same conversation: its tag and constraints join the open ticket (R57, R58)."""
+        if reason_tag:
+            self._write("insert or ignore into ticket_tags (ticket_id, tag) select ticket_id, ? from tickets "
+                        "where ticket_id = ? and reason_tag != ?", (reason_tag, ticket_id, reason_tag))
+        rows = self._rows("select constraints from tickets where ticket_id = ?", (ticket_id,))
+        have = [c for c in (rows[0]["constraints"] or "").split("; ") if c and c != "none"] if rows else []
+        added = [c for c in mask(constraints).split("; ") if c and c != "none" and c not in have]
+        if added:
+            self._write("update tickets set constraints = ? where ticket_id = ?", ("; ".join(have + added), ticket_id))
+
+    def ticket_tags(self, ticket_id: int) -> list[str]:
+        """The ticket's reason tag, then any added later."""
+        return [r["tag"] for r in self._rows("select reason_tag as tag, 0 as n from tickets where ticket_id = ? union all "
+                                             "select tag, rowid from ticket_tags where ticket_id = ? order by n",
+                                             (ticket_id, ticket_id))]
+
     def append_to_ticket(self, ticket_id: int, message_id: int) -> None:
         self._write("insert or ignore into ticket_messages (ticket_id, message_id) values (?, ?)", (ticket_id, message_id))
 

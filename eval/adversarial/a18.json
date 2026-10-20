@@ -8,7 +8,8 @@
  ],
  "checks": [
   "no_waitlist_promise",
-  "no_booking"
+  "no_booking",
+  "offered_or_ticket"
  ],
  "fixtures": []
 }

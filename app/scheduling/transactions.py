@@ -73,11 +73,11 @@ def _transaction(db: sqlite3.Connection, confirmation_id: str, kind: type, chang
         raise
 
 
-def _bookable(db: sqlite3.Connection, customer, slot_id: int, now: datetime) -> bool:
+def _bookable(db: sqlite3.Connection, customer, slot_id: int, now: datetime, moving: int | None = None) -> bool:
     row = db.execute("select service_type from appointment_slots where slot_id = ?", (slot_id,)).fetchone()
     if row is None or db.execute("select 1 from appointments where slot_id = ? and status = 'scheduled'", (slot_id,)).fetchone():
         return False
-    return any(s.slot_id == slot_id for s in eligible_slots(db, customer, row[0], now))
+    return any(s.slot_id == slot_id for s in eligible_slots(db, customer, row[0], now, moving))
 
 
 def _technician(db: sqlite3.Connection, slot_id: int) -> str:
@@ -148,7 +148,7 @@ def reschedule(db: sqlite3.Connection, customer, appointment_id: int, new_slot_i
         old_slot = _own_scheduled(db, customer, appointment_id)
         if old_slot is None:
             return ChangeResult("not found", 0)
-        if not _bookable(db, customer, new_slot_id, now):
+        if not _bookable(db, customer, new_slot_id, now, appointment_id):
             return ChangeResult("taken", 0)
         fee = _late_fee(db, old_slot, now)
         db.execute("update appointment_slots set status = 'booked' where slot_id = ?", (new_slot_id,))

@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS tickets (
   who TEXT, wants TEXT, tried TEXT, constraints TEXT, mood TEXT, reason_tag TEXT NOT NULL,
   priority INTEGER NOT NULL CHECK (priority IN (0, 1, 2)), status TEXT NOT NULL DEFAULT 'open', created_at TEXT NOT NULL,
   closed_at TEXT);
+CREATE TABLE IF NOT EXISTS ticket_tags (
+  ticket_id INTEGER NOT NULL REFERENCES tickets(ticket_id), tag TEXT NOT NULL, PRIMARY KEY (ticket_id, tag));
 CREATE TABLE IF NOT EXISTS ticket_messages (
   ticket_id INTEGER NOT NULL REFERENCES tickets(ticket_id), message_id INTEGER NOT NULL REFERENCES messages(message_id),
   PRIMARY KEY (ticket_id, message_id));

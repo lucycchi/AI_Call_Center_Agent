@@ -99,11 +99,29 @@ def codex_runner(prompt: str, attempts: int = 5, wait_s: float = 120) -> str:
     raise GraderError("Codex returned no verdicts")
 
 
-def api_runner(prompt: str) -> str:
-    """The fallback when Codex is unavailable: the OpenAI API with GRADER_MODEL, switched on by hand."""
-    from openai import OpenAI
+_API_BUDGET = []  # one run budget for every fallback grading call in this process
 
-    response = OpenAI().responses.create(model=os.environ["GRADER_MODEL"], input=prompt)
+
+def api_runner(prompt: str, budget=None, client=None) -> str:
+    """The fallback when Codex is unavailable: the OpenAI API with GRADER_MODEL, switched on by hand, under the run's
+    $8 cap. GRADER_PRICES_PER_MILLION ("input,output" US dollars) prices each call; without it the call is refused."""
+    from eval.budget import RunBudget
+
+    if budget is None:
+        if not _API_BUDGET:
+            _API_BUDGET.append(RunBudget())
+        budget = _API_BUDGET[0]
+    try:
+        price_in, price_out = (float(p) for p in os.environ["GRADER_PRICES_PER_MILLION"].split(","))
+    except (KeyError, ValueError) as error:
+        raise GraderError("set GRADER_PRICES_PER_MILLION to the grader model's prices so the run cap can be kept") from error
+    budget.check()
+    if client is None:
+        from openai import OpenAI
+        client = OpenAI()
+    response = client.responses.create(model=os.environ["GRADER_MODEL"], input=prompt)
+    usage = response.usage
+    budget.add((usage.input_tokens * price_in + usage.output_tokens * price_out) / 1_000_000)
     return response.output_text
 
 

@@ -33,8 +33,8 @@ def _window(said: str) -> str | None:
     if match:
         h1, _, m1, h2, _, m2 = match.groups()
         end = _hour(h2, m2)
-        start = _hour(h1, m1, m2 if m2 and int(h1 if h1 != "noon" else 12) < int(h2 if h2 != "noon" else 12) else None)
-        return WINDOWS.get((start, end))
+        # The start takes the end's am or pm ("1 to 5pm") only when that makes a window ("8 to 12pm" does not).
+        return WINDOWS.get((_hour(h1, m1, m2), end)) or WINDOWS.get((_hour(h1, m1), end))
     match = ONE_TIME.search(said)
     if match:
         hour, meridiem = (match.group(1), match.group(3)) if match.group(1) else (match.group(4), match.group(6))

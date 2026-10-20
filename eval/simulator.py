@@ -31,14 +31,16 @@ class Simulator:
     def __init__(self, client):
         self._client = client
 
-    def next(self, case: dict, conversation: list[dict]) -> str | None:
+    def next(self, case: dict, conversation: list[dict], timeout: float | None = None) -> str | None:
+        """timeout: the seconds left in the conversation, so the caller's model call cannot run past the cap."""
         card = case["caller_card"]
         system = RULES.format(now=SETTINGS.now, name=card.get("name", ""), customer_id=card.get("customer_id", ""),
                               phone=card.get("phone", ""), address=card.get("service_address", ""), city=card.get("city", ""),
                               script="\n".join(f"- {line}" for line in case["caller_script"]), done=DONE)
         content = (f"The chat so far:\n{_transcript(conversation)}\n\nYour next message:" if conversation
                    else "Start the chat with your first message.")
-        response = self._client.messages.create(purpose="simulate", model=SETTINGS.writer_model,
+        response = self._client.messages.create(**({"timeout": max(timeout, 0.01)} if timeout is not None else {}),
+                                                purpose="simulate", model=SETTINGS.writer_model,
                                                 max_tokens=SETTINGS.eval_simulator_max_tokens, system=system,
                                                 output_config={"effort": "low"}, messages=[{"role": "user", "content": content}])
         text = "".join(b.text for b in response.content if b.type == "text").strip()

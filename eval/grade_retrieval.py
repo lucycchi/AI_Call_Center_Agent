@@ -14,16 +14,19 @@ RESULTS = ROOT / "data" / "results" / "retrieval"
 
 
 def answer_items(answers: list[dict], searcher) -> list[dict]:
-    """Each answer with the passages it was written from (searched again the same way); whole-knowledge-base answers
-    were given every current document, too much to show, so their faithfulness is not graded."""
+    """Each answer with the passages it was written from, as stored with the answer; answers saved before passages
+    were stored are searched again the same way and flagged. Whole-knowledge-base answers were given every current
+    document, too much to show, so their faithfulness is not graded."""
+    from eval.retrieval_eval import passage_label
     items = []
     for a in answers:
-        whole = a["mode"] == "whole_kb"
-        passages = [] if whole else [f"[{s.chunk.document}, {s.chunk.heading}, {s.chunk.effective_date or 'undated'}] {s.chunk.text}"
-                                     for s in searcher.search(a["question"], mode=a["mode"])]
+        whole, again = a["mode"] == "whole_kb", "passages" not in a and a["mode"] != "whole_kb"
+        passages = [] if whole else a["passages"] if not again else [passage_label(s.chunk)
+                                                                     for s in searcher.search(a["question"], mode=a["mode"])]
         items.append({"id": f"{a['qid']}|{a['mode']}", "type": "knowledge answer", "question": a["question"],
                       "answer": a["answer"], "reference_answer": a.get("reference_answer"), "passages": passages,
-                      "whole_knowledge_base": whole, "kind": a["kind"], "mode": a["mode"]})
+                      "whole_knowledge_base": whole, "kind": a["kind"], "mode": a["mode"],
+                      **({"passages_searched_again": True} if again else {})})
     return items
 
 
@@ -63,6 +66,7 @@ def main() -> None:
     write_verdicts(verdicts, RESULTS / "verdicts.jsonl")
     scores = answer_scores(items, verdicts)
     scores["grader_model"] = grader_model()
+    scores["passages_searched_again"] = sum(1 for i in items if i.get("passages_searched_again"))
     scores["grader_reported_model"] = sorted({v.reported_model for v in verdicts})
     (RESULTS / "answer_scores.json").write_text(json.dumps(scores, indent=1))
     print(json.dumps(scores, indent=1))

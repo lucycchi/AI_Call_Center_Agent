@@ -80,18 +80,24 @@ def compare_modes(questions: list[dict], searcher, question_set: str = "working"
     return report
 
 
+def passage_label(chunk) -> str:
+    return f"[{chunk.document}, {chunk.heading}, {chunk.effective_date or 'undated'}] {chunk.text}"
+
+
 def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str], str], whole_kb: str, out: Path,
                      model: str | None = None) -> None:
     """Answers from the top five keyword-only and combined passages and from the whole knowledge base, for grading."""
     partial = out.with_name(out.name + ".partial")  # replaces the previous answers only once every answer is written
     with partial.open("w") as handle:
         for q in questions:
-            contexts = [(mode, "\n\n".join(s.chunk.text for s in searcher.search(q["question"], mode=mode, k=TOP)))
-                        for mode in ANSWER_MODES] + [("whole_kb", whole_kb)]
+            found = {mode: [s.chunk for s in searcher.search(q["question"], mode=mode, k=TOP)] for mode in ANSWER_MODES}
+            contexts = [(mode, "\n\n".join(c.text for c in found[mode])) for mode in ANSWER_MODES] + [("whole_kb", whole_kb)]
             for mode, context in contexts:
+                # The exact passages the answer was written from, so it is graded against them, not a later search.
+                passages = [passage_label(c) for c in found.get(mode, [])]
                 handle.write(json.dumps({"qid": q["qid"], "kind": q["kind"], "mode": mode, "question": q["question"],
                                          "answer": writer(q["question"], context), "model": model,
-                                         "reference_answer": q.get("reference_answer")}) + "\n")
+                                         "reference_answer": q.get("reference_answer"), "passages": passages}) + "\n")
     partial.replace(out)
 
 

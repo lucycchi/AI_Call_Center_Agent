@@ -53,9 +53,11 @@ def _starts(slot: Slot, now: datetime) -> datetime:
     return datetime.fromisoformat(f"{slot.slot_date}T{slot.window[:5]}").replace(tzinfo=now.tzinfo)
 
 
-def eligible_slots(db: sqlite3.Connection, customer, service_type: str, now: datetime) -> list[Slot]:
+def eligible_slots(db: sqlite3.Connection, customer, service_type: str, now: datetime,
+                   moving: int | None = None) -> list[Slot]:
     """Open slots (or members-only ones for a member) in the customer's zone for that service, not yet started,
-    within three weeks, whose technician has no booked overlapping window that day."""
+    within three weeks, whose technician has no booked overlapping window that day. The appointment being moved
+    (moving) blocks neither its technician nor the caller."""
     zone = zone_for(customer.city)
     if zone is None:
         return []
@@ -64,15 +66,18 @@ def eligible_slots(db: sqlite3.Connection, customer, service_type: str, now: dat
     rows = db.execute(f"select slot_id, slot_date, window, tech_id, zone, service_type, status from appointment_slots "
                       f"where zone = ? and service_type = ? and status in ({', '.join('?' * len(statuses))}) "
                       f"and slot_date <= ? order by slot_date, window, slot_id", (zone, service_type, *statuses, last)).fetchall()
+    moved = db.execute("select slot_id from appointments where appointment_id = ?", (moving,)).fetchone() if moving else None
     booked = {}
-    for tech, day, window in db.execute("select tech_id, slot_date, window from appointment_slots where status = 'booked'"):
+    for tech, day, window in db.execute("select tech_id, slot_date, window from appointment_slots where status = 'booked' "
+                                        "and slot_id != ?", (moved[0] if moved else -1,)):
         booked.setdefault((tech, day), []).append(window)
     # The caller's own scheduled visits: never offer a slot overlapping one of them.
     own = {}
     customer_id = getattr(customer, "customer_id", None)
     if customer_id:
         for day, window in db.execute("select s.slot_date, s.window from appointments a join appointment_slots s using (slot_id) "
-                                      "where a.customer_id = ? and a.status = 'scheduled'", (customer_id,)):
+                                      "where a.customer_id = ? and a.status = 'scheduled' and a.appointment_id != ?",
+                                      (customer_id, moving or -1)):
             own.setdefault(day, []).append(window)
     return [slot for slot in map(lambda row: Slot(*row), rows)
             if _starts(slot, now) > now and not any(_overlaps(slot.window, w) for w in booked.get((slot.tech_id, slot.slot_date), []))
@@ -97,12 +102,13 @@ def _distinct(slots: list[Slot]) -> list[Slot]:
     return out
 
 
-def offer(db: sqlite3.Connection, customer, service_type: str, requested: DateRequest | None, now: datetime) -> Offer:
+def offer(db: sqlite3.Connection, customer, service_type: str, requested: DateRequest | None, now: datetime,
+          moving: int | None = None) -> Offer:
     zone = zone_for(customer.city)
     if zone is None:
         served = customer.city.strip().lower() in SERVED_WITHOUT_ZONE
         return Offer([], "served area without a scheduling zone" if served else "outside the service area")
-    slots = eligible_slots(db, customer, service_type, now)
+    slots = eligible_slots(db, customer, service_type, now, moving)
     if not slots:
         return Offer([], f"no {SERVICE_NAMES[service_type]} capacity in {zone} zone")
     if requested:

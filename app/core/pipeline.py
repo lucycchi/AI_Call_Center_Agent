@@ -48,14 +48,19 @@ ENDING = re.compile(r"^\W*(?:(?:no|nope|um|uh|ok|okay|thanks|thank you|great)\W+
                     r"bye|goodbye|nothing else|i'?m good)(\W+(thanks|thank you( so much)?|bye))*\W*$", re.I)
 ANYTHING_ELSE = "Is there anything else I can help you with?"
 # Lines that ask nothing ("hold on", "can you hear me", "you cut out"): never routed, never a ticket.
-FILLER = re.compile(r"\b(can you hear me|hold on|one sec(ond)?|you cut out|cut out|i'?m driving|repeat that|say that again|"
-                    r"dog is barking|bear with me|give me a (sec|second|moment|minute))\b", re.I)
+FILLER = re.compile(r"\b(can you hear me|hold on|hang on|one sec(ond)?|(you|it|the line|the call) cut out|i'?m driving|"
+                    r"repeat that|say that again|dog is barking|bear with me|give me a (sec|second|moment|minute))\b", re.I)
+FILLER_WORDS = re.compile(r"\b(sorry|oh|um|uh|ok|okay|yeah|hi|hello|so|just|please|there|again|still|real quick|wait|"
+                          r"for a (sec|second|moment|minute)|could you|can you|would you|my|the|is|me|that|you|it)\b", re.I)
 TAKE_YOUR_TIME = "No problem, take your time."
 JOIN_CONSENT = re.compile(r"\b(add it|add that|add me|sign me up|let'?s do it|enrol+ me|go ahead and (add|join))\b", re.I)
 PLAN_WORDS = re.compile(r"\b(comfort club|maintenance plan|membership|the plan)\b", re.I)
 WARRANTY = re.compile(r"\b(warranty|warranties|covered|coverage|claim)\b", re.I)
 # "That's all", "that's everything" or "that's it" with no question in the message is a goodbye wherever it comes.
 GOODBYE_ANYWHERE = re.compile(r"\bthat'?s (all|everything|it)\b|\bthat covers it\b|\bnothing else\b", re.I)
+GOODBYE_WORDS = re.compile(r"\b(oh|sorry|about that|i think|i (needed|wanted)|needed|anyway|no|nope|yes|yeah|great|perfect|cool|"
+                           r"alright|all right|ok|okay|thanks|thank you|so much|very much|appreciate it|bye|goodbye|for now|"
+                           r"for today|i'?m good|then|really|have a (good|great|nice) (day|one)|you too)\b", re.I)
 GOODBYE = "Thanks for contacting Meridian Home Comfort. Have a great day."
 NOT_YOURS = "I can't open that conversation. Please start a new one."
 SCHEDULING_ACTIONS = ("book", "reschedule", "cancel", "confirm")
@@ -85,6 +90,11 @@ def _decline_sentence(reason: str, city: str, service: str) -> str:
     if reason == "outside the service area":
         return f"I'm sorry, {city} is outside our service area."
     return f"I'm sorry, there's no {service} availability for your area in the next three weeks."
+
+
+def _only(text: str, phrases: re.Pattern, words: re.Pattern) -> bool:
+    """The message is nothing but those phrases and pleasantries: no request is left in it."""
+    return bool(phrases.search(text)) and not re.search(r"\w", words.sub(" ", phrases.sub(" ", text)))
 
 
 def _mood(text: str) -> str:
@@ -181,7 +191,16 @@ class AgentPipeline:
                 state.ticket_id = context["ticket_id"]
                 turn_tickets.append(context["ticket_id"])
                 state.tags_opened += [tag for tag in also_tags + [reason_tag] if tag not in state.tags_opened]
+                for tag in also_tags:
+                    self._quietly(self.store.add_reason, context["ticket_id"], tag, "")
             return result.facts
+
+        def add_reason(reason_tag: str, constraints: str) -> None:
+            """A later reason joins the open ticket with its tag and, for billing, the invoice notes (R57, R58)."""
+            notes = state.notes if reason_tag in BILLING_TAGS else []
+            if self._quietly(self.store.add_reason, state.ticket_id, reason_tag if reason_tag != "unclear" else "",
+                             "; ".join(c for c in [constraints, *notes] if c)) and reason_tag not in state.tags_opened:
+                state.tags_opened.append(reason_tag)
 
         def finish(route: str, outcome: str, receipt: dict, db_actions: list[str], label: str | None = None,
                    tags: list[str] = ()) -> DoneEvent:
@@ -216,7 +235,7 @@ class AgentPipeline:
         at_read_back = state.flow.get("step") == "readback"
         # A clear goodbye ends the chat, even with a flow open; at a read-back only "bye" does, since "okay, I'm good"
         # may answer the read-back.
-        says_goodbye = ENDING.match(turn.text) or (GOODBYE_ANYWHERE.search(turn.text) and "?" not in turn.text)
+        says_goodbye = ENDING.match(turn.text) or (_only(turn.text, GOODBYE_ANYWHERE, GOODBYE_WORDS) and "?" not in turn.text)
         if says_goodbye and (not at_read_back or re.search(r"\b(bye|goodbye)\b", turn.text, re.I)):
             state.flow, state.active_flow, state.pending = {}, None, []
             yield emit(GOODBYE)
@@ -224,7 +243,7 @@ class AgentPipeline:
             self._quietly(self.store.end_conversation, turn.conversation_id)
             yield done
             return
-        if FILLER.search(turn.text) and len(turn.text.split()) <= 14 and not has_identifier(turn.text):
+        if _only(turn.text, FILLER, FILLER_WORDS) and not has_identifier(turn.text):
             again = scheduling.repeat(state.flow) if state.flow else None
             if again:
                 for sentence in CheckedStream(self.writer(again.reply_type, again.facts, self.store.history(turn.conversation_id)),
@@ -257,15 +276,15 @@ class AgentPipeline:
         history = self.store.history(turn.conversation_id)
         routed = self._route(turn.text, history, error_event)
         flow_before = state.active_flow
-        if identified_now and not state.active_flow and not state.pending and not routed.clear:
+        # A request for a person, or a reason the router named, is handed off even when the route is unclear (R38).
+        names_a_handoff = any(r.route == "handoff" and r.detail in HANDOFF_TAGS and r.detail != "other" for r in routed.requests)
+        asks_nothing = "?" not in turn.text and _mood(turn.text) == "calm" and not names_a_handoff
+        if identified_now and not state.active_flow and not state.pending and not routed.clear and asks_nothing:
             # A message that only gave the caller's details: nothing to hand off.
             yield emit(f"Thanks, {identified_now.name.split()[0]}, I've found your account. What can I help you with?")
             yield finish("account", "answered", {"safety": "clear"}, [])
             return
-        names_a_handoff = any(r.route == "handoff" and r.detail in HANDOFF_TAGS and r.detail not in ("other", "person")
-                              for r in routed.requests)
-        if not routed.clear and not state.active_flow and not state.pending and "?" not in turn.text \
-                and _mood(turn.text) == "calm" and len(turn.text.split()) <= 15 and not names_a_handoff:
+        if not routed.clear and not state.active_flow and not state.pending and asks_nothing and len(turn.text.split()) <= 15:
             # An unclear message that asks nothing ("okay, good to know") is not a request: no ticket (R38, tuned on
             # the working set). An angry message, a question or a longer message still goes to a handoff. With a ticket
             # open, the message was added to it at the start of the turn (R58).
@@ -355,8 +374,10 @@ class AgentPipeline:
                 error_event(f"writer failed: {type(error).__name__}: {error}")
                 handoffs.append(("error", "the reply could not be finished", turn.text))
         # 6. Everything handed off this turn goes in one ticket (R39). With a ticket already open in this conversation,
-        # the message was added to it at the start of the turn, so no new ticket is opened (R58).
+        # the message was added to it at the start of the turn and its reasons join it, so no new ticket is opened (R58).
         if handoffs and state.ticket_id:
+            for tag, constraints, _ in handoffs:
+                add_reason(tag, constraints)
             state.ticket_notes += 1
             fixed.append(f"I've added that to Ticket #{state.ticket_id}" +
                          ("; our team will contact you within one business day." if state.ticket_notes == 1 else "."))

@@ -166,3 +166,12 @@ def test_a_booking_is_rolled_back_if_the_deadline_passes_before_its_commit(db, m
     finally:
         deadline.DEADLINE.reset(token)
     assert count(db, "appointments") == before and slot_status(db, 56) == "open"
+
+
+def test_moving_a_visit_to_an_overlapping_window_the_same_day_is_allowed(db):
+    linda = who(db, "Linda Foster", "MHC-10001")
+    booked = tx.book(db, linda, 57, "no cooling", "c-ov", NOW)  # 2026-10-19 12:00-16:00
+    assert all(s.slot_id != 58 for s in tx.eligible_slots(db, linda, "hvac_repair", NOW))
+    assert any(s.slot_id == 58 for s in tx.eligible_slots(db, linda, "hvac_repair", NOW, moving=booked.appointment_id))
+    assert tx.reschedule(db, linda, booked.appointment_id, 58, "c-ov2", NOW).status == "rescheduled"
+    assert slot_status(db, 58) == "booked" and slot_status(db, 57) == "open"

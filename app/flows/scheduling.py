@@ -84,9 +84,10 @@ NTH_ONE = re.compile(r"\b(first|second|third|1st|2nd|3rd)\b(?! of\b)(?:\s+(?:one
 NTH_WITH_NOUN = re.compile(r"\b(1st|2nd|3rd)\s+(?:one|option|slot|choice|time|window)\b", re.I)
 
 
-# "First", "second" and "third" pick a slot only next to a slot word or on their own ("for a second" does not).
+# "First", "second" and "third" pick a slot next to a slot word, after "the", or opening the message
+# ("for a second", "first thing" and "the first of" do not).
 NTH_WORD = re.compile(r"\b(first|second|third)\s+(?:one|option|slot|choice|time|window)\b|"
-                      r"^\W*(?:the\s+)?(first|second|third)(?:\s+one)?(?:\s+(?:please|thanks))?\W*$", re.I)
+                      r"(?:^\W*|\bthe\s+)(first|second|third)\b(?!\s+(?:thing|of|time)\b)", re.I)
 
 
 def _numbered(text: str, choices: list[dict]) -> dict | None:
@@ -95,7 +96,7 @@ def _numbered(text: str, choices: list[dict]) -> dict | None:
     if not match:
         word = NTH_WORD.search(text)
         if word:
-            index = NUMBERS[(word.group(1) or word.group(2)).lower()]
+            index = NUMBERS[next(g for g in word.groups() if g).lower()]
             return choices[index] if index < len(choices) else None
     if match:
         index = NUMBERS[match.group(1).lower()]
@@ -145,11 +146,16 @@ def _read_back(flow: dict, what: str, fee_cents: int = 0) -> FlowResult:
     return FlowResult([f"Read back: {what}.{fee} Ask the caller for a clear yes before going ahead."], "read-back")
 
 
+def _moving(flow: dict) -> int | None:
+    """The appointment a reschedule moves: its own window does not block the new one."""
+    return flow["appointment"]["appointment_id"] if flow.get("kind") == "reschedule" and flow.get("appointment") else None
+
+
 def _make_offer(db, customer, flow: dict, text: str, now, lead: str | None = None) -> FlowResult:
     requested = parse_request(text, now)
     if requested and requested.date and requested.date < now.date():
         requested, lead = None, f"{requested.date:%B} {requested.date.day} has already passed. Offer the soonest slots instead:"
-    result = offer(db, customer, flow["service"], requested, now)
+    result = offer(db, customer, flow["service"], requested, now, _moving(flow))
     if requested and requested.date and result.slots and not lead and not any(
             s.slot_date == requested.date.isoformat() and (requested.window is None or s.window == requested.window)
             for s in result.slots):
@@ -178,7 +184,7 @@ def _with_fee(db, flow: dict, now, result: FlowResult) -> FlowResult:
 
 def _earlier(db, customer, flow: dict, now) -> FlowResult:
     """Offer anything earlier than what was offered; if there is nothing, a ticket marked "wants an earlier slot" (R44)."""
-    soonest = offer(db, customer, flow["service"], None, now)
+    soonest = offer(db, customer, flow["service"], None, now, _moving(flow))
     offered = {(s["slot_date"], s["window"]) for s in flow.get("offered", [])}
     earliest_offered = min(offered) if offered else None
     sooner = [s for s in soonest.slots if earliest_offered is None or (s.slot_date, s.window) < earliest_offered]
@@ -242,10 +248,11 @@ def _book(db, customer, state, text, now, store) -> FlowResult:
                                     f"{_when(existing.slot_date, existing.window)} to {_when(chosen['slot_date'], chosen['window'])}",
                               tx.late_fee_preview(db, existing.appointment_id, now))
         return _read_back(flow, f"{SERVICE_NAMES[chosen['service_type']]} on {_when(chosen['slot_date'], chosen['window'])}")
-    # Read-back: book only on a clear yes.
-    if EARLIER.search(text):
+    # Read-back: book only on a clear yes ("yes, the sooner the better" is a yes, not a request for earlier slots).
+    yes = confirms(text, flow["chosen"]["slot_date"], flow["chosen"]["window"], now)
+    if EARLIER.search(text) and not yes:
         return _earlier(db, customer, flow, now)
-    if confirms(text, flow["chosen"]["slot_date"], flow["chosen"]["window"], now):
+    if yes:
         chosen = flow["chosen"]
         if _deadline_passed():
             raise deadline.DeadlinePassed("not booking after the message deadline")
@@ -311,10 +318,11 @@ def _existing(db, seed_db, customer, state, text, now) -> FlowResult:
         return FlowResult(["Ask what day and time the caller would like instead."], "booking offer")
     # Read-back for a cancel or reschedule.
     appointment = flow["appointment"]
-    if EARLIER.search(text) and flow.get("offered"):
-        return _earlier(db, customer, flow, now)
     target = flow.get("chosen") or appointment
-    if confirms(text, target["slot_date"], target["window"], now):
+    yes = confirms(text, target["slot_date"], target["window"], now)
+    if EARLIER.search(text) and flow.get("offered") and not yes:
+        return _earlier(db, customer, flow, now)
+    if yes:
         if _deadline_passed():
             raise deadline.DeadlinePassed("not changing an appointment after the message deadline")
         if kind == "cancel":

@@ -98,3 +98,12 @@ def test_the_idle_sweep_never_closes_a_conversation_with_a_recent_message(store)
     store._write("update conversations set last_message_at = '2000-01-01T00:00:00' where conversation_id = 'c1'")
     store.close_idle()
     assert store.conversation("c1")["status"] == "open"
+
+
+def test_a_later_reason_adds_its_tag_and_new_constraints_once(store):
+    ticket = store.create_ticket("c1", "Omar Patel", "payment link", "none", "none", "calm", "action gap")
+    store.add_reason(ticket, "dispute", "fee differs from schedule: after-hours 144 vs 149")
+    store.add_reason(ticket, "dispute", "fee differs from schedule: after-hours 144 vs 149")
+    store.add_reason(ticket, "action gap", "")
+    assert store.ticket_tags(ticket) == ["action gap", "dispute"]
+    assert store.tickets()[0]["constraints"] == "fee differs from schedule: after-hours 144 vs 149"

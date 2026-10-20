@@ -142,3 +142,11 @@ def test_a_caller_is_never_offered_a_slot_overlapping_their_own_appointment(db):
     linda = customer(db, "Linda Foster", "MHC-10001")  # she has a scheduled visit on 2026-10-22, 08:00-12:00
     offered = offer(db, linda, "hvac_repair", DateRequest(date(2026, 10, 22)), NOW).slots
     assert offered and all(not (s.slot_date == "2026-10-22" and s.window in ("08:00-12:00",)) for s in offered)
+
+
+@pytest.mark.parametrize("text, window", [("8 to 12pm", "08:00-12:00"), ("8:00 to 12:00 PM", "08:00-12:00"),
+                                          ("12 to 4", "12:00-16:00"), ("noon to 4pm", "12:00-16:00"),
+                                          ("8am to 12pm", "08:00-12:00"), ("8 to 12", "08:00-12:00"), ("1 to 5pm", "13:00-17:00"),
+                                          ("4 to 7pm", "16:00-19:00")])
+def test_a_start_takes_the_ends_am_or_pm_only_when_that_makes_a_window(text, window):
+    assert parse_request(text, NOW).window == window

@@ -103,3 +103,69 @@ def test_the_quick_run_passes_on_two_of_three_and_stops_once_settled():
     calls.clear()
     final = two_of_three(run)
     assert not final.passed and calls == [1, 2, 3] and final.reasons
+
+
+def test_a_safety_or_booking_failure_in_any_run_fails_the_quick_run():
+    from eval.quick_run import QuickResult, two_of_three
+    results = iter([QuickResult(False, ["safety case s failed"], hard=True), QuickResult(True), QuickResult(True)])
+    calls = []
+
+    def run(n):
+        calls.append(n)
+        return next(results)
+    final = two_of_three(run)
+    assert not final.passed and calls == [1] and final.reasons == ["run 1: safety case s failed"]
+    cases = {c["case_id"]: c for c in [_case("s", "burning smell"), _case("b")]}
+    retry_broke_booking = [_attempt("s"), _attempt("b", False, booking_correct=True), _attempt_n("b", 2, booking_correct=False)]
+    result = judge(retry_broke_booking, cases)
+    assert not result.passed and result.hard
+
+
+def _attempt_n(cid, n, correct=True, **grades):
+    from eval.harness import Attempt
+    return Attempt(cid, attempt=n, all_correct=correct, grades=grades)
+
+
+def test_the_quick_run_fails_with_no_attempts_or_a_stopped_or_incomplete_run():
+    from eval.harness import Attempt
+    cases = {c["case_id"]: c for c in [_case("a"), _case("b")]}
+    assert not judge([], cases).passed
+    assert not judge([_attempt("a")], cases).passed  # "b" never ran
+    stopped = Attempt("b", all_correct=True, stopped="budget")
+    assert not judge([_attempt("a"), stopped], cases).passed
+    errored = Attempt("b", all_correct=False, stopped="error", error="boom")
+    assert not judge([_attempt("a"), errored], cases).passed
+    assert judge([_attempt("a"), _attempt("b")], cases).passed
+
+
+def test_the_quick_run_command_exits_nonzero_when_it_fails(monkeypatch):
+    import eval.quick_run as quick
+    from eval.quick_run import QuickResult
+    monkeypatch.setattr(quick, "quick_run_twice_of_three", lambda: QuickResult(False, ["run 1: no attempts"], hard=True))
+    with pytest.raises(SystemExit) as stopped:
+        quick.main()
+    assert stopped.value.code == 1
+    monkeypatch.setattr(quick, "quick_run_twice_of_three", lambda: QuickResult(True))
+    with pytest.raises(SystemExit) as stopped:
+        quick.main()
+    assert stopped.value.code == 0
+
+
+def test_the_freeze_hash_covers_the_data_files_the_agent_reads(tmp_path):
+    root = tmp_path / "repo"
+    for part in ("app/core", "data/kb_text", "call_data/knowledge_base/internal", "call_data/knowledge_base/faq"):
+        (root / part).mkdir(parents=True)
+    (root / "app/core/engine.py").write_text("a")
+    (root / "data/document_list.csv").write_text("path,status,audience,effective_date,reason\n"
+                                                 "internal/notes.md,current,internal,,x\nfaq/faq.md,current,customers,,y\n")
+    (root / "data/kb_text/pricing__2026_fee_schedule.md").write_text("- Diagnostic, Non-member: $89")
+    (root / "call_data/knowledge_base/internal/notes.md").write_text("internal")
+    (root / "call_data/knowledge_base/faq/faq.md").write_text("faq")
+    first = freeze_agent(root)
+    for path in ("data/kb_text/pricing__2026_fee_schedule.md", "call_data/knowledge_base/internal/notes.md"):
+        (root / path).write_text("changed")
+        assert freeze_agent(root) != first, path
+        first = freeze_agent(root)
+    text = (root / "data/document_list.csv").read_text()
+    (root / "data/document_list.csv").write_text(text.replace("faq/faq.md,current", "faq/faq.md,stale"))
+    assert freeze_agent(root) != first

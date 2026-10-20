@@ -35,7 +35,8 @@ def test_wrong_confident_clean_decline_flaky_and_redirects():
     attempts = [attempt("w", correct=False), attempt("d", decline=True, handed_off=True), attempt("f", correct=False),
                 attempt("f", n=2), attempt("r", route="redirect")]
     summary = score(attempts, cases)
-    assert summary.wrong_confident == 0.5  # "w" and "f" (on its first run) finished without a handoff but were wrong
+    assert summary.wrong_confident == 2 and summary.wrong_confident_cases == ["f", "w"]  # finished without a handoff, wrong
+    assert summary.wrong_confident_share == 0.5
     assert summary.containment == 0.25  # only the redirect: the clean decline is correct but not contained
     assert summary.clean_declines == 1 and summary.flaky == ["f"]
     assert summary.containment_without_redirects == 0.0
@@ -61,7 +62,7 @@ class ScriptedCaller:
     def __init__(self, lines):
         self.lines = list(lines)
 
-    def next(self, case, conversation):
+    def next(self, case, conversation, timeout=None):
         return self.lines.pop(0) if self.lines else None
 
 
@@ -112,7 +113,7 @@ def test_the_run_stops_at_the_budget_and_writes_a_partial_summary(tmp_path):
     budget = RunBudget(8.0)
 
     class CostlyCaller(ScriptedCaller):
-        def next(self, case, conversation):
+        def next(self, case, conversation, timeout=None):
             budget.add(3.0)
             return super().next(case, conversation)
     cases = [case(f"c{n}", 1) for n in range(5)]
@@ -147,9 +148,15 @@ def test_the_budget_raises_once_spend_reaches_the_cap():
     budget = RunBudget(8.0)
     budget.add(7.5)
     budget.check()
-    budget.add(0.6)
+    with pytest.raises(BudgetExceeded):
+        budget.add(0.6)  # the spend that crosses the cap stops the run at once
+    assert budget.spent_usd == 8.1
     with pytest.raises(BudgetExceeded):
         budget.check()
+    recorded = RunBudget(1.0)
+    recorded.record("write", "claude-sonnet-5-5", "anthropic", {}, 10, 10, 5, 900_000)
+    with pytest.raises(BudgetExceeded):
+        recorded.record("write", "claude-sonnet-5-5", "anthropic", {}, 10, 10, 5, 200_000)
 
 
 class FakeSonnet:
@@ -185,3 +192,27 @@ def test_the_provisional_grade_compares_only_outcomes():
     assert provisional_grade(attempt("a"), case("a", 1, outcome="handed_off")).all_correct is False
     graded = provisional_grade(attempt("a", decline=True), case("a", 1, outcome="clean_decline"))
     assert graded.all_correct is True and graded.grades["provisional"] is True
+
+
+def _perfect(c):
+    expected = c["expected_outcome"]
+    return Attempt(c["case_id"], handed_off=expected == "handed_off", clean_decline=expected == "clean_decline",
+                   all_correct=True, first_route="redirect" if expected == "redirect" else "scheduling",
+                   grades={"handoff_reason_correct": True})
+
+
+def test_a_perfect_agent_never_exceeds_either_ceiling():
+    import json
+    cases = [json.loads(p.read_text()) for p in sorted((ROOT / "data" / "testset").glob("*.json"))]
+    summary = score([_perfect(c) for c in cases], cases)
+    assert summary.containment == summary.adjusted_ceiling <= summary.scope_ceiling
+    assert summary.containment_without_redirects == summary.adjusted_ceiling_without_redirects
+    assert summary.adjusted_ceiling_without_redirects <= summary.scope_ceiling_without_redirects
+
+
+def test_redirects_count_in_both_ceilings_and_action_gaps_only_leave_the_adjusted_one():
+    cases = [case("r", 10, sub="wrong number", reason="wrong number", outcome="redirect"),
+             case("g", 10, sub="autopay", reason="billing", outcome="handed_off", why="action gap"), case("c", 20)]
+    summary = score([_perfect(c) for c in cases], cases)
+    assert summary.scope_ceiling == 1.0 and summary.adjusted_ceiling == 0.75 and summary.containment == 0.75
+    assert summary.scope_ceiling_without_redirects == 1.0 and summary.adjusted_ceiling_without_redirects == 2 / 3

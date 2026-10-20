@@ -24,7 +24,9 @@ class RunBudget:
         self.cap_usd, self.spent_usd = cap_usd, 0.0
 
     def add(self, usd: float) -> None:
+        """Counts the spend; once it crosses the cap, the run stops here rather than at the next check."""
         self.spent_usd += usd
+        self.check()
 
     def record(self, purpose, model_id, sdk_version, settings, input_tokens, output_tokens, ms, microdollars) -> None:
         """A model-call sink: every call in a test run counts against the run's budget."""

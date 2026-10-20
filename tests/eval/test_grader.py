@@ -142,14 +142,18 @@ def _attempt_with_db(tmp_path, booked=True):
         conn.execute("insert into appointments (slot_id, customer_id, issue_description, created_at, status) "
                      "values (56, 'MHC-10001', 'x', '2026-10-16T09:00', 'scheduled')")
         conn.commit()
-    return Attempt("c1", db_path=str(db), conversation=[{"role": "caller", "text": "book"}, {"role": "agent", "text": "Booked."}],
-                   done_events=[{"db_actions": ["booked appointment 160"] if booked else []}])
+    return Attempt("c1", db_path=str(db), conversation=[{"role": "caller", "text": "book"},
+                                                        {"role": "agent", "text": "Monday, October 19, 8am to 12pm. Book it?"},
+                                                        {"role": "caller", "text": "yes"}, {"role": "agent", "text": "Booked."}],
+                   done_events=[{"db_actions": []}, {"db_actions": ["booked appointment 160"] if booked else []}])
 
 
 def test_a_booking_case_is_checked_in_the_database_copy(tmp_path):
     from eval.grade_conversations import database_checks
-    assert database_checks(_case("hvac repair"), _attempt_with_db(tmp_path)) == {"booking_correct": True}
-    assert database_checks(_case("hvac repair"), _attempt_with_db(tmp_path / "x", booked=False)) == {"booking_correct": False}
+    assert database_checks(_case("hvac repair"), _attempt_with_db(tmp_path)) == {"booking_correct": True,
+                                                                                 "no_unexpected_writes": True}
+    missing = database_checks(_case("hvac repair"), _attempt_with_db(tmp_path / "x", booked=False))
+    assert missing["booking_correct"] is False and missing["booking_problems"]
 
 
 def test_conversations_are_graded_by_codex_and_the_database_together(tmp_path):
@@ -194,3 +198,121 @@ def test_the_grader_is_given_the_membership_renewal_price(tmp_path):
     shutil.copy(ROOT / "call_data" / "scheduling_db" / "meridian_scheduling.sqlite", db)
     facts = _account_facts({"caller_card": {"customer_id": "MHC-10001", "membership_tier": "standard"}, "fixtures": []}, str(db))
     assert facts["membership_renewal_price"] == "$189.00 a year, the current published price"
+
+
+class FakeOpenAI:
+    def __init__(self):
+        self.responses, self.calls = self, 0
+
+    def create(self, model, input):
+        self.calls += 1
+        usage = type("Usage", (), {"input_tokens": 1_000_000, "output_tokens": 0})()
+        return type("Response", (), {"output_text": "[]", "usage": usage})()
+
+
+def test_the_api_grader_fallback_runs_under_the_run_budget(monkeypatch):
+    from eval.budget import BudgetExceeded, RunBudget
+    from eval.grader import GraderError, api_runner
+    monkeypatch.setenv("GRADER_MODEL", "some-model")
+    monkeypatch.delenv("GRADER_PRICES_PER_MILLION", raising=False)
+    with pytest.raises(GraderError):  # without prices the cap cannot be enforced, so it does not run
+        api_runner("PROMPT", budget=RunBudget(8.0), client=FakeOpenAI())
+    monkeypatch.setenv("GRADER_PRICES_PER_MILLION", "3,10")
+    budget, client = RunBudget(8.0), FakeOpenAI()
+    assert api_runner("PROMPT", budget=budget, client=client) == "[]"
+    api_runner("PROMPT", budget=budget, client=client)
+    with pytest.raises(BudgetExceeded):
+        api_runner("PROMPT", budget=budget, client=client)  # $9 crosses the $8 cap
+    with pytest.raises(BudgetExceeded):
+        api_runner("PROMPT", budget=budget, client=client)
+    assert client.calls == 3
+
+
+def _check_files(tmp_path, monkeypatch, n=40):
+    import csv as csvmod
+
+    import eval.grader_check as check
+    results = tmp_path / "retrieval"
+    results.mkdir()
+    verdicts = [Verdict(f"q{k}|combined", correct=k % 2 == 0, model="m") for k in range(n)]
+    write_verdicts(verdicts, results / "verdicts.jsonl")
+    (results / "answers_to_grade.jsonl").write_text("".join(json.dumps({"qid": f"q{k}", "mode": "combined", "question": "q",
+                                                                        "answer": "a", "reference_answer": "r"}) + "\n"
+                                                            for k in range(n)))
+    for name, value in {"RESULTS": results, "SHEET": tmp_path / "sheet.csv", "HIDDEN": tmp_path / "hidden.json",
+                        "OUT": tmp_path}.items():
+        monkeypatch.setattr(check, name, value)
+    return check, csvmod
+
+
+def test_rewriting_the_grader_check_sheet_keeps_every_grade_already_given(tmp_path, monkeypatch):
+    check, csvmod = _check_files(tmp_path, monkeypatch)
+    check.write_sheet()
+    rows = list(csvmod.DictReader(check.SHEET.open()))
+    for row in rows:
+        row["fable_correct (yes or no)"], row["claude_correct (yes or no)"] = "yes", "no"
+    with check.SHEET.open("w", newline="") as handle:
+        writer = csvmod.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    check.write_sheet()
+    again = list(csvmod.DictReader(check.SHEET.open()))
+    assert [r["id"] for r in again] == [r["id"] for r in rows]
+    assert all(r["fable_correct (yes or no)"] == "yes" and r["claude_correct (yes or no)"] == "no" for r in again)
+
+
+def test_the_sheet_is_not_rewritten_if_graded_answers_would_be_dropped(tmp_path, monkeypatch):
+    check, csvmod = _check_files(tmp_path, monkeypatch)
+    check.SHEET.write_text("id,question,answer,reference_answer,author_correct (yes or no),fable_correct (yes or no)\n"
+                           "old|combined,q,a,r,,yes\n")
+    with pytest.raises(SystemExit):
+        check.write_sheet()
+    assert "old|combined" in check.SHEET.read_text()
+
+
+def test_the_table_reads_fables_column_unless_the_author_graded(tmp_path, monkeypatch):
+    check, csvmod = _check_files(tmp_path, monkeypatch)
+    check.write_sheet()
+    rows = list(csvmod.DictReader(check.SHEET.open()))
+    hidden = json.loads(check.HIDDEN.read_text())
+    for row in rows:
+        row["fable_correct (yes or no)"] = "yes" if hidden[row["id"]] else "no"
+    with check.SHEET.open("w", newline="") as handle:
+        writer = csvmod.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    check.write_table()
+    table = json.loads((tmp_path / "grader_check.json").read_text())
+    assert table["agreement"] == 1.0 and "Fable" in table["checker"] and table["graded"] == len(rows)
+    rows[0]["author_correct (yes or no)"] = "no" if hidden[rows[0]["id"]] else "yes"
+    with check.SHEET.open("w", newline="") as handle:
+        writer = csvmod.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    check.write_table()
+    table = json.loads((tmp_path / "grader_check.json").read_text())
+    assert table["checker"] == "author" and table["graded"] == 1 and table["agreement"] == 0.0
+
+
+def test_answers_keep_the_passages_they_were_written_from_and_are_graded_against_them(tmp_path):
+    from app.knowledge.index import Chunk
+    from app.knowledge.search import ScoredChunk
+    from eval.grade_retrieval import answer_items
+    from eval.retrieval_eval import answer_both_ways
+
+    class Searcher:
+        def __init__(self, text):
+            self.text = text
+
+        def search(self, question, mode="combined", k=5):
+            return [ScoredChunk(Chunk("faq#1", "faq/customer_faq.md", "Fees", "2026-03-02", self.text, 14, 19), 0.7, 2)]
+    out = tmp_path / "answers.jsonl"
+    answer_both_ways([{"qid": "q1", "question": "fee?", "kind": "answerable", "reference_answer": "$89"}],
+                     Searcher("Diagnostic fee: $89."), lambda q, c: "$89", whole_kb="KB", out=out)
+    answers = [json.loads(line) for line in out.read_text().splitlines()]
+    assert answers[1]["passages"] == ["[faq/customer_faq.md, Fees, 2026-03-02] Diagnostic fee: $89."]
+    items = answer_items(answers, Searcher("The index changed since."))
+    assert items[1]["passages"] == ["[faq/customer_faq.md, Fees, 2026-03-02] Diagnostic fee: $89."]
+    assert not items[1].get("passages_searched_again")
+    old = answer_items([{k: v for k, v in answers[1].items() if k != "passages"}], Searcher("Searched again."))
+    assert old[0]["passages_searched_again"] is True and "Searched again." in old[0]["passages"][0]

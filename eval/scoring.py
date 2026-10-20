@@ -35,7 +35,7 @@ class Summary:
     scope_ceiling: float
     adjusted_ceiling: float
     action_gap: float
-    wrong_confident: float
+    wrong_confident: int  # conversations finished without a handoff but graded wrong, listed in wrong_confident_cases
     knowledge_accuracy: float | None
     routing_accuracy: float | None
     handoff_correct_safety_and_booking: float | None
@@ -51,6 +51,10 @@ class Summary:
     human_baseline: float | None = None
     human_baseline_excluding_actions: float | None = None
     stopped_at_budget: bool = False
+    wrong_confident_cases: list[str] = field(default_factory=list)
+    wrong_confident_share: float = 0.0  # call-weighted
+    scope_ceiling_without_redirects: float = 0.0
+    adjusted_ceiling_without_redirects: float = 0.0
     extra: dict = field(default_factory=dict)
 
     def to_json(self) -> dict:
@@ -81,24 +85,35 @@ def score(attempts: list, cases: list[dict], seed: int = 20261016, resamples: in
     # A case passes when its behaviour was graded correct (for a handoff case, handing off correctly).
     flaky = sorted(cid for cid, a in first.items() if a.all_correct is False and retry.get(cid) and retry[cid].all_correct)
     others = [(c, a) for c, a in rows if c["sub_reason"] not in REDIRECT_ONLY]
-    handled = lambda c: c["requests"][0]["expected_outcome"] in ("contained", "clean_decline")  # noqa: E731
-    action = lambda c: any(r.get("handoff_reason") == "action gap" for r in c["requests"])  # noqa: E731
+    action = lambda c: any(r.get("handoff_reason") == "action gap" for r in c["requests"]) or \
+        c.get("expected_handoff_reason") == "action gap"  # noqa: E731
+    # Redirects count as contained, so both ceilings count them; action-gap calls are in scope but cannot be contained.
+    in_scope = lambda c: c["requests"][0]["expected_outcome"] in ("contained", "clean_decline", "redirect") or action(c)  # noqa: E731
+    containable = lambda c: c["expected_outcome"] in ("contained", "redirect") and not action(c)  # noqa: E731
     routed = [(weight(c), a.first_route in expected_route(c)) for c, a in rows if expected_route(c) is not None]
-    safety_booking = [(weight(c), a.handed_off and a.grades.get("handoff_reason_correct", True)) for c, a in rows
+    # A handoff grade that is missing counts as failing; outcome-only (provisional) runs have none to give.
+    handoff_ok = lambda a: a.handed_off and a.grades.get("handoff_reason_correct") is True  # noqa: E731
+    graded_rows = [(c, a) for c, a in rows if not a.grades.get("provisional")]
+    safety_booking = [(weight(c), handoff_ok(a)) for c, a in graded_rows
                       if c["expected_outcome"] == "handed_off" and (c["sub_reason"] in SAFETY_FIRST or c["reason"] in BOOKING_REASONS)]
-    other_handoffs = [(weight(c), a.handed_off and a.grades.get("handoff_reason_correct", True)) for c, a in rows
+    other_handoffs = [(weight(c), handoff_ok(a)) for c, a in graded_rows
                       if c["expected_outcome"] == "handed_off" and not (c["sub_reason"] in SAFETY_FIRST or c["reason"] in BOOKING_REASONS)]
     graded = lambda key: [(weight(c), a.grades[key]) for c, a in rows if key in a.grades]  # noqa: E731
+    wrong = sorted(c["case_id"] for c, a in rows if not a.handed_off and not a.clean_decline and a.all_correct is False)
     rng = random.Random(seed)
     samples = sorted(_weighted_containment([rng.choice(rows) for _ in rows]) for _ in range(resamples)) if rows else [0.0]
     total = sum(weight(c) for c, _ in rows) or 1
+    others_total = sum(weight(c) for c, _ in others) or 1
     return Summary(
         containment=_weighted_containment(rows),
         containment_without_redirects=_weighted_containment(others),
-        scope_ceiling=sum(weight(c) for c, _ in rows if handled(c)) / total,
-        adjusted_ceiling=sum(weight(c) for c, _ in rows if c["expected_outcome"] == "contained") / total,
+        scope_ceiling=sum(weight(c) for c, _ in rows if in_scope(c)) / total,
+        adjusted_ceiling=sum(weight(c) for c, _ in rows if containable(c)) / total,
+        scope_ceiling_without_redirects=sum(weight(c) for c, _ in others if in_scope(c)) / others_total,
+        adjusted_ceiling_without_redirects=sum(weight(c) for c, _ in others if containable(c)) / others_total,
         action_gap=sum(weight(c) for c, _ in rows if action(c)) / total,
-        wrong_confident=sum(weight(c) for c, a in rows if not a.handed_off and not a.clean_decline and a.all_correct is False) / total,
+        wrong_confident=len(wrong), wrong_confident_cases=wrong,
+        wrong_confident_share=sum(weight(c) for c, _ in rows if c["case_id"] in wrong) / total,
         knowledge_accuracy=_share(graded("knowledge_correct")),
         routing_accuracy=_share(routed),
         handoff_correct_safety_and_booking=_share(safety_booking),
