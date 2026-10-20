@@ -199,3 +199,15 @@ def test_pooled_runs_count_each_answer_once_in_the_curve():
     [point] = curve(one + two, [0.25])
     assert point.containment == 0.75 and point.wrong_confident == 1
     assert choose_threshold(curve(one + two), 4) == 0.25
+
+
+def test_the_quick_run_command_loads_the_test_key_before_running(monkeypatch):
+    import dotenv
+    import eval.quick_run as quick
+    from eval.quick_run import QuickResult
+    order = []
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: order.append("env"))
+    monkeypatch.setattr(quick, "quick_run_twice_of_three", lambda: order.append("run") or QuickResult(True, []))
+    with pytest.raises(SystemExit):
+        quick.main()
+    assert order == ["env", "run"]

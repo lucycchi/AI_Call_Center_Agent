@@ -92,6 +92,10 @@ def quick_run(n: int = 20, name: str = "") -> QuickResult:
 
 def main() -> None:
     import sys
+
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT / ".env")
     result = quick_run_twice_of_three()
     print(json.dumps({"passed": result.passed, "reasons": result.reasons}, indent=1))
     sys.exit(0 if result.passed else 1)
