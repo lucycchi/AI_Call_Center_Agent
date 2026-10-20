@@ -10,14 +10,14 @@
  "combined": {
   "answers": 25,
   "correct": 0.92,
-  "faithful": 0.92,
+  "faithful": 0.96,
   "citation_ok": 1.0,
-  "refusal_ok": 1.0,
+  "refusal_ok": 0.6666666666666666,
   "stale_trap_correct": 1.0
  },
  "whole_kb": {
   "answers": 25,
-  "correct": 0.96,
+  "correct": 0.92,
   "faithful": null,
   "citation_ok": 1.0,
   "refusal_ok": 1.0,
