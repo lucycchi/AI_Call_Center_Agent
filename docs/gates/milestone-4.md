@@ -126,6 +126,35 @@ All the chosen findings were fixed test-first (commits ddf0797 to 962c869); the 
 - **Retrieval answers:** two fresh graded runs of the current agent (about $0.54 each); combined search 88% and 92% correct, 92% faithful in both.
 - **Threshold:** one answer that guessed in one run and not the other moved the single-run pick to 0.45; pooled over both runs (50 answers) the same rule picks 0.25 (74% contained, 5 wrong confident answers). Pooling recorded as choosing the threshold from every graded run of the agent (D48).
 - **Grader check:** a fresh sample of the new answers; Claude Fable 5.1 graded blind and agrees with Codex on 29 of 30 (97%). The old sheet and its grades are archived in `data/grader_check_archive/1.csv`. Grades now stay tied to the answer text they were given for.
-- **Agent freeze:** recomputed over 60 files, hash `f7ecfd29d6725dd96953c769bf444a51a730befdf6628faeb126d5a47c49fd68`, the same hash both graded retrieval runs are filed under.
+- **Agent freeze:** recomputed over 61 files, hash `f7ecfd29d6725dd96953c769bf444a51a730befdf6628faeb126d5a47c49fd68`, the same hash both graded retrieval runs are filed under.
 - **Architecture document:** updated for every point from both architecture checks, and the HTML page regenerated.
 - **Not rerun:** the quick run (Task 20) was last passed before these fixes; the agent has changed since.
+
+## Review of the fixes
+
+Code reviews of `git diff ace46b0..HEAD` by Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent, both using `prompts/code-review.md`. Claude reproduced every original finding as fixed, ran all 638 tests (passed) and replayed the 505 saved caller lines through the old and new code; Codex could not start the suite (no writable temporary folder) and probed offline. Neither made paid calls; no held-out leakage was found. The quick run was stopped after its first 20 conversations ($0.41), since the agent will change.
+
+| Finding | Codex | Claude |
+|---|---|---|
+| The language backstop hands off ordinary English, even mid-flow: an email, lowercase names and addresses, "Thermostat display blinking constantly", "Kitchen faucet drips constantly overnight", "José García"; it calls "gas smell", "either works" and "account number 48213" nonsense | yes (top) | yes (top) |
+| Closing lines no longer end the chat ("Nope, that covers it. Thanks for your help!", "That's all I need, thank you so much."): 17 saved simulator lines regressed, and mid-flow they re-offer slots or go onto the ticket; some filler lines too ("sorry, hang on a sec") |  | yes (top) |
+| Switching scheduling action needs a literal verb: "schedule a tune-up instead", "I don't need the Thursday visit anymore" and "when is my existing appointment?" no longer switch | yes (unclear) | yes (top) |
+| The booking check accepts any earlier reply that named the slot, including the offer, so a booking that differs from the read-back passes (saved case Tb456e16e did this); the slot matcher misses some phrasings |  | yes (top) |
+| Grader batches that succeeded are lost if a later batch fails (verdicts are saved only after every batch) | yes (top) |  |
+| The API grader fallback runs under its own second $8 budget and charges after the call | yes (top) |  |
+| Retrieval runs are filed under the agent hash at grading time, not at answer time; grading the same answers twice pools them twice | yes (top) | yes (unclear) |
+| Grader-check grades survive a changed question or reference answer; starting a fresh sheet loses the hidden verdicts the archived grades were checked against | yes (top) | yes (unclear) |
+| Ordinal picks from ordinary sentences: "The first option is too early", "The second doesn't work", "the second time it broke", "the third week of November" | yes | yes (unclear) |
+| A message that identifies the caller and asks something ("This is Linda Foster, MHC-10001. Can you help me?") now opens a ticket instead of "found your account" |  | yes (unclear) |
+| "Yes, sooner if possible" books the read-back slot instead of looking for earlier ones |  | yes (unclear) |
+| Conversations stopped at the time or turn limit can pass the quick run | yes (unclear) |  |
+| A simulator timeout at the 60-second cap is recorded as an error, not the time limit; the SDK retry can overshoot the cap |  | yes |
+| Crossing the budget mid-turn becomes a handoff inside the agent, and that case is scored on the distorted conversation |  | yes (unclear) |
+| Rerunning a run under the same name deletes the earlier run, including a final run |  | yes (unclear) |
+| A handoff case with no expected reason can never pass |  | yes (unclear) |
+| "discretion" is listed as internal-only but appears in a customer document; the gate notes say 60 frozen files, not 61 |  | yes |
+| Tests too weak to catch the above (English sentences heavy in technical words, closing lines, paraphrased action switches, read-back mismatch, mid-batch grader failure, budget overshoot) | yes | yes |
+
+## Author's choices on the review of the fixes
+
+The author chose "All recommended" (2026-10-20): the language backstop only on strong signs (inverted punctuation, a non-Latin script or several common Spanish or French words, never with an email or account number) and no nonsense label in code, the "anything else?" shortcut only for messages with a common English word; wider closing and filler word lists tested on the 17 regressed simulator lines; the old action-switch rule except that a reply picking a slot or answering the offer never switches; no slot pick from a rejection or negation; "if possible" or "anything sooner" with a yes looks for earlier slots; an identifying calm message with no named handoff gets "found your account"; the booking check against the read-back just before the change, with more slot phrasings; grader batches saved as they finish; the API grader under the run's budget, checked before each call; retrieval runs filed under the agent hash at answer time, refused if the agent changed and never pooled twice; grader-check grades tied to question, reference, answer and passages, with hidden verdicts archived; time- and turn-limit stops fail the quick run, a cap timeout recorded as the time limit with no retry past it, crossing the budget mid-turn stopping the run; an existing run name refused; a handoff case without an expected reason passing on any reason; "discretion" dropped from the internal-only terms; the frozen file count corrected. Then the reruns, a new freeze and the full quick run.
