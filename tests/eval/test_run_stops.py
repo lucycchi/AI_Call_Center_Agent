@@ -108,10 +108,25 @@ def test_the_test_run_client_makes_capped_calls_without_retries(monkeypatch):
     monkeypatch.setenv("EVAL_ANTHROPIC_API_KEY", "not-a-real-key")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "a-different-fake-key")
     monkeypatch.setattr(anthropic, "Anthropic", FakeAnthropic)
-    client = run.build_client()
+    client = run.build_client(simulator=True)
     client.messages.create(purpose="simulate", model="m", timeout=30.0)
     assert isinstance(client.messages._client, run.NoRetriesWithinCap)
     assert client.messages._client._client.calls[-1] == ("create", 0, 30.0)
+
+
+def test_the_agents_client_keeps_its_retries_as_in_production(monkeypatch):
+    # Each agent attempt already gets half the time left in its message deadline, so a retry fits inside the cap;
+    # dropping retries made slow calls fail where production would retry (quick run, run 3).
+    import anthropic
+
+    import eval.run as run
+    monkeypatch.setenv("EVAL_ANTHROPIC_API_KEY", "not-a-real-key")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "a-different-fake-key")
+    monkeypatch.setattr(anthropic, "Anthropic", FakeAnthropic)
+    client = run.build_client()
+    client.messages.create(purpose="route", model="m", timeout=7.0)
+    assert not isinstance(client.messages._client, run.NoRetriesWithinCap)
+    assert client.messages._client.calls[-1] == ("create", 1, 7.0)
 
 
 # -- the budget crossed in the middle of a turn ---------------------------------------------------------------

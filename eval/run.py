@@ -84,15 +84,16 @@ class NoRetriesWithinCap:
         return self._for(kwargs).messages.stream(**kwargs)
 
 
-def build_client():
+def build_client(simulator: bool = False):
+    """The test key's client. The simulated caller's calls get no SDK retries within the conversation cap; the agent's
+    keep their retries, as in production, since each attempt already gets half the time left in its message deadline."""
     import anthropic
 
     from app.config import SETTINGS
     from app.core.model_log import RecordingClient
     from eval.budget import require_eval_key
-    return RecordingClient(NoRetriesWithinCap(anthropic.Anthropic(api_key=require_eval_key(), max_retries=SETTINGS.eval_retries,
-                                                                  timeout=SETTINGS.anthropic_timeout_s)),
-                           sdk_version=f"anthropic {anthropic.__version__}")
+    inner = anthropic.Anthropic(api_key=require_eval_key(), max_retries=SETTINGS.eval_retries, timeout=SETTINGS.anthropic_timeout_s)
+    return RecordingClient(NoRetriesWithinCap(inner) if simulator else inner, sdk_version=f"anthropic {anthropic.__version__}")
 
 
 def run_settings(grader: str | None) -> dict:
@@ -106,7 +107,7 @@ def run_settings(grader: str | None) -> dict:
             "writer": {"model": SETTINGS.writer_model, "max_tokens": SETTINGS.eval_writer_max_tokens, "effort": "low"},
             "check": {"model": SETTINGS.router_model, "max_tokens": SETTINGS.router_max_tokens, "effort": "low"},
             "embedding_model": SETTINGS.embedding_model, "retrieval_threshold": SETTINGS.retrieval_threshold,
-            "retries": SETTINGS.eval_retries, "retries_within_cap": 0, "anthropic_timeout_s": SETTINGS.anthropic_timeout_s,
+            "retries": SETTINGS.eval_retries, "simulator_retries_within_cap": 0, "anthropic_timeout_s": SETTINGS.anthropic_timeout_s,
             "message_deadline_s": SETTINGS.message_deadline_s, "max_caller_turns": SETTINGS.eval_max_caller_turns,
             "conversation_seconds": SETTINGS.eval_conversation_seconds, "run_cap_usd": SETTINGS.eval_run_cap_usd,
             "grader": grader}
@@ -145,8 +146,8 @@ def run_graded(cases: list[dict], name: str, cap_usd: float | None = None, *, ou
     check_results_folder(out, overwrite, final=False)
     if factory is None or simulator_factory is None:
         from eval.simulator import Simulator
-        client = build_client()
-        factory, simulator_factory = factory or engine_factory(client), simulator_factory or (lambda: Simulator(client))
+        client, caller = build_client(), build_client(simulator=True)
+        factory, simulator_factory = factory or engine_factory(client), simulator_factory or (lambda: Simulator(caller))
     budget, by_id = RunBudget(cap_usd or SETTINGS.eval_run_cap_usd), {c["case_id"]: c for c in cases}
     runner, model = runner or runner_for(budget), model or grader_model()
     settings = settings if settings is not None else run_settings(model)
@@ -276,7 +277,7 @@ def main() -> None:
     check_results_folder(out, args.overwrite, args.final)
     if args.provisional:
         client = build_client()
-        summary = run_all(cases, engine_factory(client), lambda: Simulator(client), RunBudget(SETTINGS.eval_run_cap_usd),
+        summary = run_all(cases, engine_factory(client), lambda: Simulator(build_client(simulator=True)), RunBudget(SETTINGS.eval_run_cap_usd),
                           grade=provisional_grade, out=out, settings=run_settings(None))
     else:
         _, summary = run_graded(cases, out.name, overwrite=args.overwrite)
