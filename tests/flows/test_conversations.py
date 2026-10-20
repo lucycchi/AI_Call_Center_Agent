@@ -1206,3 +1206,15 @@ def test_a_yes_that_asks_for_anything_sooner_at_a_reschedule_read_back_does_not_
     chat["say"]("the first one")
     reply, _ = chat["say"]("Yes, sooner if possible")
     assert "Moved" not in reply and "earliest" in reply
+
+
+@pytest.mark.parametrize("text, detail", [("That's fine, yes please go ahead and book it.", "confirm"),
+                                          ("That's fine, yes please go ahead and book it.", "book"),
+                                          ("That's fine.", "confirm"), ("Yes, book it", "confirm")])
+def test_a_yes_at_a_read_back_books_whatever_action_the_router_names(chat, text, detail):
+    # The quick run (T9bb3779a): the router labelled the caller's yes a confirm request, which switched flows.
+    before = count(chat["db"], "select count(*) from appointments")
+    book_to_read_back(chat)
+    chat["routes_add"](text.split(",")[0].lower().rstrip("."), clear(request(text, "scheduling", detail, "hvac_repair")))
+    reply, _ = chat["say"](text)
+    assert count(chat["db"], "select count(*) from appointments") == before + 1, reply

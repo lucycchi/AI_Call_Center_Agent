@@ -175,3 +175,12 @@ def test_moving_a_visit_to_an_overlapping_window_the_same_day_is_allowed(db):
     assert any(s.slot_id == 58 for s in tx.eligible_slots(db, linda, "hvac_repair", NOW, moving=booked.appointment_id))
     assert tx.reschedule(db, linda, booked.appointment_id, 58, "c-ov2", NOW).status == "rescheduled"
     assert slot_status(db, 58) == "booked" and slot_status(db, 57) == "open"
+
+
+def test_moving_a_visit_never_offers_its_own_date_and_window(db):
+    # The quick run (T9bb3779a) offered another technician's slot at the visit's own time and "moved" it there.
+    linda = who(db, "Linda Foster", "MHC-10001")
+    booked = tx.book(db, linda, 57, "no cooling", "c-same", NOW)
+    slot = db.execute("select slot_date, window from appointment_slots where slot_id = 57").fetchone()
+    offered = tx.eligible_slots(db, linda, "hvac_repair", NOW, moving=booked.appointment_id)
+    assert not any((s.slot_date, s.window) == tuple(slot) for s in offered)

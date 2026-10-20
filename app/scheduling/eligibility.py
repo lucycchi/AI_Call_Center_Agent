@@ -67,6 +67,8 @@ def eligible_slots(db: sqlite3.Connection, customer, service_type: str, now: dat
                       f"where zone = ? and service_type = ? and status in ({', '.join('?' * len(statuses))}) "
                       f"and slot_date <= ? order by slot_date, window, slot_id", (zone, service_type, *statuses, last)).fetchall()
     moved = db.execute("select slot_id from appointments where appointment_id = ?", (moving,)).fetchone() if moving else None
+    # Moving to another technician's slot at the same date and window changes nothing for the caller.
+    same_time = db.execute("select slot_date, window from appointment_slots where slot_id = ?", moved).fetchone() if moved else None
     booked = {}
     for tech, day, window in db.execute("select tech_id, slot_date, window from appointment_slots where status = 'booked' "
                                         "and slot_id != ?", (moved[0] if moved else -1,)):
@@ -81,7 +83,8 @@ def eligible_slots(db: sqlite3.Connection, customer, service_type: str, now: dat
             own.setdefault(day, []).append(window)
     return [slot for slot in map(lambda row: Slot(*row), rows)
             if _starts(slot, now) > now and not any(_overlaps(slot.window, w) for w in booked.get((slot.tech_id, slot.slot_date), []))
-            and not any(_overlaps(slot.window, w) for w in own.get(slot.slot_date, []))]
+            and not any(_overlaps(slot.window, w) for w in own.get(slot.slot_date, []))
+            and (slot.slot_date, slot.window) != (tuple(same_time) if same_time else None)]
 
 
 def _wanted(slot: Slot, requested: DateRequest) -> bool:

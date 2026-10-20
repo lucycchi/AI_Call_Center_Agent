@@ -18,7 +18,8 @@ from app.scheduling.eligibility import SERVICE_NAMES, Slot, offer, spoken_when
 
 # Only a plain yes confirms a change (R52); anything hedged gets the read-back again.
 AFFIRMATIVE = re.compile(r"^\W*(?:(?:um|uh|oh)\W+)?(yes|yeah|yep|yup|sure|ok|okay|correct|that works|sounds good|book it|"
-                         r"do it|please do|perfect|go ahead|take it|works|let'?s do (?:it|that)|do that|great)\b", re.I)
+                         r"do it|please do|perfect|go ahead|take it|works|let'?s do (?:it|that)|do that|great|that'?s fine|fine|"
+                         r"alright|all right)\b", re.I)
 HEDGE = re.compile(r"\?|\b(but|wait|actually|instead|hold on|not|no|nope|hmm|maybe|unless|first|which|what|how)\b", re.I)
 # A yes that names a day or time is about a different slot, not this read-back ("Yes, Tuesday works").
 NAMES_A_TIME = re.compile(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|morning|afternoon|"

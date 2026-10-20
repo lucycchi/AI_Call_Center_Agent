@@ -444,7 +444,7 @@ class AgentPipeline:
             other = "|".join(v for k, v in ACTION_VERBS.items() if k != state.flow.get("kind"))
             # A reply that picks a slot ("the first one", "Tuesday at 3") answers the offer too, unless it turns one down.
             answers_read_back = state.flow.get("step") in ("offer", "readback", "which") \
-                and (scheduling.AFFIRMATIVE.search(text) or scheduling.NO.search(text) or
+                and (scheduling.AFFIRMATIVE.search(text) or scheduling.YES.search(text) or scheduling.NO.search(text) or
                      scheduling.picks_a_slot(text, state.flow, self.now) and not NEGATION.search(text)) \
                 and not re.search(rf"\b({other})\b", text, re.I)
             switched_action = routed.clear and state.active_flow == "scheduling" and first is not None \
