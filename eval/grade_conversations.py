@@ -137,6 +137,12 @@ def _confirmed_a_read_back(attempt) -> bool:
     return False
 
 
+def conversation_now() -> str:
+    """The test's fixed date and time, which every conversation happens at; the grader judges dates against it."""
+    from app.config import SETTINGS
+    return SETTINGS.now.strftime("%A %d %B %Y, %H:%M") + " (America/Chicago)"
+
+
 def database_checks(case: dict, attempt) -> dict:
     """What the database copy shows against what the case expected, measured from the copy as the call started (the
     seed with the case's fixtures), so planted rows are never taken for the agent's. Problems go in "booking_problems"."""
@@ -338,7 +344,7 @@ def grade_attempts(attempts: list, cases: dict, runner, tickets=default_tickets,
                       "reference_answer": case.get("reference_answer"), "passages": _passages(case),
                       "retrieved_passages": retrieved_passages(attempt),
                       "account_facts": _account_facts(case, attempt.db_path), "must_not": case.get("must_not", []),
-                      "transcript": attempt.conversation, "tickets": opened})
+                      "transcript": attempt.conversation, "tickets": opened, "now": conversation_now()})
         keep.append(attempt)
         required.append(needed)
     position = [0]

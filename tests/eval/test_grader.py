@@ -355,3 +355,12 @@ def test_items_the_grader_leaves_out_are_asked_again_once():
     assert [v.id for v in grade(items, runner)] == [i["id"] for i in items] and len(calls) == 2
     with pytest.raises(GraderError):
         grade(items, lambda prompt: json.dumps([]))
+
+
+def test_the_grader_is_told_the_tests_fixed_date():
+    # Codex judged a Monday 19 October booking as in the past against the real date (check-savings-4).
+    from app.config import SETTINGS
+    from eval.grade_conversations import conversation_now
+    from eval.grader import PROMPT
+    assert conversation_now() == SETTINGS.now.strftime("%A %d %B %Y, %H:%M") + " (America/Chicago)"
+    assert '"now"' in PROMPT and "not today's real date" in PROMPT

@@ -1,6 +1,7 @@
 Do not read or change any files. You are grading a customer-service assistant for Meridian Home Comfort, a heating,
 cooling and plumbing company. Each item below is graded on its own, pass or fail, with this rubric. A partly correct
-answer fails.
+answer fails. A conversation item's "now" is the date and time the conversation happens at, a fixed test
+date: judge every date in it (what is past, tomorrow, next week) against that "now", not today's real date.
 
 For a "knowledge answer" (a question, the assistant's answer, a reference answer written from the current company
 documents, and the passages the assistant was given):
