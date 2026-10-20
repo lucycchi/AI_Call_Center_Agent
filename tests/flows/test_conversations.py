@@ -70,7 +70,8 @@ def chat(tmp_path):
         events = list(engine.handle(Turn(conversation, "v1", f"m{sent[0]}", text)))
         return " ".join(e.text for e in events if isinstance(e, SentenceEvent)), events[-1]
     return {"say": say, "store": store, "db": db, "engine": engine,
-            "routes_add": lambda key, value: scripted.routes.update({key: value})}
+            "routes_add": lambda key, value: scripted.routes.update({key: value}),
+            "writer_says": lambda rewrite: setattr(scripted, "rewrite", rewrite)}
 
 
 def count(db, sql, *args):
@@ -837,6 +838,23 @@ def test_the_final_price_line_is_only_for_repair_and_service_prices():
             return [ScoredChunk(Chunk("x#1", self.document, "Plans", "", "$189 a year", 1, 2), 0.7, 2)]
     assert "final price" not in " ".join(answer("how much is the plan", Only("membership/comfort_club_overview.md"), 0.25).facts)
     assert "final price" in " ".join(answer("how much is drain clearing", Only("services/service_catalog.md"), 0.25).facts)
+
+
+def test_facts_that_do_not_answer_the_question_are_said_then_handed_off_with_a_ticket(chat):
+    from app.replies.checks import NOT_IN_DOCUMENTS
+    chat["writer_says"](lambda facts: facts + [NOT_IN_DOCUMENTS])
+    reply, done = chat["say"]("how much is a tune-up cost")
+    assert "$129 for non-members" in reply and NOT_IN_DOCUMENTS not in reply and "NOT IN" not in reply
+    assert reply.index("$129") < reply.index("Ticket #") and done.outcome == "handed_off"
+    assert chat["store"].tickets()[-1]["reason_tag"] == "not enough evidence"
+
+
+def test_a_reply_that_is_only_the_marker_is_a_handoff_alone(chat):
+    from app.replies.checks import NOT_IN_DOCUMENTS
+    chat["writer_says"](lambda facts: [NOT_IN_DOCUMENTS])
+    reply, done = chat["say"]("how much is a tune-up cost")
+    assert "$129" not in reply and "NOT IN" not in reply and "Ticket #" in reply and done.outcome == "handed_off"
+    assert chat["store"].tickets()[-1]["reason_tag"] == "not enough evidence"
 
 
 def test_the_writer_is_told_to_answer_completely():

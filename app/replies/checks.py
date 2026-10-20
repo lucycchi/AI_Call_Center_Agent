@@ -48,6 +48,8 @@ INTERNAL_RUNS = _internal_runs()
 FOLLOW_UP_PROMISE = re.compile(r"\b(?:a |our )?(?:team member|someone|member of (?:our|the) team|our team|staff)\b[^.]{0,20}"
                                r"\b(?:will|'ll|is going to)\b[^.]{0,10}\b(?:follow up|contact|call|reach out|get back)|"
                                r"\bi(?:'ll| will| have|'ve)\s+pass(?:ed)?\b(?![^.]*\bif you)", re.I)
+# The writer's sentence for "the facts do not answer this"; never shown, it ends the reply with a handoff.
+NOT_IN_DOCUMENTS = "[NOT IN DOCUMENTS]"
 BREAKER_ADVICE = re.compile(r"\breset\w*\b[^.]*\bbreaker|\bbreaker\b[^.]*\breset|\bflip\w*\b[^.]*\bbreaker", re.I)
 
 
@@ -69,7 +71,8 @@ def check_sentence(sentence: str, reply_so_far: str, burning_mentioned: bool = F
 
 
 class CheckedStream:
-    """Yields each sentence once it passes; stops at the first failure and records which rule it broke."""
+    """Yields each sentence once it passes; stops at the first failure and records which rule it broke, or at the
+    not-in-documents marker, which is never yielded."""
 
     def __init__(self, sentences: Iterable[str], burning_mentioned: bool = False, money_check=None):
         self._sentences = sentences
@@ -77,10 +80,15 @@ class CheckedStream:
         self._money_check = money_check  # (sentence, previous) -> bool; every sentence touching money goes to it
         self.blocked_rule: str | None = None
         self.blocked_sentence: str | None = None
+        self.not_in_documents = False
 
     def __iter__(self) -> Iterator[str]:
         so_far = ""
         for sentence in self._sentences:
+            if NOT_IN_DOCUMENTS in sentence:  # what came before it on the same line is still a sentence to check
+                self.not_in_documents, sentence = True, sentence.split(NOT_IN_DOCUMENTS)[0].strip()
+                if not sentence:
+                    return
             result = check_sentence(sentence, so_far, self._burning)
             if result.ok and touches_money(sentence):
                 previous = re.split(r"(?<=[.!?])\s+", so_far)[-1] if so_far else ""
@@ -91,3 +99,5 @@ class CheckedStream:
                 return
             so_far = f"{so_far} {sentence}".strip()
             yield sentence
+            if self.not_in_documents:
+                return

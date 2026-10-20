@@ -14,6 +14,7 @@ class FlowResult:
     db_actions: list[str] = field(default_factory=list)
     passages: list[str] = field(default_factory=list)  # dated sources used, for the receipt
     excluded: list[str] = field(default_factory=list)  # stale documents on the same subject, left out
+    chunks: list = field(default_factory=list)  # the passages themselves, so a grader sees what the reply rests on
 
 
 class Flow(Protocol):

@@ -47,6 +47,7 @@ def request(text, route, detail="none", service_type="none"):
 class ScriptedClient:
     def __init__(self, routes):
         self.routes, self.messages, self.calls = routes, self, []
+        self.rewrite = lambda facts: facts  # a test may make the writer say something else, such as the marker
 
     def create(self, **kwargs):
         self.calls.append(("create", kwargs))
@@ -60,4 +61,4 @@ class ScriptedClient:
     def stream(self, **kwargs):
         self.calls.append(("stream", kwargs))
         facts = re.findall(r"^- (.*)$", kwargs["messages"][-1]["content"], re.M)
-        return Stream(facts)
+        return Stream(self.rewrite(facts))

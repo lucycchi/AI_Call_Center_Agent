@@ -94,10 +94,10 @@ def file_sha256(path: Path) -> str:
 
 def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str], str], whole_kb: str, out: Path,
                      model: str | None = None, agent_hash: str | None = None,
-                     agent_answer: Callable[[str], str] | None = None) -> None:
+                     agent_answer: Callable[[str], tuple[str, list[str]]] | None = None) -> None:
     """Answers from the top five keyword-only and combined passages and from the whole knowledge base, for grading.
     With agent_answer, the combined answers are the agent's own (its knowledge flow, writer and checks), so the answer
-    measures and the threshold curve describe the agent; keyword-only and whole-knowledge-base answers keep the simple
+    measures and the threshold curve describe the agent, stored with the passages the agent's flow used; keyword-only and whole-knowledge-base answers keep the simple
     prompt, a comparison of search methods (R30).
     With agent_hash, answers_meta.json beside them records that hash and the answers file's own hash, so grading can
     refuse answers written under another agent."""
@@ -110,7 +110,10 @@ def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str
                 # The exact passages the answer was written from, so it is graded against them, not a later search.
                 passages = [passage_label(c) for c in found.get(mode, [])]
                 by_agent = agent_answer is not None and mode == "combined"
-                reply = agent_answer(q["question"]) if by_agent else writer(q["question"], context)
+                if by_agent:
+                    reply, passages = agent_answer(q["question"])
+                else:
+                    reply = writer(q["question"], context)
                 handle.write(json.dumps({"qid": q["qid"], "kind": q["kind"], "mode": mode, "question": q["question"],
                                          "answer": reply, "writer": "agent" if by_agent else "simple prompt", "model": model,
                                          "reference_answer": q.get("reference_answer"), "passages": passages}) + "\n")
@@ -157,22 +160,24 @@ WRITER_EFFORT = "low"
 AGENT_HANDOFF = "I'll pass your question to a team member, who will follow up."
 
 
-def agent_answerer(searcher, client, money_check) -> Callable[[str], str]:
-    """The agent's own answer to a knowledge question: its knowledge flow picks the facts and reply type (with the
-    threshold at 0, so the curve can apply each threshold afterwards), its writer writes, and its sentence checks
-    release each sentence; a blocked sentence ends the reply with a handoff, as in the pipeline."""
+def agent_answerer(searcher, client, money_check) -> Callable[[str], tuple[str, list[str]]]:
+    """The agent's own answer to a knowledge question and the passages its flow used: its knowledge flow picks the
+    facts and reply type (with the threshold at 0, so the curve can apply each threshold afterwards), its writer
+    writes, and its sentence checks release each sentence; a blocked sentence or the writer's not-in-documents marker
+    ends the reply with a handoff, as in the pipeline."""
     from app.flows.knowledge import answer
     from app.replies.checks import CheckedStream
     from app.replies.writer import write
 
-    def ask(question: str) -> str:
+    def ask(question: str) -> tuple[str, list[str]]:
         result = answer(question, searcher, 0.0)
+        passages = [passage_label(c) for c in result.chunks]
         if result.reply_type == "handoff":
-            return AGENT_HANDOFF
+            return AGENT_HANDOFF, passages
         stream = CheckedStream(write(result.reply_type, result.facts, [{"role": "caller", "content": question}], client),
                                money_check=money_check)
         released = list(stream)
-        return " ".join(released + ([AGENT_HANDOFF] if stream.blocked_rule else []))
+        return " ".join(released + ([AGENT_HANDOFF] if stream.blocked_rule or stream.not_in_documents else [])), passages
     return ask
 
 

@@ -101,9 +101,11 @@ def test_combined_answers_come_from_the_agents_own_knowledge_flow_and_writer(tmp
     from eval.retrieval_eval import answer_both_ways
     out = tmp_path / "answers_to_grade.jsonl"
     answer_both_ways([{"qid": "q1", "question": "fee?", "kind": "answerable", "reference_answer": "$89"}], Searcher(),
-                     lambda q, c: "simple prompt", whole_kb="KB", out=out, agent_answer=lambda q: "the agent's reply")
+                     lambda q, c: "simple prompt", whole_kb="KB", out=out,
+                     agent_answer=lambda q: ("the agent's reply", ["[the agent's passage]"]))
     by_mode = {a["mode"]: a for a in map(json.loads, out.open())}
     assert by_mode["combined"]["answer"] == "the agent's reply" and by_mode["combined"]["writer"] == "agent"
+    assert by_mode["combined"]["passages"] == ["[the agent's passage]"]  # what the agent's flow used, not a search
     assert by_mode["keyword"]["answer"] == by_mode["whole_kb"]["answer"] == "simple prompt"
 
 
@@ -133,6 +135,29 @@ def test_the_agent_answerer_writes_with_the_agents_rules_and_checks():
     from eval.retrieval_eval import agent_answerer
     client = FakeClient("The diagnostic fee is $89 (faq/customer_faq.md). I'll waive it for you.")
     ask = agent_answerer(Searcher(), client, money_check=lambda sentence, previous: "waive" not in sentence)
-    reply = ask("What is the diagnostic fee?")
+    reply, passages = ask("What is the diagnostic fee?")
+    assert passages == ["[faq/customer_faq.md, Fees, 2026-03-02] Diagnostic fee: $89."]
     assert client.prompts[0]["system"] == RULES and "diagnostic fee is $89" in reply
     assert "waive" not in reply and "team member" in reply  # a blocked sentence ends the reply with a handoff
+
+
+def test_the_agent_answerer_hands_off_where_the_writer_marks_the_documents_silent():
+    from app.replies.checks import NOT_IN_DOCUMENTS
+    from eval.retrieval_eval import AGENT_HANDOFF, agent_answerer
+    ask = agent_answerer(Searcher(), FakeClient(f"The diagnostic fee is $89. {NOT_IN_DOCUMENTS}"), money_check=lambda s, p: True)
+    reply, _ = ask("Do you offer a veterans discount?")
+    assert reply == f"The diagnostic fee is $89. {AGENT_HANDOFF}" and "NOT IN" not in reply
+
+
+class PriceSearcher:
+    def search(self, question, mode="combined", k=5):
+        return [ScoredChunk(Chunk("services__service_catalog#3", "services/service_catalog.md", "Plumbing (residential)",
+                                  "2026-02-10", "Drain clearing ($149 – $290 depending on access)", 31, 36), 0.7, 2)]
+
+
+def test_the_agent_answerers_passages_include_the_final_price_sentence_it_states():
+    from eval.retrieval_eval import agent_answerer
+    ask = agent_answerer(PriceSearcher(), FakeClient("Drain clearing runs $149 to $290."), money_check=lambda s, p: True)
+    _, passages = ask("How much does it cost to clear a clogged drain?")
+    assert any("Drain clearing" in p for p in passages)
+    assert any(p.startswith("[pricing/repair_price_book_2026.csv") and "confirms the final price on site" in p for p in passages)

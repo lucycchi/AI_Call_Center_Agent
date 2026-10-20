@@ -198,3 +198,20 @@ def test_the_money_check_evaluation_counts_misses_and_over_blocks():
             {"sentence": "A tune-up is $129.", "previous": "", "expected": "pass"}]
     report = evaluate(rows, lambda sentence, previous: True)
     assert report["missed_promises"] == ["I'll waive it."] and report["over_blocked"] == []
+
+
+def test_the_not_in_documents_marker_is_never_released_and_ends_the_reply():
+    from app.replies.checks import NOT_IN_DOCUMENTS
+    stream = CheckedStream(iter(["The diagnostic fee is $89.", f"{NOT_IN_DOCUMENTS}", "Anything else?"]),
+                           money_check=lambda s, p: True)
+    assert list(stream) == ["The diagnostic fee is $89."] and stream.not_in_documents and not stream.blocked_rule
+    joined = CheckedStream(iter([f"Members get 15 percent off repairs. {NOT_IN_DOCUMENTS}."]), money_check=lambda s, p: True)
+    assert list(joined) == ["Members get 15 percent off repairs."] and joined.not_in_documents
+    alone = CheckedStream(iter([NOT_IN_DOCUMENTS]))
+    assert list(alone) == [] and alone.not_in_documents
+
+
+def test_the_writer_marks_what_the_facts_do_not_answer_instead_of_promising_a_follow_up():
+    from app.replies.checks import NOT_IN_DOCUMENTS
+    from app.replies.writer import RULES
+    assert NOT_IN_DOCUMENTS in RULES and "do not answer the question, say a team member will follow up" not in RULES
