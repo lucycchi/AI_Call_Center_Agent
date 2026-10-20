@@ -1,17 +1,13 @@
 {
  "both_right": 20,
- "both_wrong": 6,
- "author_only": 4,
+ "both_wrong": 9,
+ "fable_only": 1,
  "grader_only": 0,
- "agreement": 0.8666666666666667,
- "note": "Fable graded blind with the rubric and the passages each answer was given; Codex is the grader being checked.",
+ "agreement": 0.9666666666666667,
+ "note": "fable graded blind; this is model-vs-model agreement, not a human check",
  "checker": "Claude Fable 5.1, standing in for the author (D44)",
  "graded": 30,
  "disagreements": [
-  "case-T9e29febc|whole_kb",
-  "answerable-6|combined",
-  "case-T2603f4e6|keyword",
-  "case-T9e29febc|combined"
- ],
- "grader": "Codex (gpt-5.6-sol)"
+  "case-T9e29febc|keyword"
+ ]
 }
