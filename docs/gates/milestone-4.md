@@ -7,36 +7,36 @@ Reviews of this milestone compare against `tortoise/milestone-3`, the last appro
 **Passed:** `python -m pytest` finished with exit code 0.
 
 ```
-
-tests/accounts/test_accounts.py ........................................ [  7%]
-.........                                                                [  9%]
-tests/core/test_engine.py ...................                            [ 13%]
-tests/eval/test_cases.py ...........................................     [ 21%]
-tests/eval/test_grader.py ...............                                [ 24%]
-tests/eval/test_retrieval_metrics.py ..................                  [ 27%]
-tests/eval/test_scoring.py .............                                 [ 30%]
-tests/eval/test_threshold.py ........                                    [ 31%]
-tests/flows/test_conversations.py ...................................... [ 39%]
-........................................................................ [ 53%]
-..                                                                       [ 53%]
-tests/flows/test_knowledge.py ....                                       [ 54%]
-tests/handoff/test_handoff.py ..........                                 [ 56%]
-tests/knowledge/test_search.py ..............                            [ 58%]
-tests/ops/test_store.py ...........                                      [ 61%]
-tests/pipeline/test_documents.py .........                               [ 62%]
-tests/pipeline/test_findings.py .....................                    [ 66%]
-tests/pipeline/test_labels.py ..............                             [ 69%]
-tests/pipeline/test_templates.py .........                               [ 71%]
-tests/replies/test_checks.py ...............................             [ 77%]
-tests/safety/test_safety.py ............................................ [ 85%]
-......                                                                   [ 87%]
+tests/core/test_engine.py ...................                            [ 10%]
+tests/eval/test_adversarial.py .....................................     [ 16%]
+tests/eval/test_cases.py ...........................................     [ 23%]
+tests/eval/test_conversation_grading.py ................                 [ 25%]
+tests/eval/test_grader.py ......................                         [ 29%]
+tests/eval/test_retrieval_metrics.py ..................                  [ 31%]
+tests/eval/test_run_safety.py .........                                  [ 33%]
+tests/eval/test_scoring.py ...............                               [ 35%]
+tests/eval/test_threshold.py ...............                             [ 38%]
+tests/flows/test_conversations.py ...................................... [ 44%]
+........................................................................ [ 55%]
+...................................                                      [ 60%]
+tests/flows/test_knowledge.py ....                                       [ 61%]
+tests/handoff/test_handoff.py ..........                                 [ 63%]
+tests/knowledge/test_search.py ..............                            [ 65%]
+tests/ops/test_store.py ............                                     [ 67%]
+tests/pipeline/test_documents.py .........                               [ 68%]
+tests/pipeline/test_findings.py .....................                    [ 71%]
+tests/pipeline/test_labels.py ..............                             [ 73%]
+tests/pipeline/test_templates.py .........                               [ 75%]
+tests/replies/test_checks.py ...............................             [ 80%]
+tests/safety/test_safety.py ............................................ [ 87%]
+......                                                                   [ 88%]
 tests/scheduling/test_eligibility.py ................................... [ 93%]
-...                                                                      [ 94%]
-tests/scheduling/test_transactions.py ...............                    [ 97%]
+...........                                                              [ 95%]
+tests/scheduling/test_transactions.py ................                   [ 97%]
 tests/test_config.py ..........                                          [ 99%]
 tests/test_engine_interface.py ....                                      [100%]
 
-============================= 517 passed in 21.80s =============================
+============================= 638 passed in 19.51s =============================
 ```
 
 ## Requirement coverage
@@ -115,3 +115,17 @@ The author chose "All recommended" (2026-10-20):
 - Fix result keeping: each conversation saved as it finishes, model ids and settings and per-run verdicts saved, a safe grader-check rerun reading Fable's column, retrieval answers keeping their passages, the freeze covering the data files the agent reads, the $8 cap on adversarial runs and the API grader, a held-out guard, and the 60-second cap enforced during calls.
 - Open questions: action-gap calls stay inside the scope ceiling and are removed only in the adjusted ceiling (R16 wording); code checks that safety cases released the fixed reply first and made a ticket.
 - Then rerun the stale results (adversarial set, retrieval answers and grading, threshold curve, Fable's grader check), recompute the agent freeze, update the architecture document, and rerun the gate.
+
+## Fixes and reruns
+
+All the chosen findings were fixed test-first (commits ddf0797 to 962c869); the suite went from 517 to 638 tests, all passing.
+
+- **Found while fixing:** the evaluation fix agent's first held-out guard test ran the real run command on the held-out set before the guard existed. With a fake key no agent turn ran and nothing was spent, but Codex graded the 15 empty conversations once and so saw the held-out requests and reference answers. The output was deleted and never committed. Recorded as keeping the held-out set after the grader saw it (D46).
+- **Agent changes from the reruns:** a message in another language gets an English note and a handoff, with a code backstop when the router misses it, and the writer always writes in English (D47); nonsense is handed off; picking a slot in a reschedule is not taken for a new booking.
+- **Adversarial set:** 32 of 32 pass with the independent checks (booking-rule and extraction attacks 100%), for $0.06.
+- **Retrieval answers:** two fresh graded runs of the current agent (about $0.54 each); combined search 88% and 92% correct, 92% faithful in both.
+- **Threshold:** one answer that guessed in one run and not the other moved the single-run pick to 0.45; pooled over both runs (50 answers) the same rule picks 0.25 (74% contained, 5 wrong confident answers). Pooling recorded as choosing the threshold from every graded run of the agent (D48).
+- **Grader check:** a fresh sample of the new answers; Claude Fable 5.1 graded blind and agrees with Codex on 29 of 30 (97%). The old sheet and its grades are archived in `data/grader_check_archive/1.csv`. Grades now stay tied to the answer text they were given for.
+- **Agent freeze:** recomputed over 60 files, hash `f7ecfd29d6725dd96953c769bf444a51a730befdf6628faeb126d5a47c49fd68`, the same hash both graded retrieval runs are filed under.
+- **Architecture document:** updated for every point from both architecture checks, and the HTML page regenerated.
+- **Not rerun:** the quick run (Task 20) was last passed before these fixes; the agent has changed since.

@@ -42,11 +42,11 @@
       "milestone": 3
     }
   ],
-  "milestone": 3,
+  "milestone": 4,
   "milestones": 6,
   "last_gate": {
-    "milestone": 3,
+    "milestone": 4,
     "passed": true,
-    "fingerprint": "221422c855956d494835c12b1be724f8e7378a50"
+    "fingerprint": "de43dea7383182460c061a66495664c127c3374f"
   }
 }
