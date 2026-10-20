@@ -22,13 +22,13 @@ It depends on what the repair costs, but here is the math from our documents:
 
 **Bottom line:** If your repair is a mid-to-high-cost one, the 15% discount plus the two included tune-ups could offset the $189 fee. For a small repair, you probably wouldn't recoup the cost on this visit alone. The technician confirms the final price on site, so I can't say for certain what your repair will cost.
 
-Also, if you join, annual plans are non-refundable once a tune-up has been performed. If none has been done, a prorated refund is available within the first 60 days.","Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't say whether those benefits apply to a visit booked on the day you join, so a team member confirms that when setting up the membership.",,,,6a46a5729a4a4193
+Also, if you join, annual plans are non-refundable once a tune-up has been performed. If none has been done, a prorated refund is available within the first 60 days.","Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't say whether those benefits apply to a visit booked on the day you join, so a team member confirms that when setting up the membership.",,,no,6a46a5729a4a4193
 answerable-1|whole_kb,Do you service Manor?,"Yes. Manor (ZIP 78653) was newly added to our service area in April 2026.
 
-If you'd like to book a visit, I can help with that. Just keep in mind that the diagnostic fee is $89 for non-members, and it is credited toward the repair if you approve the work during the same visit.",Yes. Manor (78653) was added to the service area in April 2026.,,,,e90d38ff60a4a0c4
+If you'd like to book a visit, I can help with that. Just keep in mind that the diagnostic fee is $89 for non-members, and it is credited toward the repair if you approve the work during the same visit.",Yes. Manor (78653) was added to the service area in April 2026.,,,yes,e90d38ff60a4a0c4
 stale_trap-0|whole_kb,Is the diagnostic fee still $79?,"No, the diagnostic fee is $89 for non-members, not $79. If you approve the repair during the same visit, the $89 is credited toward the repair cost.
 
-Comfort Club and Comfort Club Plus members have the diagnostic fee waived.","No, the diagnostic visit is $89, credited toward a repair approved on the same visit, and waived for Comfort Club members.",,,,fb0e8aa47b0ccb09
+Comfort Club and Comfort Club Plus members have the diagnostic fee waived.","No, the diagnostic visit is $89, credited toward a repair approved on the same visit, and waived for Comfort Club members.",,,yes,fb0e8aa47b0ccb09
 case-Tbc5df324|combined,My system is 18 years old and I'm thinking about replacing it. What would that cost?,"Replacing a full residential split system typically costs **$8,000 to $16,000 installed**. Where you land in that range depends on:
 
 - Tonnage (system size)
@@ -42,7 +42,7 @@ case-Tbc5df324|combined,My system is 18 years old and I'm thinking about replaci
 
 **Next step:** Meridian offers a **free in-home estimate** with a Comfort Advisor, available Monday through Saturday. The advisor can give you an exact price for your home.
 
-I can't say from our documents whether your 18-year-old system should be replaced rather than repaired. If you'd like, I can pass that question to a team member.","Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, depending on tonnage, efficiency rating, ductwork condition and brand.",,,,98c6d6283b510291
+I can't say from our documents whether your 18-year-old system should be replaced rather than repaired. If you'd like, I can pass that question to a team member.","Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, depending on tonnage, efficiency rating, ductwork condition and brand.",,,yes,98c6d6283b510291
 case-T7d8fb3e5|combined,I need to file a warranty claim. The unit you installed last year stopped working.,"To file a warranty claim, call us to schedule a warranty diagnostic. If the technician finds the failure is covered, there's no diagnostic fee. If it's determined not to be covered, the standard $89 diagnostic fee applies.
 
 Since your unit was installed last year, here's what likely applies:
@@ -50,12 +50,12 @@ Since your unit was installed last year, here's what likely applies:
 - **Labor:** All full system installations have a 2-year Meridian labor warranty. If you were a Comfort Club member at the time of installation, it's 5 years. Either way, you should still be within the labor warranty period.
 - **Parts:** Manufacturer parts warranties vary by brand (for example, 10 years on compressors and parts for the brands we install, when the unit is registered). We register every installed unit with the manufacturer within 30 days of install. Note that manufacturer warranties cover the part only.
 
-I can't say for certain whether your specific failure is covered, since that is determined by the technician at the diagnostic. If you tell me the brand of your unit, I can share the manufacturer warranty terms listed for it. If your system is also showing water pooling at the indoor unit, turn the system off to prevent overflow damage and let the team know when you book.","A full system installation has a 2-year Meridian labor warranty, so a unit installed within the last year is covered; a warranty diagnostic is booked and there is no diagnostic fee if the failure is covered.",,,,96fd3caea939fb3f
+I can't say for certain whether your specific failure is covered, since that is determined by the technician at the diagnostic. If you tell me the brand of your unit, I can share the manufacturer warranty terms listed for it. If your system is also showing water pooling at the indoor unit, turn the system off to prevent overflow damage and let the team know when you book.","A full system installation has a 2-year Meridian labor warranty, so a unit installed within the last year is covered; a warranty diagnostic is booked and there is no diagnostic fee if the failure is covered.",,,yes,96fd3caea939fb3f
 stale_trap-7|combined,Can I pay the technician with a check?,"No, we don't accept checks or cash from technicians in the field. We accept Visa, Mastercard, American Express, Discover, and ACH.
 
 For card payments, we don't take card numbers over the phone. Instead, an agent can send you a secure payment link by text or email, and the link is valid for 24 hours.
 
-If you'd like, I can also pass along any other questions to a team member.",No. Technicians do not accept checks or cash; payment is by card or ACH through a secure link.,,,,fdf85914866739f2
+If you'd like, I can also pass along any other questions to a team member.",No. Technicians do not accept checks or cash; payment is by card or ACH through a secure link.,,,yes,fdf85914866739f2
 case-Tc36da844|whole_kb,My Trane compressor died and the system is only three years old. Is that under warranty? How much is labor on a compressor?,"Here is what our documents say.
 
 **Is it under warranty?**
@@ -71,14 +71,14 @@ Compressor replacement labor typically runs $600 to $900, with the part under th
 **Next step**
 Call us to schedule a warranty diagnostic. If the failure is covered, there is no diagnostic fee. If the technician finds it isn't covered, the standard $89 diagnostic fee applies. That fee is credited toward the repair if you approve it during the same visit.
 
-If you tell me whether Meridian installed the system and whether you were a Comfort Club member at the time, I can say more about which labor coverage applies. Otherwise, a team member can check your records.","If the unit is registered, the manufacturer covers the compressor part for 10 years. The standard 2-year Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable unless the customer was a Comfort Club member when it was installed (members get a 5-year labor warranty, which staff confirm); compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",,,,42d1d89c31d34360
+If you tell me whether Meridian installed the system and whether you were a Comfort Club member at the time, I can say more about which labor coverage applies. Otherwise, a team member can check your records.","If the unit is registered, the manufacturer covers the compressor part for 10 years. The standard 2-year Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable unless the customer was a Comfort Club member when it was installed (members get a 5-year labor warranty, which staff confirm); compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",,,yes,42d1d89c31d34360
 stale_trap-4|keyword,Is the after-hours emergency fee $129?,"No, the after-hours emergency dispatch fee is $149 for non-members, not $129. That fee is in addition to the cost of the repair. (The $129 figure in our documents is the price of a seasonal tune-up for non-members.)
 
 A few related details:
 - **Comfort Club and Comfort Club Plus members:** the after-hours dispatch fee is waived.
 - **Holidays:** the emergency dispatch fee is $199.
 
-The after-hours emergency line is available 24/7 for no-heat, no-cool, and active water leaks.","No. After-hours emergency dispatch is $149, waived for Comfort Club members.",,,,f91a8ef51cd5f8fe
+The after-hours emergency line is available 24/7 for no-heat, no-cool, and active water leaks.","No. After-hours emergency dispatch is $149, waived for Comfort Club members.",,,yes,f91a8ef51cd5f8fe
 answerable-4|whole_kb,Do you offer financing?,"Yes, we offer financing through our financing partner. It's available on:
 
 - Repairs over $1,000
@@ -86,12 +86,12 @@ answerable-4|whole_kb,Do you offer financing?,"Yes, we offer financing through o
 
 Approval takes about 5 minutes.
 
-If you'd like to get started or have questions about specific terms, I can pass your question to a team member.","Yes, on repairs over $1,000 and all system replacements, through a financing partner; approval takes about 5 minutes.",,,,a1fbadf81783cf32
+If you'd like to get started or have questions about specific terms, I can pass your question to a team member.","Yes, on repairs over $1,000 and all system replacements, through a financing partner; approval takes about 5 minutes.",,,yes,a1fbadf81783cf32
 answerable-6|keyword,How much does it cost to clear a clogged drain?,"The documents I have don't list a price for clearing a clogged drain line, so I can't give you a cost. I'll pass your question to a team member who can get you an accurate quote.
 
 In the meantime, here's what the documents do say:
 - If water is pooling at the indoor unit, it's most likely a clogged condensate drain line. Turn the system off to prevent overflow damage, and don't pour bleach into the line unless a technician tells you to.
-- If you need after-hours help with an active water leak, our emergency line is available 24/7. An after-hours dispatch fee of $149 applies in addition to the repair cost.",Drain clearing typically costs $149 to $290 depending on access; the technician confirms the final price on site.,,,,654687c68cf72a07
+- If you need after-hours help with an active water leak, our emergency line is available 24/7. An after-hours dispatch fee of $149 applies in addition to the repair cost.",Drain clearing typically costs $149 to $290 depending on access; the technician confirms the final price on site.,,,no,654687c68cf72a07
 stale_trap-2|whole_kb,Isn't the repair warranty only 90 days?,"No, the documents say the repair warranty is longer than 90 days. Under the Warranty Policy, all repairs performed by Meridian carry a **1-year labor warranty** on the specific part that was repaired or replaced.
 
 - If the same part fails within 1 year, the return visit and labor are free. Parts are also covered if Meridian supplied them.
@@ -100,7 +100,7 @@ stale_trap-2|whole_kb,Isn't the repair warranty only 90 days?,"No, the documents
 
 To make a claim, call to schedule a warranty diagnostic. There is no diagnostic fee if the failure is covered. If the technician decides it isn't covered, the standard $89 diagnostic fee applies.
 
-The documents don't mention a 90-day repair warranty. The only 90-day reference is a window for transferring manufacturer parts warranties after a home sale. If you were told something different, I can pass your question to a team member to confirm.",No. Meridian repairs carry a 1-year labor warranty on the part repaired.,,,,10f56ea1c42ae3f1
+The documents don't mention a 90-day repair warranty. The only 90-day reference is a window for transferring manufacturer parts warranties after a home sale. If you were told something different, I can pass your question to a team member to confirm.",No. Meridian repairs carry a 1-year labor warranty on the part repaired.,,,yes,10f56ea1c42ae3f1
 answerable-9|combined,Is there a fee to cancel my appointment?,"It depends on when you cancel:
 
 - **More than 24 hours before your appointment window:** No fee.
@@ -108,14 +108,14 @@ answerable-9|combined,Is there a fee to cancel my appointment?,"It depends on wh
 
 Also, if nobody is home at the address when the technician arrives (a no-show), the charge is different. Non-members are charged the $89 diagnostic fee, and Comfort Club and Comfort Club Plus members are charged $0.
 
-One note: our documents list the no-show charge differently in two places. The FAQ says no-shows are charged the full diagnostic fee, and the fee schedule says members are charged $0. I'll pass that question to a team member if you'd like it confirmed for your situation.",Cancelling or rescheduling more than 24 hours before the window is free; inside 24 hours there is a $49 late-cancellation fee.,,,,9cda25e074961fd1
+One note: our documents list the no-show charge differently in two places. The FAQ says no-shows are charged the full diagnostic fee, and the fee schedule says members are charged $0. I'll pass that question to a team member if you'd like it confirmed for your situation.",Cancelling or rescheduling more than 24 hours before the window is free; inside 24 hours there is a $49 late-cancellation fee.,,,yes,9cda25e074961fd1
 stale_trap-0|keyword,Is the diagnostic fee still $79?,"No, the diagnostic fee is $89, not $79. A few details that may help:
 
 - The $89 is credited toward the repair if you approve the repair during the same visit.
 - It's waived for Comfort Club members.
 - If the failure is covered under warranty, there is no diagnostic fee. If the technician finds it isn't covered, the $89 applies.
 
-If you have a specific situation in mind, I can pass it to a team member.","No, the diagnostic visit is $89, credited toward a repair approved on the same visit, and waived for Comfort Club members.",,,,7fcffc0891d8ba4a
+If you have a specific situation in mind, I can pass it to a team member.","No, the diagnostic visit is $89, credited toward a repair approved on the same visit, and waived for Comfort Club members.",,,yes,7fcffc0891d8ba4a
 answerable-6|combined,How much does it cost to clear a clogged drain?,"The cost depends on which kind of drain you mean:
 
 - **Household plumbing drain** (sinks, tubs, etc.): $149 to $290, depending on access.
@@ -123,7 +123,7 @@ answerable-6|combined,How much does it cost to clear a clogged drain?,"The cost 
 
 If you're seeing water around your indoor unit, turn the system off to prevent overflow damage and book a visit. Please don't pour bleach into the line unless a technician tells you to.
 
-If you tell me which drain you're dealing with, I can point you in the right direction, or I can pass your question to a team member for a more specific quote.",Drain clearing typically costs $149 to $290 depending on access; the technician confirms the final price on site.,,,,7ac090394031834d
+If you tell me which drain you're dealing with, I can point you in the right direction, or I can pass your question to a team member for a more specific quote.",Drain clearing typically costs $149 to $290 depending on access; the technician confirms the final price on site.,,,no,7ac090394031834d
 case-T9e29febc|keyword,"Two things. My AC is blowing warm and I want to get someone out, and I want to know if joining the maintenance plan would save me money on this.","Sorry your AC is blowing warm air. Here are a few quick checks from our guide that may help before the visit:
 
 1. Make sure the thermostat is set to COOL and the set point is below the current room temperature.
@@ -144,7 +144,7 @@ So joining would waive the $89 diagnostic fee and take 15% off any repair on thi
 
 Comfort Club Plus ($269 per year) adds water heater and plumbing benefits, which wouldn't apply to an AC issue.
 
-I don't have information on scheduling availability or whether a new membership applies to a service call you book today. I'll pass those questions to a team member so they can confirm the details and get your visit set up. Would you like me to do that?","Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't say whether those benefits apply to a visit booked on the day you join, so a team member confirms that when setting up the membership.",,,,942986f33d22a59e
+I don't have information on scheduling availability or whether a new membership applies to a service call you book today. I'll pass those questions to a team member so they can confirm the details and get your visit set up. Would you like me to do that?","Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't say whether those benefits apply to a visit booked on the day you join, so a team member confirms that when setting up the membership.",,,yes,942986f33d22a59e
 case-T738adaab|keyword,I got an email saying my membership is renewing. When does it actually charge? And I can still cancel before then?,"You can still cancel before it renews. Our plan terms say members may cancel auto-renewal at any time before the renewal date.
 
 The documents I have don't say what date or time the renewal charge actually goes through, so I can't tell you when it will charge. I'll pass that question to a team member, who can confirm your exact renewal date. Because cancellation has to happen before that date, you may want to check the date in your renewal email as well.
@@ -154,14 +154,14 @@ A few details that may matter if you're deciding whether to cancel:
 - **Annual plans:** Once a tune-up has been performed in the current term, the plan is non-refundable. If no tune-up has been done, a prorated refund is available within the first 60 days.
 - **Monthly plans:** If you cancel before the 12-month minimum, you're charged the remaining balance of the minimum term.
 
-If you tell me whether you're on an annual or monthly plan, I can explain which of these applies to you.",Yes. Members can cancel auto-renewal at any time before the renewal date. An annual plan bills once on the enrollment date and renews on the same date each year.,,,,3caaa104d83521e8
+If you tell me whether you're on an annual or monthly plan, I can explain which of these applies to you.",Yes. Members can cancel auto-renewal at any time before the renewal date. An annual plan bills once on the enrollment date and renews on the same date each year.,,,no,3caaa104d83521e8
 case-Tf7d382d9|keyword,"Did you guys register my new unit with the, uh, manufacturer? I never got anything.","Yes, according to our warranty policy, Meridian registers every installed unit with the manufacturer within 30 days of installation. Registration matters because it's required for the full manufacturer parts warranty term. Unregistered units typically get only 5 years.
 
-The documents don't say whether we send customers a confirmation after registering, so I can't tell you why you haven't received anything. I also can't see your account or confirm the registration for your specific unit. I'll pass your question to a team member so they can check your registration and get you confirmation. If you can share your service address and approximate install date, that will help them look it up.",Meridian registers every installed unit with the manufacturer within 30 days of installation; registration is required for the full parts warranty term.,,,,3391bef45022aebe
+The documents don't say whether we send customers a confirmation after registering, so I can't tell you why you haven't received anything. I also can't see your account or confirm the registration for your specific unit. I'll pass your question to a team member so they can check your registration and get you confirmation. If you can share your service address and approximate install date, that will help them look it up.",Meridian registers every installed unit with the manufacturer within 30 days of installation; registration is required for the full parts warranty term.,,,yes,3391bef45022aebe
 answerable-1|combined,Do you service Manor?,"Yes. Manor (ZIP 78653) was newly added to our residential service area in April 2026, so we do service it.
 
-If you'd like to schedule a visit, our diagnostic fee is $89. It is credited toward the repair if you approve the repair during the same visit. Our phone support team can help you book.",Yes. Manor (78653) was added to the service area in April 2026.,,,,34b468238e34a7cb
-stale_trap-7|keyword,Can I pay the technician with a check?,"The documents I have don't say which payment methods the technician can accept, including checks. I'll pass your question to a team member, who can confirm how you can pay.",No. Technicians do not accept checks or cash; payment is by card or ACH through a secure link.,,,,9997689f3b3c13c3
+If you'd like to schedule a visit, our diagnostic fee is $89. It is credited toward the repair if you approve the repair during the same visit. Our phone support team can help you book.",Yes. Manor (78653) was added to the service area in April 2026.,,,yes,34b468238e34a7cb
+stale_trap-7|keyword,Can I pay the technician with a check?,"The documents I have don't say which payment methods the technician can accept, including checks. I'll pass your question to a team member, who can confirm how you can pay.",No. Technicians do not accept checks or cash; payment is by card or ACH through a secure link.,,,no,9997689f3b3c13c3
 case-Tc36da844|combined,My Trane compressor died and the system is only three years old. Is that under warranty? How much is labor on a compressor?,"Here is what the documents say.
 
 **Is it under warranty?**
@@ -175,14 +175,14 @@ The manufacturer warranty covers the part only. Labor is billable once the Merid
 **Labor cost**
 If labor is billable, compressor replacement labor is typically **$600 to $900**, before any member discount. The technician quotes the exact price on site before work begins. Permit, disposal, and after-hours fees are itemized separately when they apply. There is also an $89 diagnostic visit, which is credited toward the repair.
 
-I can pass your question to a team member to confirm your registration status and whether you were a Comfort Club member at installation. Would you like me to do that?","If the unit is registered, the manufacturer covers the compressor part for 10 years. The standard 2-year Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable unless the customer was a Comfort Club member when it was installed (members get a 5-year labor warranty, which staff confirm); compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",,,,34ba294bcb986f72
+I can pass your question to a team member to confirm your registration status and whether you were a Comfort Club member at installation. Would you like me to do that?","If the unit is registered, the manufacturer covers the compressor part for 10 years. The standard 2-year Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable unless the customer was a Comfort Club member when it was installed (members get a 5-year labor warranty, which staff confirm); compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",,,yes,34ba294bcb986f72
 answerable-9|keyword,Is there a fee to cancel my appointment?,"It depends on when you cancel:
 
 - **More than 24 hours before your appointment window:** No fee. Canceling or rescheduling is free.
 - **Inside 24 hours:** A $49 late-cancellation fee applies.
 - **No-show (nobody home at the address):** You'll be charged the full diagnostic fee.
 
-If you'd like to cancel or reschedule, let us know as early as you can to avoid the fee.",Cancelling or rescheduling more than 24 hours before the window is free; inside 24 hours there is a $49 late-cancellation fee.,,,,ccf20aa8d81f287f
+If you'd like to cancel or reschedule, let us know as early as you can to avoid the fee.",Cancelling or rescheduling more than 24 hours before the window is free; inside 24 hours there is a $49 late-cancellation fee.,,,yes,ccf20aa8d81f287f
 case-Tbaf67f84|keyword,What does the Comfort Club membership actually include? And how much is it? Does it cover plumbing?,"Here is what the documents say about the Comfort Club.
 
 **Price**
@@ -205,10 +205,10 @@ case-Tbaf67f84|keyword,What does the Comfort Club membership actually include? A
 **Does it cover plumbing?**
 Not the plumbing repair discount. Comfort Club members get 0% off plumbing repairs. That 15% discount is only available with Comfort Club Plus. The Comfort Club is described as a maintenance membership for residential HVAC systems.
 
-I don't have a more detailed description of the plan beyond these fee schedule items. If you'd like more detail, I can pass your question to a team member.","The Comfort Club costs $189 a year per system or $16.99 a month (12-month minimum), $99 per additional system. It includes two seasonal tune-ups a year, priority scheduling, the $89 diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is $269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off plumbing repairs.",,,,87c00c07e0f34951
+I don't have a more detailed description of the plan beyond these fee schedule items. If you'd like more detail, I can pass your question to a team member.","The Comfort Club costs $189 a year per system or $16.99 a month (12-month minimum), $99 per additional system. It includes two seasonal tune-ups a year, priority scheduling, the $89 diagnostic fee waived, 15% off repairs and no after-hours dispatch fee. Comfort Club Plus is $269 a year and adds a water heater flush and inspection, a plumbing inspection and 15% off plumbing repairs.",,,no,87c00c07e0f34951
 stale_trap-6|whole_kb,Does my membership move with me to my new house?,"No, a Comfort Club membership doesn't move with you to a new house. Memberships are tied to the service address. They do transfer to a new homeowner at the same address, so the buyer of your current home can keep the membership, but it can't be moved to a different address.
 
-If you'd like coverage at your new home, I can pass your question to a team member to ask about options for setting that up.",No. A membership stays with the service address and transfers to the next homeowner there; it does not move to a new address.,,,,9c80aee252f1a1c9
+If you'd like coverage at your new home, I can pass your question to a team member to ask about options for setting that up.",No. A membership stays with the service address and transfers to the next homeowner there; it does not move to a new address.,,,yes,9c80aee252f1a1c9
 case-Tc36da844|keyword,My Trane compressor died and the system is only three years old. Is that under warranty? How much is labor on a compressor?,"**Warranty coverage:** Trane offers a 10-year manufacturer warranty on compressors, so a compressor failure at three years should be covered for the part, provided the unit was registered. Meridian registers every unit we install within 30 days of installation. If the unit wasn't registered, it typically gets only 5 years of coverage, which would still include year three.
 
 **Labor:** The manufacturer warranty covers the part only. Labor to replace a compressor is typically **$600 to $900**. The technician quotes the exact price on site before any work begins. Permit, disposal, and after-hours fees are itemized separately when they apply.
@@ -217,20 +217,20 @@ case-Tc36da844|keyword,My Trane compressor died and the system is only three yea
 - Meridian gives a 2-year labor warranty on full system installations. At three years, that has likely expired.
 - Comfort Club members at the time of installation get a 5-year labor warranty. If you were a member then, labor may still be covered.
 
-I don't have your account or installation records, so I can't confirm whether your system was registered or whether you had Comfort Club membership at installation. I can pass your question to a team member to check those details. A diagnostic visit costs $89, and that fee is credited toward the repair.","If the unit is registered, the manufacturer covers the compressor part for 10 years. The standard 2-year Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable unless the customer was a Comfort Club member when it was installed (members get a 5-year labor warranty, which staff confirm); compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",,,,8ace5e4335ab9c5d
+I don't have your account or installation records, so I can't confirm whether your system was registered or whether you had Comfort Club membership at installation. I can pass your question to a team member to check those details. A diagnostic visit costs $89, and that fee is credited toward the repair.","If the unit is registered, the manufacturer covers the compressor part for 10 years. The standard 2-year Meridian installation labor warranty has ended for a 3-year-old system, so labor is billable unless the customer was a Comfort Club member when it was installed (members get a 5-year labor warranty, which staff confirm); compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",,,yes,8ace5e4335ab9c5d
 unanswerable-4|whole_kb,What is my technician's license number?,"I don't have information about technician license numbers in the documents available to me, so I'll pass your question to a team member who can help. They'll follow up with you directly.
 
-For reference, you'll get a text the morning of your appointment with your technician's name and photo, which may help you identify who is coming to your home.",(cannot be answered: should hand off),,,,221191d5e850328f
+For reference, you'll get a text the morning of your appointment with your technician's name and photo, which may help you identify who is coming to your home.",(cannot be answered: should hand off),,,yes,221191d5e850328f
 answerable-1|keyword,Do you service Manor?,"Yes, we do. Manor (ZIP 78653) was newly added to our residential service area in April 2026.
 
-If you'd like to schedule a visit, I can help with that. Just let me know what's going on with your system.",Yes. Manor (78653) was added to the service area in April 2026.,,,,af83afc86c1be18e
+If you'd like to schedule a visit, I can help with that. Just let me know what's going on with your system.",Yes. Manor (78653) was added to the service area in April 2026.,,,yes,af83afc86c1be18e
 stale_trap-1|keyword,"I heard cancellations need 48 hours notice, is that right?","That's not quite right. According to our policy, the notice requirement is 24 hours, not 48:
 
 - **More than 24 hours before your appointment window:** cancelling or rescheduling is free.
 - **Inside 24 hours:** a $49 late-cancellation fee applies.
 - **No-shows** (nobody home at the address) are charged the full diagnostic fee.
 
-If you need to change an appointment, let us know as early as you can.",No. Cancelling more than 24 hours before the window is free; inside 24 hours there is a $49 fee.,,,,84d689c029c3f88f
+If you need to change an appointment, let us know as early as you can.",No. Cancelling more than 24 hours before the window is free; inside 24 hours there is a $49 fee.,,,yes,84d689c029c3f88f
 case-Tbc5df324|keyword,My system is 18 years old and I'm thinking about replacing it. What would that cost?,"I don't have pricing for system replacements in the information I have, so I can't give you a cost estimate. I'll pass your question to a team member who can help with a quote.
 
 Here is what I can tell you from our documents:
@@ -239,7 +239,7 @@ Here is what I can tell you from our documents:
 - **Installation warranty:** New full system installations come with a 2-year Meridian labor warranty. Comfort Club members at the time of installation receive an extended 5-year labor warranty.
 - **Parts warranty:** Manufacturer parts warranties vary by brand. For the brands we list (Trane, Carrier, Lennox, Goodman, Rheem, and American Standard), the compressor and parts coverage is 10 years when the unit is registered. Meridian registers every installed unit with the manufacturer within 30 days of installation.
 
-A team member will follow up with you about pricing for your replacement.","Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, depending on tonnage, efficiency rating, ductwork condition and brand.",,,,c44b0c235bfa5ad8
+A team member will follow up with you about pricing for your replacement.","Replacements start with a free in-home estimate from a Comfort Advisor; a full residential split system typically costs $8,000 to $16,000 installed, depending on tonnage, efficiency rating, ductwork condition and brand.",,,no,c44b0c235bfa5ad8
 unanswerable-2|whole_kb,What's the exact price of a new Trane XR16 heat pump?,"I don't have a price for a specific model like the Trane XR16 heat pump in our documents, so I can't give you an exact figure. I'd rather not guess.
 
 Here is what I can tell you:
@@ -248,9 +248,9 @@ Here is what I can tell you:
 - Financing is available on all system replacements.
 - Comfort Club members receive $500 off a full system replacement.
 
-I'll pass your question about the XR16 to a team member who can confirm model availability and pricing. If you'd like, I can also help you set up the free in-home estimate.",(cannot be answered: should hand off),,,,cceb3a0689674c14
+I'll pass your question about the XR16 to a team member who can confirm model availability and pricing. If you'd like, I can also help you set up the free in-home estimate.",(cannot be answered: should hand off),,,yes,cceb3a0689674c14
 unanswerable-2|combined,What's the exact price of a new Trane XR16 heat pump?,"I don't have an exact price for a Trane XR16 heat pump in the information available to me. The documents only give a general range for a full residential split system installed: **$8,000 – $16,000**. The final price depends on tonnage, efficiency rating (SEER2), ductwork condition, and brand.
 
 For an exact quote, you can schedule a free in-home estimate with a Comfort Advisor (available Monday–Saturday). Financing is available, and Comfort Club members receive $500 off.
 
-I can also pass your question to a team member if you'd like someone to follow up on the XR16 specifically.",(cannot be answered: should hand off),,,,9761cc0d59a690cc
+I can also pass your question to a team member if you'd like someone to follow up on the XR16 specifically.",(cannot be answered: should hand off),,,yes,9761cc0d59a690cc
