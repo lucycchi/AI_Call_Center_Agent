@@ -156,6 +156,8 @@
     main.classList.toggle("staff-open", !panel.hidden);
     lastShown = "";
     refresh();
+    // On a narrow screen the panel sits below the conversation: bring it into view.
+    if (!panel.hidden && window.innerWidth < 820) panel.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   document.getElementById("staff-login").addEventListener("submit", function (event) {
