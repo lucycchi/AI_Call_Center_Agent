@@ -26,6 +26,10 @@
   .bubble { max-width: 85%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .bubble.agent { background: var(--agent); align-self: flex-start; }
   .bubble.caller { background: var(--caller); color: var(--brand-ink); align-self: flex-end; }
+  .bubble.long { position: relative; max-height: 9.5em; overflow: hidden; padding-bottom: 2.4em; }
+  .show-all { position: absolute; left: 0; right: 0; bottom: 0; border: 0; padding: 6px 12px; text-align: left;
+              font: inherit; font-size: .85rem; font-weight: 600; color: var(--brand-ink); cursor: pointer;
+              background: linear-gradient(transparent, var(--caller) 40%); }
   .proof { align-self: flex-start; font-size: .8rem; color: var(--proof); border: 1px solid var(--proof);
            border-radius: 999px; padding: 2px 10px; }
   .step { font-size: .85rem; color: var(--muted); }
