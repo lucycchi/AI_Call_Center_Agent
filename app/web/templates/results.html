@@ -35,7 +35,8 @@
   a.try { color: var(--brand); font-weight: 600; }
   .question, .expected { margin: 2px 0 0; font-size: .9rem; }
   .expected { color: var(--muted); }
-  .callout { border-left: 4px solid var(--brand); padding-left: 10px; }
+  .callout { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .callout:last-child { padding-bottom: 0; border-bottom: 0; }
   .callout strong { display: block; }
   @media (max-width: 819px) {  /* touch targets at least 44px tall on phones */
     .tabs a, a.try { display: inline-flex; align-items: center; min-height: 44px; }
