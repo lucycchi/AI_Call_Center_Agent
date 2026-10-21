@@ -3,7 +3,7 @@
 # rollback runbook), never in this file. Deploy with scripts/deploy.sh.
 # The app name below is a placeholder: change it to the name chosen at `scripts/fly apps create`.
 
-app = "meridian-agent"
+app = "ai-call-center-agent-bvgy9q"
 primary_region = "dfw"  # Dallas, nearest to Austin
 
 [build]
