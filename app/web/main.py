@@ -239,8 +239,25 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
         if row["active_flow"] == "scheduling":
             label = "Booking in progress" + (f": {STEPS[step]}" if step in STEPS else "")
         return {"conversation_id": conversation_id, "status": row["status"], "active_flow": row["active_flow"],
-                "step": step, "step_label": label,
-                "messages": [{"role": m["role"], "text": m["content"]} for m in store.history(conversation_id, 200)]}
+                "step": step, "step_label": label, "messages": saved_messages(request.state.visitor_id, conversation_id)}
+
+    def saved_messages(visitor_id: str, conversation_id: str) -> list[dict]:
+        """The last 200 messages; each reply also comes with the sentences it was shown as and its proof, from the
+        saved reply end of the caller message before it, so a reload looks as the reply did."""
+        rows = store.read("select role, text_masked, request_id from messages where conversation_id = ? and "
+                          "text_masked != '' order by message_id desc limit 200", (conversation_id,))
+        messages, request_id = [], None
+        for m in reversed(rows):
+            message = {"role": m["role"], "text": m["text_masked"]}
+            if m["role"] == "caller":
+                request_id = m["request_id"]
+            else:
+                end = store.reply_end(visitor_id, request_id) if request_id else None
+                message["sentences"] = end["sentences"] if end else [m["text_masked"]]
+                message["proof"] = end["done"].get("proof") if end else None
+                request_id = None
+            messages.append(message)
+        return messages
 
     @app.get("/api/stream/{message_id}")
     async def sentence_stream(message_id: str, request: Request):

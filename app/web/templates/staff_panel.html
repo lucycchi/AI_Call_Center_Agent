@@ -15,6 +15,7 @@
     .staff-panel .note { margin: 0 0 8px; color: var(--muted); font-size: .8rem; }
     .numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin: 0; }
     .numbers div { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+    .numbers div.wide { grid-column: span 2; }  /* its label wraps in a single tile */
     .numbers dt { color: var(--muted); font-size: .75rem; }
     .numbers dd { margin: 0; font-weight: 600; }
     .staff-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }

@@ -17,9 +17,12 @@
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
   }
 
+  var resumed = false;  // this tab already had a conversation, so a reload has history to show
+
   function conversationId() {
     var id = null;
     try { id = sessionStorage.getItem("meridian-conversation"); } catch (e) { /* storage blocked */ }
+    resumed = Boolean(id);
     if (!id) {
       id = newId();
       try { sessionStorage.setItem("meridian-conversation", id); } catch (e) { /* storage blocked */ }
@@ -28,11 +31,21 @@
   }
 
   var conversation = conversationId();
+  var LONG = 600;
 
   function add(kind, text) {
     var item = document.createElement("div");
     item.className = kind === "proof" || kind === "step" ? kind : "bubble " + kind;
     item.textContent = text;
+    if (kind === "caller" && text.length > LONG) {  // a very long message is clamped, with a way to see it all
+      item.classList.add("long");
+      var more = document.createElement("button");
+      more.type = "button";
+      more.className = "show-all";
+      more.textContent = "Show all";
+      more.addEventListener("click", function () { item.classList.remove("long"); more.remove(); });
+      item.appendChild(more);
+    }
     log.appendChild(item);
     log.scrollTop = log.scrollHeight;  // the log scrolls inside its box, so the message box stays in view
     return item;
@@ -120,13 +133,18 @@
   })();
   // End of try these.
 
-  // A reload of this tab shows its conversation so far and any booking step in progress.
-  fetch("/api/conversation/" + encodeURIComponent(conversation), { credentials: "same-origin" })
+  // A reload of this tab shows its conversation so far, each reply as its sentences with its proof, and any booking
+  // step in progress. A new tab has nothing to show, so it does not ask.
+  if (resumed) fetch("/api/conversation/" + encodeURIComponent(conversation), { credentials: "same-origin" })
     .then(function (response) { return response.ok ? response.json() : null; })
     .then(function (saved) {
       if (!saved) return;
       if (saved.messages.length) started();
-      saved.messages.forEach(function (message) { add(message.role, message.text); });
+      saved.messages.forEach(function (message) {
+        if (message.role !== "agent" || !message.sentences) { add(message.role, message.text); return; }
+        message.sentences.forEach(function (sentence) { add("agent", sentence); });
+        if (message.proof) add("proof", message.proof);
+      });
       if (saved.step_label) add("step", saved.step_label);
     })
     .catch(function () { /* a new conversation has no history */ });
