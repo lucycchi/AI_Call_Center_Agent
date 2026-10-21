@@ -180,6 +180,29 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
         quietly(store.save_reply_end, reply.conversation_id, message_id, list(reply.sentences), payload)
         reply.done = payload  # last: the stream reads it before the sentences
 
+    overflow = {"day": None, "ticket": None}
+    overflow_lock = threading.Lock()
+
+    def overflow_ticket(text: str) -> int | None:
+        """The day's merged emergency ticket for reports past the site-wide ceiling, with one alert; each report is
+        added to it. Never raises: the caller already has the safety advice."""
+        try:
+            with overflow_lock:
+                today = clock().date()
+                if overflow["day"] != today:
+                    overflow["day"] = today
+                    overflow["ticket"] = store.create_ticket(None, "several callers", "emergency reports past the daily "
+                                                             "ceiling; see the constraints", "fixed safety advice given",
+                                                             "", "calm", "emergency")
+                    if alerts:
+                        alerts.send("safety overflow", "emergency reports passed the daily ceiling; merged into "
+                                                       f"Ticket #{overflow['ticket']}")
+                store.add_reason(overflow["ticket"], "", text[:200])
+                return overflow["ticket"]
+        except Exception as error:
+            log.error("overflow emergency ticket not saved: %s", error)
+            return None
+
     def settle(reply: Reply, sentence: str | list[str], done: DoneEvent) -> None:
         """A reply worked out here without the agent (a blank or refused message): kept in memory only, no rows."""
         reply.close()
@@ -329,8 +352,13 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
             if not danger:
                 settle(reply, LIMIT_MESSAGE, DoneEvent(route="limit", ticket=None, outcome="limit"))
                 return accepted
-            if not limits.allow_safety(visitor_id, address):  # the advice, from memory: no ticket, no rows
+            allowed = limits.allow_safety(visitor_id, address)
+            if allowed == "advice":  # this visitor or network used its allowance: the advice, no ticket, no rows
                 settle(reply, fixed_reply(danger, text), DoneEvent(route="safety", ticket=None, outcome="safety"))
+                return accepted
+            if allowed == "overflow":  # the site-wide ceiling: the advice, and the report joins one merged ticket
+                settle(reply, fixed_reply(danger, text), DoneEvent(route="safety", ticket=overflow_ticket(text),
+                                                                   outcome="safety"))
                 return accepted
         try:
             store.open_conversation(visitor_id, body.conversation_id)

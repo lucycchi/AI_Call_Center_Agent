@@ -21,34 +21,49 @@ LIMIT_MESSAGE = ("You've sent a lot of messages in a short time, so I can't repl
 TEN_MINUTES, ONE_MINUTE = timedelta(minutes=10), timedelta(minutes=1)
 
 
+def network_block(address: str) -> str:
+    """The /24 of an IPv4 address or the /64 of an IPv6 one, so rotating addresses in one network counts once."""
+    import ipaddress
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return address
+    return str(ipaddress.ip_network(f"{ip}/{24 if ip.version == 4 else 64}", strict=False))
+
+
 class Limits:
     def __init__(self, clock: Callable[[], datetime] = real_now, per_10_min: int = SETTINGS.visitor_messages_per_10_min,
                  per_day: int = SETTINGS.visitor_messages_per_day,
-                 site_per_minute: int = SETTINGS.site_messages_per_minute, safety_per_day: int = 3):
+                 site_per_minute: int = SETTINGS.site_messages_per_minute, safety_per_day: int = 3,
+                 safety_site_per_day: int = 100):
         self.clock, self.per_10_min, self.per_day, self.site_per_minute = clock, per_10_min, per_day, site_per_minute
         # Over the limits, an emergency still reaches the agent (safety first), but only a few a day per visitor and
-        # per address open a ticket, so an over-limit visitor cannot flood staff with priority tickets. There is no
-        # site-wide stop: a flood could use one up and leave a real caller without a ticket (security review).
-        self.safety_per_day = safety_per_day
-        self._safety_day, self._safety = None, {}
+        # per network block open their own ticket, so an over-limit visitor cannot flood staff. Past a high
+        # site-wide ceiling, reports are merged into one overflow ticket rather than dropped (security reviews).
+        self.safety_per_day, self.safety_site_per_day = safety_per_day, safety_site_per_day
+        self._safety_day, self._safety, self._safety_site = None, {}, 0
         self._lock = threading.Lock()
         self._recent: dict[str, deque] = {}  # key -> message times in the last 10 minutes
         self._day, self._today = None, {}  # key -> messages today
         self._site: deque = deque()
 
-    def allow_safety(self, visitor_id: str, address: str | None) -> bool:
-        """An over-limit emergency may reach the agent and open a ticket: a few a day per visitor and per address.
-        Counts it when allowed."""
+    def allow_safety(self, visitor_id: str, address: str | None) -> str:
+        """For an over-limit emergency: "ticket" (it reaches the agent and opens its own ticket), "advice" (this
+        visitor or network block used its allowance today: the advice only), or "overflow" (the site-wide ceiling is
+        reached: the advice, and the report joins the day's overflow ticket). Counts it when not "advice"."""
         now = self.clock()
-        keys = [f"visitor:{visitor_id}"] + ([f"address:{address}"] if address else [])
+        keys = [f"visitor:{visitor_id}"] + ([f"block:{network_block(address)}"] if address else [])
         with self._lock:
             if self._safety_day != now.date():
-                self._safety_day, self._safety = now.date(), {}
+                self._safety_day, self._safety, self._safety_site = now.date(), {}, 0
             if any(self._safety.get(k, 0) >= self.safety_per_day for k in keys):
-                return False
+                return "advice"
             for key in keys:
                 self._safety[key] = self._safety.get(key, 0) + 1
-            return True
+            if self._safety_site >= self.safety_site_per_day:
+                return "overflow"
+            self._safety_site += 1
+            return "ticket"
 
     def allow(self, visitor_id: str, address: str | None) -> str | None:
         """Count the message and return None, or return which limit it hit (and do not count it)."""
