@@ -6,6 +6,11 @@
   var form = document.getElementById("send");
   var box = document.getElementById("message");
   var sendButton = form.querySelector("button[type=submit]");
+  var suggestions = document.querySelector(".suggestions");
+
+  function started() {
+    if (suggestions) suggestions.hidden = true;  // the starter questions only help before the first message
+  }
 
   function newId() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, "");
@@ -59,6 +64,7 @@
 
   function send(text) {
     var messageId = newId();
+    started();
     add("caller", text);
     busy(true);
     fetch("/api/message", {
@@ -119,6 +125,7 @@
     .then(function (response) { return response.ok ? response.json() : null; })
     .then(function (saved) {
       if (!saved) return;
+      if (saved.messages.length) started();
       saved.messages.forEach(function (message) { add(message.role, message.text); });
       if (saved.step_label) add("step", saved.step_label);
     })
