@@ -1,6 +1,6 @@
 {
   "name": "AI Call Center Agent",
-  "stage": "gate",
+  "stage": "final-checks",
   "test_command": "python -m pytest",
   "approvals": [
     {
