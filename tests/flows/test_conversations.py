@@ -1584,3 +1584,21 @@ def test_a_writer_sentence_that_reads_the_street_on_file_is_withheld(chat):
     chat["writer_says"](lambda facts: ["Your address on file is 4412 Oak Hollow Drive."] + facts)
     reply, _ = chat["say"]("I'm Linda Foster, MHC-10001, what's my balance?", conversation="c2")
     assert "Oak Hollow" not in reply and "no open invoices" in reply
+
+
+@pytest.mark.parametrize("text", ["What day is it today?", "what time is it", "What's today's date?", "Sorry, what's the date today?",
+                                  "what day of the week is it?", "Is today a weekday?", "is it Friday today?"])
+def test_a_date_or_time_question_gets_the_fixed_demo_date_not_a_ticket(chat, text):
+    reply, done = chat["say"](text)
+    assert reply == "For this demo, today is Friday 16 October 2026, and the time is 9:00 a.m. in Austin."
+    assert done.outcome == "answered" and not chat["store"].tickets()
+
+
+def test_a_date_question_with_another_request_is_routed_as_usual(chat):
+    reply, _ = chat["say"]("What day is it today? And how much is a tune-up?")
+    assert not reply.startswith("For this demo")
+
+
+def test_the_writer_is_told_the_date_is_the_demo_date():
+    from app.replies.writer import RULES
+    assert "Friday 16 October 2026" in RULES and "For this demo, today is" in RULES

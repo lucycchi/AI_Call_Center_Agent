@@ -55,6 +55,12 @@ FILLER = re.compile(r"\b(can you hear me|hold on|hang on|one sec(ond)?|(you|it|t
 FILLER_WORDS = re.compile(r"\b(sorry|oh|um|uh|ok|okay|yeah|hi|hello|so|just|please|there|again|still|real quick|wait|a bit|"
                           r"(for )?a (sec|second|moment|minute)|could you|can you|would you|my|the|is|me|that|you|it)\b", re.I)
 TAKE_YOUR_TIME = "No problem, take your time."
+# "What day is it?" alone is answered from the fixed "now", which the caller is told is the demo's date.
+DATE_QUESTION = re.compile(r"\bwhat(?:'?s| is)? (?:day(?: of the week)?|(?:today'?s |the )?date|(?:the )?time)(?: is it)?"
+                           r"(?: (?:today|now|right now))?\b|\bis (?:it|today) (?:a )?(?:weekday|weekend|monday|tuesday|"
+                           r"wednesday|thursday|friday|saturday|sunday)\b", re.I)
+DATE_WORDS = re.compile(r"\b(sorry|um|uh|ok|okay|hi|hello|so|just|quick question|by the way|can you tell me|do you know|"
+                        r"today|now|please|again)\b", re.I)
 JOIN_CONSENT = re.compile(r"\b(add it|add that|add me|sign me up|let'?s do it|enrol+ me|go ahead and (add|join))\b", re.I)
 PLAN_WORDS = re.compile(r"\b(comfort club|maintenance plan|membership|the plan)\b", re.I)
 WARRANTY = re.compile(r"\b(warranty|warranties|covered|coverage|claim)\b", re.I)
@@ -316,6 +322,11 @@ class AgentPipeline:
                     yield emit(sentence)
             else:
                 yield emit(TAKE_YOUR_TIME)
+            yield finish(state.active_flow or "none", "answered", {"safety": "clear"}, [])
+            return
+        if _only(turn.text, DATE_QUESTION, DATE_WORDS):
+            hour = f"{self.now:%I:%M}".lstrip("0") + (" a.m." if self.now.hour < 12 else " p.m.")
+            yield emit(f"For this demo, today is {self.now:%A} {self.now.day} {self.now:%B %Y}, and the time is {hour} in Austin.")
             yield finish(state.active_flow or "none", "answered", {"safety": "clear"}, [])
             return
         if not state.active_flow and not state.pending:
