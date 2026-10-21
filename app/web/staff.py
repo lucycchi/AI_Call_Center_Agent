@@ -86,18 +86,27 @@ class SignInLimit:
 
     def _recent(self, key: str, now: datetime) -> deque:
         times = self._wrong.setdefault(key, deque())
-        while times and times[0] <= now - ATTEMPT_WINDOW:
+        while times and times[0][0] <= now - ATTEMPT_WINDOW:
             times.popleft()
         return times
 
-    def locked(self, key: str) -> bool:
+    def reserve(self, key: str):
+        """Count an attempt before the slow password check, so parallel guesses cannot all pass; None when locked."""
         with self._lock:
-            return len(self._recent(key, self.clock())) >= WRONG_ATTEMPTS_ALLOWED
+            now, times = self.clock(), None
+            times = self._recent(key, now)
+            if len(times) >= WRONG_ATTEMPTS_ALLOWED:
+                return None
+            entry = (now, secrets.token_hex(4))
+            times.append(entry)
+            return entry
 
-    def wrong(self, key: str) -> None:
+    def release(self, key: str, entry) -> None:
+        """A correct password gives its attempt back."""
         with self._lock:
-            now = self.clock()
-            self._recent(key, now).append(now)
+            times = self._wrong.get(key)
+            if times and entry in times:
+                times.remove(entry)
 
 
 # -- shaping what the panel shows ----------------------------------------------------------------------------------
@@ -182,12 +191,23 @@ class FlagIn(BaseModel):
 
 def staff_routes(store, cookie_secret: str, password_hash: str | None, clock, trust_fly_header: bool = False) -> APIRouter:
     router = APIRouter()
-    signer = URLSafeSerializer(cookie_secret, salt="meridian-staff")
-    token_key = hashlib.sha256(b"meridian-staff-form:" + cookie_secret.encode("utf-8")).digest()
     limit = SignInLimit(clock)
     if password_hash and not password_hash.startswith("pbkdf2_sha256$"):
         log.warning("%s is not in the pbkdf2_sha256 format, so staff sign-in is off", HASH_VARIABLE)
         password_hash = None
+    # Sessions are bound to the current password: changing it ends every session.
+    bound = hashlib.sha256((password_hash or "").encode("utf-8")).hexdigest()[:16]
+    signer = URLSafeSerializer(cookie_secret, salt=f"meridian-staff:{bound}")
+    token_key = hashlib.sha256(b"meridian-staff-form:" + bound.encode() + cookie_secret.encode("utf-8")).digest()
+
+    def sid_key(sid: str) -> str:
+        # Letters only: the event log masks digit runs that look like phone numbers.
+        return hashlib.sha256(sid.encode()).hexdigest().translate(str.maketrans("0123456789", "ghijklmnop"))
+
+    def ended(sid: str) -> bool:
+        """A session logged out on the server, kept in the events table so it stays ended after a restart."""
+        return bool(store.read("select 1 from events where kind = 'staff session ended' and detail = ?",
+                               (sid_key(sid),)))
 
     def session_id(request: Request) -> str | None:
         """The id of a valid, unexpired staff session, or None."""
@@ -199,7 +219,7 @@ def staff_routes(store, cookie_secret: str, password_hash: str | None, clock, tr
         now = clock()
         if not isinstance(data.get("sid"), str) or not (now - SESSION < started <= now + timedelta(minutes=5)):
             return None
-        return data["sid"]
+        return None if ended(data["sid"]) else data["sid"]
 
     def form_token(sid: str) -> str:
         return hmac.new(token_key, sid.encode("utf-8"), hashlib.sha256).hexdigest()
@@ -218,14 +238,16 @@ def staff_routes(store, cookie_secret: str, password_hash: str | None, clock, tr
     @router.post("/api/staff/login")
     def staff_login(body: LoginIn, request: Request, response: Response):
         key = address(request)
-        if limit.locked(key):
+        attempt = limit.reserve(key)
+        if attempt is None:
             raise HTTPException(429, "too many sign-in attempts; try again in 15 minutes")
         if not password_hash:
+            limit.release(key, attempt)
             raise HTTPException(503, "staff sign-in is not set up")
         if not password_matches(body.password, password_hash):
-            limit.wrong(key)
             log.info("wrong staff password from one address")
             raise HTTPException(401, "wrong password")
+        limit.release(key, attempt)
         sid = secrets.token_urlsafe(24)
         response.set_cookie(STAFF_COOKIE, signer.dumps({"sid": sid, "started": clock().isoformat()}),
                             max_age=int(SESSION.total_seconds()), httponly=True, secure=True, samesite="strict",
@@ -234,7 +256,10 @@ def staff_routes(store, cookie_secret: str, password_hash: str | None, clock, tr
         return {"staff": True, "form_token": form_token(sid)}
 
     @router.post("/api/staff/logout")
-    def staff_logout(response: Response):
+    def staff_logout(request: Request, response: Response):
+        sid = session_id(request)
+        if sid is not None:  # ended on the server too, so a copied cookie stops working
+            store.log_event("staff session ended", sid_key(sid))
         response.delete_cookie(STAFF_COOKIE, path="/", secure=True, httponly=True, samesite="strict")
         return {"staff": False}
 

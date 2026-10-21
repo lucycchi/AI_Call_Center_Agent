@@ -472,3 +472,38 @@ def test_export_flags_never_writes_into_the_test_set(store):
     assert module.DEFAULT_OUT.name == "candidates" and "testset" not in str(module.DEFAULT_OUT)
     with pytest.raises(ValueError):
         module.export_flags(store, module.ROOT / "data" / "testset")
+
+
+# -- Security review: concurrent guesses, logout and password changes ----------------------------------------------
+
+def test_concurrent_wrong_guesses_cannot_pass_the_limit_while_the_hash_check_runs():
+    # Each attempt is counted before the slow password check, so parallel guesses cannot all slip under five.
+    from app.web.staff import SignInLimit
+    limit = SignInLimit(Clock())
+    held = [limit.reserve("10.0.0.1") for _ in range(7)]
+    assert sum(r is not None for r in held) == 5
+    limit.release("10.0.0.1", held[0])  # a correct password gives its attempt back
+    assert limit.reserve("10.0.0.1") is not None and limit.reserve("10.0.0.1") is None
+
+
+def test_logging_out_ends_the_session_on_the_server_too(app, store, clock):
+    client = staff(app)
+    cookie = client.cookies.get("meridian_staff")
+    assert client.post("/api/staff/logout").status_code == 200
+    copy = visitor(app, "someone-else", "10.0.0.10")
+    copy.cookies.set("meridian_staff", cookie)
+    assert copy.get("/api/staff/queue").status_code == 403
+    restarted = create_app(FakeEngine(store), store, cookie_secret=SECRET, clock=clock,
+                           staff_password_hash=hash_password(PASSWORD, iterations=1000))
+    again = visitor(restarted, "someone-else", "10.0.0.10")
+    again.cookies.set("meridian_staff", cookie)
+    assert again.get("/api/staff/queue").status_code == 403  # still ended after a restart
+
+
+def test_changing_the_staff_password_ends_every_session(app, store, clock):
+    cookie = staff(app).cookies.get("meridian_staff")
+    changed = create_app(FakeEngine(store), store, cookie_secret=SECRET, clock=clock,
+                         staff_password_hash=hash_password("a new staff password", iterations=1000))
+    client = visitor(changed, "staffer", "10.0.0.9")
+    client.cookies.set("meridian_staff", cookie)
+    assert client.get("/api/staff/queue").status_code == 403
