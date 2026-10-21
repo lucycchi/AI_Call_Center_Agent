@@ -70,6 +70,8 @@ open chat to the public later, remove that line from `fly.toml` and redeploy.
 
 - Live site: at most $3 a day of reviewer chat (the reserve above) and a $10 site-wide daily cap in code; the author
   is alerted when daily spend passes $5.
+- Per conversation: about $0.02 in the final held-out run ($0.39 for 18 conversations, the 15 first attempts and 3
+  retries; this includes the simulated caller), and about $0.01 for the agent's own calls in the quick runs.
 - Evaluation: every paid test run stops at $8 of recorded spend. The final held-out run cost $0.39 in Anthropic calls
   (`data/results/final/summary.json`, `extra.spent_usd`). Grading runs through Codex on the author's subscription, so
   it adds no API cost. Search embeddings use Voyage AI's free allowance.
@@ -174,6 +176,9 @@ caller from the caller card and script; the caller talks to the same agent core 
 - **Codex grading** (`eval/grader.py`, prompt and rubric in `eval/grader_prompt.md`): whole conversations go to Codex
   in batches of 20 through a fixed `codex exec` command, which returns a JSON verdict per request (answers, lookups,
   dropped requests, ticket quality), with the grader model recorded on every verdict. A partly correct answer fails.
+  The model is pinned with `-m gpt-5.6-sol` and recorded as `grader_model`; `grader_reported_model` holds what the model
+  says about itself when asked, which comes back as the family name "gpt-5", so the two differ without the model having
+  changed.
 - A case counts as correct only if Codex and every code check agree. The first run is the scored one; a failed case is
   run once more and reported as flaky if it then passes, never as passed.
 
@@ -266,6 +271,27 @@ Looking at the first attempts (`data/results/final/attempts.jsonl`):
   in the frozen agent, and it is why booking correctness is 70%.
 - The north-zone plumbing case should have been a clean decline (no plumbing slots in the north zone); the agent said
   there was no capacity but its ticket left out the problem, so it was graded wrong.
+
+### By call reason
+
+Accuracy on the reasons the agent should handle itself, and the escalation rate on the rest, from the same frozen
+held-out run, scored like the summary (first attempts, weighted by the calls each case stands for). Produced by
+`python -m eval.per_driver` into `data/results/final/per_driver.json`; with 15 scenarios, each reason rests on one to
+six cases.
+
+| Call reason | Cases | Weighted calls | Handled by the agent: correct | Should be handed off: escalated, and with the right reason |
+|---|---|---|---|---|
+| New booking | 6 | 47 | 68% (3 cases) | 100%, 100% (2 cases) |
+| Billing | 2 | 26 | 58% (2 cases) | none expected |
+| Membership | 2 | 20 | none expected | 100%, 100% (2 cases) |
+| Warranty | 2 | 14 | 57% (2 cases) | none expected |
+| Existing appointment | 1 | 9 | none expected | 100%, 100% (1 case) |
+| Complaint or manager | 1 | 5 | none expected | 100%, 100% (1 case) |
+| Safety emergency | 1 | 1 | none expected | 100%, 100% (1 case) |
+
+Every call that should go to a person did, with the right reason; the misses are calls the agent should have finished
+itself. (The two burning-smell cases count under new booking: their handoff was right, but the booking that followed
+was the fault described above.)
 
 ### Supporting measures
 

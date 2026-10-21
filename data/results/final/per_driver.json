@@ -1,0 +1,72 @@
+[
+ {
+  "reason": "new booking",
+  "cases": 6,
+  "weighted_calls": 47,
+  "handled_cases": 3,
+  "handled_accuracy": 0.6842105263157895,
+  "escalation_cases": 2,
+  "escalation_rate": 1.0,
+  "escalation_correct": 1.0
+ },
+ {
+  "reason": "billing",
+  "cases": 2,
+  "weighted_calls": 26,
+  "handled_cases": 2,
+  "handled_accuracy": 0.5769230769230769,
+  "escalation_cases": 0,
+  "escalation_rate": null,
+  "escalation_correct": null
+ },
+ {
+  "reason": "membership",
+  "cases": 2,
+  "weighted_calls": 20,
+  "handled_cases": 0,
+  "handled_accuracy": null,
+  "escalation_cases": 2,
+  "escalation_rate": 1.0,
+  "escalation_correct": 1.0
+ },
+ {
+  "reason": "warranty",
+  "cases": 2,
+  "weighted_calls": 14,
+  "handled_cases": 2,
+  "handled_accuracy": 0.5714285714285714,
+  "escalation_cases": 0,
+  "escalation_rate": null,
+  "escalation_correct": null
+ },
+ {
+  "reason": "existing appointment",
+  "cases": 1,
+  "weighted_calls": 9,
+  "handled_cases": 0,
+  "handled_accuracy": null,
+  "escalation_cases": 1,
+  "escalation_rate": 1.0,
+  "escalation_correct": 1.0
+ },
+ {
+  "reason": "complaint or manager",
+  "cases": 1,
+  "weighted_calls": 5,
+  "handled_cases": 0,
+  "handled_accuracy": null,
+  "escalation_cases": 1,
+  "escalation_rate": 1.0,
+  "escalation_correct": 1.0
+ },
+ {
+  "reason": "safety emergency",
+  "cases": 1,
+  "weighted_calls": 1,
+  "handled_cases": 0,
+  "handled_accuracy": null,
+  "escalation_cases": 1,
+  "escalation_rate": 1.0,
+  "escalation_correct": 1.0
+ }
+]
