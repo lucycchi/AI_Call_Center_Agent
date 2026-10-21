@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Runs the Fly.io command line tool even when it is not on PATH.
+# Order: $FLYCTL if set, then `fly` on PATH, then the default install folder.
+set -euo pipefail
+
+if [[ -n "${FLYCTL:-}" ]]; then
+  fly_bin="$FLYCTL"
+elif command -v fly >/dev/null 2>&1; then
+  fly_bin="$(command -v fly)"
+else
+  fly_bin="$HOME/.fly/bin/flyctl"
+fi
+
+if [[ ! -x "$fly_bin" ]]; then
+  echo "flyctl not found at $fly_bin; install it or set FLYCTL to its path" >&2
+  exit 127
+fi
+
+exec "$fly_bin" "$@"

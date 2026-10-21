@@ -16,3 +16,6 @@ __pycache__/
 
 # Database copies made by test runs
 data/results/*/databases/
+
+# Demo video: voiceover audio, screen recordings, frames and build scripts
+video/
