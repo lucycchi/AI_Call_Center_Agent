@@ -48,7 +48,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <main>
 <header>
 <h1>AI Call Center Agent</h1>
-<p class="stage">Current stage: Milestone gate, milestone 5 of 6 (needs your approval before moving on)</p>
+<p class="stage">Current stage: Milestone gate, milestone 6 of 6 (needs your approval before moving on)</p>
 </header>
 <section id="summary">
 <h2>Summary</h2>
@@ -2728,6 +2728,50 @@ tests/web/test_staff.py .................................                [100%]
 <li><strong>Accepted as they are:</strong> a reused message id across conversations, the per-address staff sign-in limit, a failed reply-end save, a lookup failure in the safety path, the resume refusal after a partial run, and an engine run that stops without a done event (plain error message, no ticket).</li>
 <li><strong>Live:</strong> deployed after a passing quick run; checked health, the pages, a public message (free handoff), and through the reviewer link an emergency (advice and priority ticket) followed by details with a yes (no booking, pointed to the emergency ticket).</li>
 </ul>
+<h3>Milestone 6 gate</h3>
+<p>Reviews of this milestone compare against <code>tortoise/milestone-5</code>, the last approval.</p>
+<h4>Tests</h4>
+<p><strong>Passed:</strong> <code>python -m pytest</code> finished with exit code 0.</p>
+<pre><code>tests/knowledge/test_search.py ..............                            [ 53%]
+tests/ops/test_jobs.py ....................                              [ 54%]
+tests/ops/test_live_spend_fixes.py ......                                [ 55%]
+tests/ops/test_spend.py ...............................                  [ 57%]
+tests/ops/test_store.py ............                                     [ 58%]
+tests/pipeline/test_documents.py ..........                              [ 58%]
+tests/pipeline/test_findings.py .....................                    [ 60%]
+tests/pipeline/test_labels.py ..............                             [ 61%]
+tests/pipeline/test_templates.py .........                               [ 61%]
+tests/replies/test_checks.py ........................................... [ 64%]
+......................                                                   [ 66%]
+tests/replies/test_money_published.py .................................. [ 68%]
+........................................................................ [ 73%]
+..........................................                               [ 76%]
+tests/safety/test_safety.py ............................................ [ 79%]
+......                                                                   [ 80%]
+tests/scheduling/test_eligibility.py ................................... [ 82%]
+...........                                                              [ 83%]
+tests/scheduling/test_transactions.py .................                  [ 84%]
+tests/test_config.py ..........                                          [ 85%]
+tests/test_deploy_config.py ............................................ [ 88%]
+.......................                                                  [ 89%]
+tests/test_engine_interface.py ....                                      [ 90%]
+tests/test_repository.py ...................................             [ 92%]
+tests/web/test_chat.py ....................................              [ 95%]
+tests/web/test_live_fixes.py ....................                        [ 96%]
+tests/web/test_results.py ................                               [ 97%]
+tests/web/test_staff.py .................................                [100%]
+
+======================= 1433 passed in 71.25s (0:01:11) ========================</code></pre>
+<h4>Requirement coverage</h4>
+<p>Every requirement in SPEC.md is named by a task in PLAN.md.</p>
+<h4>Tasks</h4>
+<p>Every task in milestone 6 is ticked (2 of 2).</p>
+<h4>Architecture check</h4>
+<p>Not recorded yet.</p>
+<h4>Reviews</h4>
+<p>Not recorded yet.</p>
+<h4>Author's choices</h4>
+<p>Not recorded yet.</p>
 </section>
 <section id="final-checks">
 <h2>Final checks</h2>
