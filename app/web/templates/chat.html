@@ -8,6 +8,7 @@
   :root { --ink: #1d2a33; --muted: #5b6b76; --line: #d8e0e5; --paper: #f5f7f8; --card: #ffffff; --brand: #0d5c63;
           --brand-ink: #ffffff; --agent: #eef4f4; --caller: #0d5c63; --proof: #2f6f3e; }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }  /* rules such as form { display: flex } must not show a hidden element */
   body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--paper); }
   header { background: var(--brand); color: var(--brand-ink); padding: 14px 16px; }
   header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; }
