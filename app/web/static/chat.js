@@ -85,6 +85,7 @@
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     var text = box.value;
+    if (!text.trim()) { box.focus(); return; }  // nothing to send: no empty bubble
     box.value = "";
     send(text);
   });
