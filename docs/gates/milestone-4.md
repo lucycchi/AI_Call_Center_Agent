@@ -188,3 +188,28 @@ Every change test-first (commits 6167bbc to bae1eac); the suite is at 806 tests,
 - **Quick run on the frozen agent:** passed 2 of 2. Knowledge 100% and 100%, bookings 100%, routing 100%, lookups 100%, safety and booking handoffs 100%, no wrong confident answers; containment 59% and 55% against a scope ceiling of 75% and an adjusted ceiling of 66%.
 - **Settled:** the quick-run rule for a booking the caller never confirmed (D49), by the author.
 
+## Review of the last round
+
+Code reviews of `git diff a15994f..HEAD` (everything after the second review) by Codex (gpt-5.6-sol) and a fresh Claude agent. Claude ran all 806 tests (passed) and probed offline; Codex ran 21 targeted tests. No paid calls, no held-out runs.
+
+| Finding | Codex | Claude |
+|---|---|---|
+| Hedged or deferring replies book at the read-back ("Alright, let me think about it", "That's fine, I'll call you back later", "fine I guess") since "fine" and "alright" became yes-words |  | yes (top) |
+| The final-price line is missing on price-book ranges (a new water heater, a member asking about a blower motor, an emergency repair), contrary to the pricing rule (R42); its source sentence is not in the original price book | yes (top) | yes (top) |
+| An unexpected database write never fails the quick run outright | yes (top) | yes |
+| The threshold curve counts answers that end in the agent's handoff as contained or as wrong; counted as neither, the rule picks 0.25 and containment at 0.35 is 64%, not 76% |  | yes (top) |
+| The threshold result is filed under a different agent hash from the freeze, so the threshold step cannot be rerun | yes (unclear) | yes (unclear) |
+| Marker variants reach the caller ("[Not in documents]", "NOT IN DOCUMENTS", a cut-off "[NOT IN") |  | yes (top) |
+| A marker-only writer reply on a booking or account turn sends the caller nothing |  | yes (top) |
+| Agent-written retrieval answers run under a second, unenforced $8 counter | yes (top) |  |
+| Retrieval grading still saves its verdicts only at the end | yes (top) |  |
+| The confirmed read-back check misses the agent's own wording (clear "yes") and its yes rule, so a real booking fault can pass as a miss |  | yes |
+| At a booking offer, "Tuesday doesn't work, what about Thursday?" can start a reschedule; "can't" is not a negation |  | yes (unclear) |
+| A clear question after the caller's details is dropped by "found your account" |  | yes (unclear) |
+| A pleasantry at a slot offer ("Perfect, appreciate it") ends the chat |  | yes (unclear) |
+| Budget-cut cases vanish from the scores without a count |  | yes (unclear) |
+| A booking after a mid-read-back question is flagged as not read back; a marker on a mixed booking and knowledge turn opens a not-enough-evidence ticket; a blocked sentence after the marker loses its label |  | yes (unclear) |
+
+## Author's choices on the last round
+
+The author chose "All recommended" (2026-10-20): "fine" and "alright" are no longer yes-words on their own and deferring phrases are hedges; the final-price line on every service-catalog or price-book range except fixed fees, tune-ups, cancellation fees, membership prices and the free replacement estimate, shown to the grader as the company pricing rule (R42); the marker matched in any case and spacing and a cut-off one stripped; an empty reply treated as a writer failure; at a slot offer a message naming a day or time switches action only with that action's verb, and "can't" is a negation; "found your account" only for a general request for help; at an open offer or read-back only "bye", "goodbye" or "that's all" end the chat; an unexpected write fails the quick run outright; the confirmed read-back check uses the agent's wording and yes rule; one $8 cap for retrieval runs; retrieval grades saved per batch; handoff answers counted as neither contained nor wrong confident in the curve, runs filed under an agent hash without the threshold setting, and the threshold set to the corrected curve's pick; budget-cut cases counted in the summary. The three minor items are accepted. Then the full rerun cycle.
