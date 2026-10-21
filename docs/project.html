@@ -58,11 +58,11 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </section>
 <h3>Key decisions</h3>
 <ul>
-<li>How does combined search merge the keyword and meaning-based lists? Keep each list&#x27;s top result, then reciprocal-rank fusion. The spec leaves the fusion method to the builder (R28). The results report meaning-only beside it honestly, and the rule was chosen on the working set only.</li>
-<li>The review of the milestone 2 fixes found more errors in the rebuilt test cases (requests still unlisted, the cancel case on the wrong appointment, a Plus member asking to join, paid invoices shown as owed, evidence spans missing facts). Fix them and refreeze the held-out set again? Fix and refreeze. Every request beyond a call&#x27;s labelled reason comes from a reviewed list (data/case_requests.csv) quoting the caller&#x27;s words; seeded appointments are the customer&#x27;s only upcoming one and match the service the caller describes; a caller asking to join is drawn as a non-member; charged-twice and refund invoices are planted paid; evidence spans cover every number in the reference, tested. The split is unchanged (37 working, 15 held out); the hash moves from 9ad6f6cdbaaa5788932714ff1691fa156cadf36c997b785a2862e0c8c2792b1c to 4423a9632bcd38f06b7945585c8bdf43bb005f5b038345d5a8b921cd303afa46. The nine waitlist calls also list &quot;an earlier slot&quot; as a request, handled when the agent offers the earliest eligible slots; a &quot;wants an earlier slot&quot; ticket is also correct but counts as a handoff (R44). New reference answers: upgrading mid-year (held out) and cancelling before renewal; the replacement-estimate answer no longer claims the advisor confirms the price, which no document says.</li>
-<li>How are money promises in replies and money or membership action requests detected, after three review rounds showed word patterns failing in both directions? Every reply sentence that mentions money (a fee, charge, cost, price, $, free, refund, credit, discount, waive, owe, bill or payment) is checked by Claude Haiku 5.5 against the published money terms and the sentence before it, after the fixed code rules (firm totals, waitlists, breaker advice, internal text, and promises worded as a personal favour). A refusal, error, timeout or unreadable answer blocks the sentence; a pipeline with no money check configured blocks every money sentence. The router decides money and membership action requests; a code backstop catches only requests that are never questions (payment links, autopay, cancelling the membership or auto-renew, refunds, fee waivers, paying a bill, signing up for the plan), on every route except a handoff. The labelled sets are kept in data/eval/ (money_sentences.jsonl, action_requests.jsonl) and measured in the evaluation milestone on fresh sentences and through the router.</li>
 <li>Who grades the grader-check sample blind in place of the author (R19)? Claude Fable 5.1 stands in for the author in the grader check, as it did for the blind third of the labelling (D38). Its blind grades are the check&#x27;s grades, and the published table (data/results/grader_check.json) compares them with Codex&#x27;s, stating that Fable graded in the author&#x27;s place.</li>
 <li>Should a knowledge answer fail for leaving out reference facts the caller&#x27;s question did not ask about? The grading rubric (eval/grader_prompt.md) adds that a reference may cover more than one question asked, since each was written for every caller with that kind of question, and facts the question did not ask about do not fail an answer that leaves them out. The references themselves are unchanged and frozen. Guessing still fails, and a required disclaimer is still a key fact.</li>
+<li>The grader saw the held-out requests and reference answers once by accident during testing: keep the held-out set or pick a new one? Keep the frozen held-out set (D42) and record the exposure here; the held-out guard now refuses a held-out run without the final flag and matching hashes.</li>
+<li>What should the agent do with a message in a language other than English? The agent replies in English that it can only help in English and that a team member will follow up, and opens a handoff ticket; the other-language case (a20) checks the handoff.</li>
+<li>One answer graded differently between two runs moved the threshold rule&#x27;s pick from 0.25 to 0.45: how should the threshold be chosen? The threshold script applies the same rule (0.25 floor, a wrong confident answer costs 2.5) over every graded combined-search run of the current agent, each answer counting once; each graded run is kept under the agent hash it measured.</li>
 </ul>
 <section id="progress">
 <h2>Progress</h2>
@@ -646,8 +646,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>The safety check runs in code; nothing matches.</li>
 <li>Haiku 5.5 returns the route "knowledge" with the label "clear".</li>
 <li>Combined search returns the top five pieces; the old $79 FAQ is not in the index at all, because the document list excludes it.</li>
-<li>If the top piece's meaning-based score is below the chosen threshold, the engine goes to a handoff instead; here it is above, so the facts and a reply type go to Sonnet 5.5. The type is a "price answer", with the "technician confirms the final price on site" line, only when the question asks about a price and a source is the service catalog or the repair price book (<code>app/flows/knowledge.py</code>); a fixed fee or anything else gets a "policy answer".</li>
-<li>Sonnet writes the reply, which must name its source.</li>
+<li>If the top piece's meaning-based score is below the chosen threshold (0.35, from the working-set curve), the engine goes to a handoff instead; here it is above, so the facts and a reply type go to Sonnet 5.5. The type is a "price answer", with the "technician confirms the final price on site" line and the price-book passage it comes from, only for a price that varies by job, such as drain clearing or a capacitor; a fixed fee, a tune-up, a cancellation fee, a membership price or a replacement estimate gets a "policy answer" (<code>app/flows/knowledge.py</code>).</li>
+<li>Sonnet writes the reply, which must name its source. When the facts do not answer a question the documents should answer, it states the facts that do apply and then writes the marker <code>[NOT IN DOCUMENTS]</code>; the marker is never shown, and for a knowledge answer it turns into a "not enough evidence" handoff with a ticket (never for a booking, scheduling or account reply).</li>
 <li>Each sentence is checked for promises, discounts, waivers and internal text, then released to the browser.</li>
 <li>The message, its receipt (route, passages, excluded stale document), its model calls and its cost are written to the operations database.</li>
 </ol>
@@ -960,10 +960,10 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>data/case_requests.csv</code></td><td>The reviewed list of every request in each call beyond its labelled reason, quoting the caller's words, with its kind (knowledge, booking, action) and the reference it needs</td></tr>
 <tr><td><code>data/knowledge_questions.jsonl</code></td><td>The retrieval questions (from the test cases, plus answerable, stale-trap and unanswerable ones written by hand), each with its set, whether it falls under a handled reason, its call weight (questions from test cases), reference answer and evidence spans</td></tr>
 <tr><td><code>data/results/retrieval/summary.json</code></td><td>Retrieval measures for keyword-only, meaning-only and combined search on a named question set; coverage as the call-weighted share of the knowledge questions callers ask that the documents answer; the check that no excluded document is in the index; and the SDK versions, models, token, retry and timeout settings and spending cap used</td></tr>
-<tr><td><code>data/results/retrieval/answers_to_grade.jsonl</code></td><td>Answers from keyword-only search, combined search and the whole knowledge base, with the model and the passages each answer was written from, for grading on answer correctness (stale-trap accuracy is judged here)</td></tr>
+<tr><td><code>data/results/retrieval/answers_to_grade.jsonl</code></td><td>Answers from keyword-only search, combined search and the whole knowledge base, with the model, the writer and the passages each answer was written from, for grading on answer correctness (stale-trap accuracy is judged here). Combined answers are the agent's own (its knowledge flow, writer and checks, with the threshold at 0 so the curve can apply each threshold); keyword-only and whole-knowledge-base answers use a short prompt, as a comparison of search methods</td></tr>
 <tr><td><code>data/results/retrieval/verdicts.jsonl</code>, <code>answer_scores.json</code></td><td>Codex's verdict on each retrieval answer, and correctness, faithfulness, citation, refusal and stale-trap scores per search mode</td></tr>
 <tr><td><code>data/results/retrieval/runs/&lt;agent hash&gt;/&lt;N&gt;/</code></td><td>A copy of each graded retrieval run (answers and verdicts), kept under the hash of the agent it measured</td></tr>
-<tr><td><code>data/results/threshold.json</code></td><td>The threshold curve (containment and wrong confident answers at 0.20 to 0.75) over every graded run of the current agent pooled, the rule (0.25 floor, a wrong confident answer costs 2.5 correct contained ones; pooled threshold runs (D48)) and the chosen threshold; working-set questions only</td></tr>
+<tr><td><code>data/results/threshold.json</code></td><td>The threshold curve (containment and wrong confident answers at 0.20 to 0.75) over every graded run of the current agent pooled whose combined answers the agent wrote, the rule (0.25 floor, a wrong confident answer costs 2.5 correct contained ones; pooled threshold runs (D48)) and the chosen threshold; working-set questions only</td></tr>
 <tr><td><code>data/results/adversarial/summary.json</code>, <code>cases.jsonl</code></td><td>The adversarial runner's (<code>eval/run_adversarial.py</code>) pass rate, the booking-rule and instruction-extraction pass rates, failures and spend; and each case's conversation, failed checks and database actions</td></tr>
 <tr><td><code>data/agent_freeze.json</code></td><td>The agent freeze hash, the number of files and the paths it covers</td></tr>
 <tr><td><code>data/results/&lt;run&gt;/attempts.jsonl</code></td><td>One line per attempt, appended as each finishes and rewritten with grades: case, attempt number, first-run flag, conversation, done events, tickets, database checks, each purpose's model ids, SDK version and settings, the run settings, any error, grader verdict and grader model</td></tr>
@@ -1829,7 +1829,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D46: The grader saw the held-out requests and reference answers once by accident during testing: keep the held-out set or pick a new one?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5), chosen by the author on 2026-10-20</li>
 <li><strong>Options:</strong>
 <ul>
@@ -1845,7 +1845,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D47: What should the agent do with a message in a language other than English?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5), chosen by the author on 2026-10-20</li>
 <li><strong>Options:</strong>
 <ul>
@@ -1861,7 +1861,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D48: One answer graded differently between two runs moved the threshold rule's pick from 0.25 to 0.45: how should the threshold be chosen?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5), chosen by the author on 2026-10-20</li>
 <li><strong>Options:</strong>
 <ul>
@@ -1875,6 +1875,23 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul></li>
 <li><strong>Choice:</strong> The threshold script applies the same rule (0.25 floor, a wrong confident answer costs 2.5) over every graded combined-search run of the current agent, each answer counting once; each graded run is kept under the agent hash it measured.</li>
 <li><strong>Reason:</strong> The author's choice. With 25 questions one answer's run-to-run swing decides the pick, and pooling runs measures the agent rather than one draw of the writer; the rule itself is unchanged and only working-set questions are used.</li>
+</ul>
+<h3>D49: Should the quick run fail outright when a booking was missed because the simulated caller never chose a slot?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5), chosen by the author on 2026-10-20</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Fail outright only on real booking faults; a booking the caller never confirmed is a missed request</li>
+<li>Keep any booking miss a hard failure and rerun</li>
+<li>Keep it strict and tell the simulated caller to always pick a slot</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="data/results/quick-20261020-140337-run1/attempts.jsonl">data/results/quick-20261020-140337-run1/attempts.jsonl</a>: The quick run on the frozen agent failed only on the retry of the join-the-plan-and-book case (T9e29febc): the simulated caller said "Book it" but never chose one of the three offered slots, and the agent correctly would not pick one; bookings were otherwise 100% correct, routing 100%, knowledge 91%, no wrong confident answers.</li>
+</ul></li>
+<li><strong>Choice:</strong> The booking check records a booking fault for a wrong database change, an unexpected write, or a confirmed read-back left unbooked; fewer bookings than expected with none wrong and no confirmed read-back is a missed request, failing that conversation but not the quick run outright.</li>
+<li><strong>Reason:</strong> The author's choice. The quick run's hard stop exists to catch the agent changing the database wrongly; a caller who never chooses a slot is a conversation the agent could not finish, which already counts against containment.</li>
 </ul>
 <h3>Glossary</h3>
 <ul>
@@ -2303,36 +2320,36 @@ tests/test_engine_interface.py ....                                      [100%]
 <p>Reviews of this milestone compare against <code>tortoise/milestone-3</code>, the last approval.</p>
 <h4>Tests</h4>
 <p><strong>Passed:</strong> <code>python -m pytest</code> finished with exit code 0.</p>
-<pre><code>tests/core/test_engine.py ...................                            [ 10%]
-tests/eval/test_adversarial.py .....................................     [ 16%]
-tests/eval/test_cases.py ...........................................     [ 23%]
-tests/eval/test_conversation_grading.py ................                 [ 25%]
-tests/eval/test_grader.py ......................                         [ 29%]
-tests/eval/test_retrieval_metrics.py ..................                  [ 31%]
-tests/eval/test_run_safety.py .........                                  [ 33%]
-tests/eval/test_scoring.py ...............                               [ 35%]
-tests/eval/test_threshold.py ...............                             [ 38%]
-tests/flows/test_conversations.py ...................................... [ 44%]
-........................................................................ [ 55%]
-...................................                                      [ 60%]
-tests/flows/test_knowledge.py ....                                       [ 61%]
-tests/handoff/test_handoff.py ..........                                 [ 63%]
-tests/knowledge/test_search.py ..............                            [ 65%]
-tests/ops/test_store.py ............                                     [ 67%]
-tests/pipeline/test_documents.py .........                               [ 68%]
-tests/pipeline/test_findings.py .....................                    [ 71%]
-tests/pipeline/test_labels.py ..............                             [ 73%]
-tests/pipeline/test_templates.py .........                               [ 75%]
-tests/replies/test_checks.py ...............................             [ 80%]
-tests/safety/test_safety.py ............................................ [ 87%]
-......                                                                   [ 88%]
-tests/scheduling/test_eligibility.py ................................... [ 93%]
-...........                                                              [ 95%]
-tests/scheduling/test_transactions.py ................                   [ 97%]
+<pre><code>tests/eval/test_grader_check_sheet.py .....                              [ 27%]
+tests/eval/test_retrieval_metrics.py ..................                  [ 29%]
+tests/eval/test_retrieval_runs.py .........                              [ 30%]
+tests/eval/test_run_guards.py .......                                    [ 31%]
+tests/eval/test_run_safety.py .........                                  [ 32%]
+tests/eval/test_run_stops.py ............                                [ 34%]
+tests/eval/test_scoring.py ...............                               [ 36%]
+tests/eval/test_threshold.py .................                           [ 38%]
+tests/flows/test_conversations.py ...................................... [ 42%]
+........................................................................ [ 51%]
+........................................................................ [ 60%]
+....................................................                     [ 67%]
+tests/flows/test_knowledge.py ...............                            [ 69%]
+tests/handoff/test_handoff.py ..........                                 [ 70%]
+tests/knowledge/test_search.py ..............                            [ 72%]
+tests/ops/test_store.py ............                                     [ 73%]
+tests/pipeline/test_documents.py .........                               [ 74%]
+tests/pipeline/test_findings.py .....................                    [ 77%]
+tests/pipeline/test_labels.py ..............                             [ 79%]
+tests/pipeline/test_templates.py .........                               [ 80%]
+tests/replies/test_checks.py .................................           [ 84%]
+tests/safety/test_safety.py ............................................ [ 89%]
+......                                                                   [ 90%]
+tests/scheduling/test_eligibility.py ................................... [ 94%]
+...........                                                              [ 96%]
+tests/scheduling/test_transactions.py .................                  [ 98%]
 tests/test_config.py ..........                                          [ 99%]
 tests/test_engine_interface.py ....                                      [100%]
 
-============================= 638 passed in 19.51s =============================</code></pre>
+============================= 806 passed in 38.77s =============================</code></pre>
 <h4>Requirement coverage</h4>
 <p>Every requirement in SPEC.md is named by a task in PLAN.md.</p>
 <h4>Tasks</h4>
@@ -2406,6 +2423,73 @@ tests/test_engine_interface.py ....                                      [100%]
 <li>Fix result keeping: each conversation saved as it finishes, model ids and settings and per-run verdicts saved, a safe grader-check rerun reading Fable's column, retrieval answers keeping their passages, the freeze covering the data files the agent reads, the $8 cap on adversarial runs and the API grader, a held-out guard, and the 60-second cap enforced during calls.</li>
 <li>Open questions: action-gap calls stay inside the scope ceiling and are removed only in the adjusted ceiling (R16 wording); code checks that safety cases released the fixed reply first and made a ticket.</li>
 <li>Then rerun the stale results (adversarial set, retrieval answers and grading, threshold curve, Fable's grader check), recompute the agent freeze, update the architecture document, and rerun the gate.</li>
+</ul>
+<h4>Fixes and reruns</h4>
+<p>All the chosen findings were fixed test-first (commits ddf0797 to 962c869); the suite went from 517 to 638 tests, all passing.</p>
+<ul>
+<li><strong>Found while fixing:</strong> the evaluation fix agent's first held-out guard test ran the real run command on the held-out set before the guard existed. With a fake key no agent turn ran and nothing was spent, but Codex graded the 15 empty conversations once and so saw the held-out requests and reference answers. The output was deleted and never committed. Recorded as keeping the held-out set after the grader saw it (D46).</li>
+<li><strong>Agent changes from the reruns:</strong> a message in another language gets an English note and a handoff, with a code backstop when the router misses it, and the writer always writes in English (D47); nonsense is handed off; picking a slot in a reschedule is not taken for a new booking.</li>
+<li><strong>Adversarial set:</strong> 32 of 32 pass with the independent checks (booking-rule and extraction attacks 100%), for $0.06.</li>
+<li><strong>Retrieval answers:</strong> two fresh graded runs of the current agent (about $0.54 each); combined search 88% and 92% correct, 92% faithful in both.</li>
+<li><strong>Threshold:</strong> one answer that guessed in one run and not the other moved the single-run pick to 0.45; pooled over both runs (50 answers) the same rule picks 0.25 (74% contained, 5 wrong confident answers). Pooling recorded as choosing the threshold from every graded run of the agent (D48).</li>
+<li><strong>Grader check:</strong> a fresh sample of the new answers; Claude Fable 5.1 graded blind and agrees with Codex on 29 of 30 (97%). The old sheet and its grades are archived in <code>data/grader_check_archive/1.csv</code>. Grades now stay tied to the answer text they were given for.</li>
+<li><strong>Agent freeze:</strong> recomputed over 61 files, hash <code>f7ecfd29d6725dd96953c769bf444a51a730befdf6628faeb126d5a47c49fd68</code>, the same hash both graded retrieval runs are filed under.</li>
+<li><strong>Architecture document:</strong> updated for every point from both architecture checks, and the HTML page regenerated.</li>
+<li><strong>Not rerun:</strong> the quick run (Task 20) was last passed before these fixes; the agent has changed since.</li>
+</ul>
+<h4>Review of the fixes</h4>
+<p>Code reviews of <code>git diff ace46b0..HEAD</code> by Codex (gpt-5.6-sol, per-run override) and a fresh Claude agent, both using <code>prompts/code-review.md</code>. Claude reproduced every original finding as fixed, ran all 638 tests (passed) and replayed the 505 saved caller lines through the old and new code; Codex could not start the suite (no writable temporary folder) and probed offline. Neither made paid calls; no held-out leakage was found. The quick run was stopped after its first 20 conversations ($0.41), since the agent will change.</p>
+<table>
+<thead><tr><th>Finding</th><th>Codex</th><th>Claude</th></tr></thead>
+<tbody>
+<tr><td>The language backstop hands off ordinary English, even mid-flow: an email, lowercase names and addresses, "Thermostat display blinking constantly", "Kitchen faucet drips constantly overnight", "José García"; it calls "gas smell", "either works" and "account number 48213" nonsense</td><td>yes (top)</td><td>yes (top)</td></tr>
+<tr><td>Closing lines no longer end the chat ("Nope, that covers it. Thanks for your help!", "That's all I need, thank you so much."): 17 saved simulator lines regressed, and mid-flow they re-offer slots or go onto the ticket; some filler lines too ("sorry, hang on a sec")</td><td></td><td>yes (top)</td></tr>
+<tr><td>Switching scheduling action needs a literal verb: "schedule a tune-up instead", "I don't need the Thursday visit anymore" and "when is my existing appointment?" no longer switch</td><td>yes (unclear)</td><td>yes (top)</td></tr>
+<tr><td>The booking check accepts any earlier reply that named the slot, including the offer, so a booking that differs from the read-back passes (saved case Tb456e16e did this); the slot matcher misses some phrasings</td><td></td><td>yes (top)</td></tr>
+<tr><td>Grader batches that succeeded are lost if a later batch fails (verdicts are saved only after every batch)</td><td>yes (top)</td><td></td></tr>
+<tr><td>The API grader fallback runs under its own second $8 budget and charges after the call</td><td>yes (top)</td><td></td></tr>
+<tr><td>Retrieval runs are filed under the agent hash at grading time, not at answer time; grading the same answers twice pools them twice</td><td>yes (top)</td><td>yes (unclear)</td></tr>
+<tr><td>Grader-check grades survive a changed question or reference answer; starting a fresh sheet loses the hidden verdicts the archived grades were checked against</td><td>yes (top)</td><td>yes (unclear)</td></tr>
+<tr><td>Ordinal picks from ordinary sentences: "The first option is too early", "The second doesn't work", "the second time it broke", "the third week of November"</td><td>yes</td><td>yes (unclear)</td></tr>
+<tr><td>A message that identifies the caller and asks something ("This is Linda Foster, MHC-10001. Can you help me?") now opens a ticket instead of "found your account"</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>"Yes, sooner if possible" books the read-back slot instead of looking for earlier ones</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Conversations stopped at the time or turn limit can pass the quick run</td><td>yes (unclear)</td><td></td></tr>
+<tr><td>A simulator timeout at the 60-second cap is recorded as an error, not the time limit; the SDK retry can overshoot the cap</td><td></td><td>yes</td></tr>
+<tr><td>Crossing the budget mid-turn becomes a handoff inside the agent, and that case is scored on the distorted conversation</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Rerunning a run under the same name deletes the earlier run, including a final run</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>A handoff case with no expected reason can never pass</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>"discretion" is listed as internal-only but appears in a customer document; the gate notes say 60 frozen files, not 61</td><td></td><td>yes</td></tr>
+<tr><td>Tests too weak to catch the above (English sentences heavy in technical words, closing lines, paraphrased action switches, read-back mismatch, mid-batch grader failure, budget overshoot)</td><td>yes</td><td>yes</td></tr>
+</tbody>
+</table>
+<h4>Author's choices on the review of the fixes</h4>
+<p>The author chose "All recommended" (2026-10-20): the language backstop only on strong signs (inverted punctuation, a non-Latin script or several common Spanish or French words, never with an email or account number) and no nonsense label in code, the "anything else?" shortcut only for messages with a common English word; wider closing and filler word lists tested on the 17 regressed simulator lines; the old action-switch rule except that a reply picking a slot or answering the offer never switches; no slot pick from a rejection or negation; "if possible" or "anything sooner" with a yes looks for earlier slots; an identifying calm message with no named handoff gets "found your account"; the booking check against the read-back just before the change, with more slot phrasings; grader batches saved as they finish; the API grader under the run's budget, checked before each call; retrieval runs filed under the agent hash at answer time, refused if the agent changed and never pooled twice; grader-check grades tied to question, reference, answer and passages, with hidden verdicts archived; time- and turn-limit stops fail the quick run, a cap timeout recorded as the time limit with no retry past it, crossing the budget mid-turn stopping the run; an existing run name refused; a handoff case without an expected reason passing on any reason; "discretion" dropped from the internal-only terms; the frozen file count corrected. Then the reruns, a new freeze and the full quick run.</p>
+<h4>Fixes and reruns after the review of the fixes</h4>
+<p>All the chosen findings were fixed test-first (commits 910fc1e to 1334222); the suite went from 638 to 781 tests, all passing.</p>
+<ul>
+<li><strong>Found while checking the fixes:</strong> the widened goodbye list counted "I'm confused" as a pleasantry, so "That's all, I'm confused" ended the chat; confusion was taken out and a confused caller is never closed out.</li>
+<li><strong>Found by the quick run:</strong> a plain yes at a read-back ("That's fine, yes please go ahead and book it") switched to an appointment lookup when the router labelled it a confirm request, and "That's fine" was not a yes; a move offered another technician's slot at the visit's own date and window. Both fixed. Codex sometimes leaves an item out of a batch; the grader now asks once more for just those items.</li>
+<li><strong>Quick-run rule:</strong> a booking the simulated caller never confirmed (it said "Book it" but never chose a slot) is a missed request, not a booking fault; the quick run fails outright only on a wrong change, an unexpected write or a confirmed read-back left unbooked (proposed decision D49).</li>
+<li><strong>Adversarial set:</strong> 32 of 32 on the frozen agent.</li>
+<li><strong>Retrieval answers:</strong> two graded runs of the frozen agent, combined search 92% and 96% correct, 96% faithful; the pooled threshold stays 0.25 (78% contained, 3 wrong confident answers over 50 answers).</li>
+<li><strong>Grader check:</strong> a fresh sample of the frozen agent's answers; Claude Fable 5.1 agrees with Codex on 30 of 30. Earlier sheets are archived with their hidden verdicts.</li>
+<li><strong>Agent freeze:</strong> hash <code>cfe0472409be496d646ce67830d4d185d9930f0f4c40dc8e3764bb6c45325419</code>, the hash both graded retrieval runs are filed under.</li>
+<li><strong>Quick run:</strong> failed on the plan-savings case and a time-limit stop; see the next section.</li>
+</ul>
+<h4>Last round: quick-run failures, the agent's own answers and the threshold</h4>
+<p>Every change test-first (commits 6167bbc to bae1eac); the suite is at 806 tests, all passing.</p>
+<ul>
+<li><strong>Test-run fidelity:</strong> turning off SDK retries had also removed the agent's own retries, so slow calls failed where production retries; now only the simulated caller loses retries within the 60-second cap. The grader was never told the test's fixed date and judged a Monday 19 October booking as past against the real date; each conversation now carries its "now" and the rubric judges dates against it.</li>
+<li><strong>Plan savings (T9e29febc):</strong> a question whether a plan saves money gets every member benefit, including the included tune-ups, and never a guess whether joining would save money.</li>
+<li><strong>The agent's own answers:</strong> the retrieval answers had been written by a separate short prompt, so the answer measures and the threshold curve did not describe the agent. Combined-search answers now come from the agent's knowledge flow, writer and checks; keyword-only and whole-knowledge-base answers keep the short prompt as a search comparison. Measured this way the agent first scored 80% and 84% correct, 76% and 72% faithful and 0% correct refusal.</li>
+<li><strong>Fixes that showed:</strong> the writer could not refuse a question the documents cannot answer (two of its rules contradicted each other); it now writes a hidden marker that, for a knowledge answer only, becomes a "not enough evidence" handoff with a ticket, and later sentences are still released. The final-price line now goes only on prices that vary by job, with the price-book passage it comes from.</li>
+<li><strong>Retrieval answers (agent-written, two graded runs):</strong> combined search 88% correct, 96% faithful, 100% citation accuracy, refusal 100% and 67%.</li>
+<li><strong>Threshold:</strong> the pooled curve over the two runs (50 answers) picks 0.35 (76% contained, 4 wrong confident answers, against 6 at 0.25 for the same containment); set to 0.35 as the agreed rule says (D48). The curve's runs were written with the threshold at 0, so they do not depend on its value.</li>
+<li><strong>Adversarial set:</strong> 32 of 32.</li>
+<li><strong>Grader check:</strong> a fresh sample of the latest answers; Claude Fable 5.1 agrees with Codex on 27 of 30 (90%), every disagreement a pass by Fable that Codex failed.</li>
+<li><strong>Agent freeze:</strong> hash <code>836b241517d187b64528c0e70a9ed4be3994d2dd18434256870f2a8c9897f01e</code>; it differs from the agent that wrote the graded runs only in the threshold setting.</li>
+<li><strong>Quick run on the frozen agent:</strong> passed 2 of 2. Knowledge 100% and 100%, bookings 100%, routing 100%, lookups 100%, safety and booking handoffs 100%, no wrong confident answers; containment 59% and 55% against a scope ceiling of 75% and an adjusted ceiling of 66%.</li>
+<li><strong>Open:</strong> the quick-run rule for a booking the caller never confirmed (D49) is proposed, awaiting the author.</li>
 </ul>
 </section>
 <section id="final-checks">

@@ -7,36 +7,36 @@ Reviews of this milestone compare against `tortoise/milestone-3`, the last appro
 **Passed:** `python -m pytest` finished with exit code 0.
 
 ```
-tests/core/test_engine.py ...................                            [ 10%]
-tests/eval/test_adversarial.py .....................................     [ 16%]
-tests/eval/test_cases.py ...........................................     [ 23%]
-tests/eval/test_conversation_grading.py ................                 [ 25%]
-tests/eval/test_grader.py ......................                         [ 29%]
-tests/eval/test_retrieval_metrics.py ..................                  [ 31%]
-tests/eval/test_run_safety.py .........                                  [ 33%]
-tests/eval/test_scoring.py ...............                               [ 35%]
-tests/eval/test_threshold.py ...............                             [ 38%]
-tests/flows/test_conversations.py ...................................... [ 44%]
-........................................................................ [ 55%]
-...................................                                      [ 60%]
-tests/flows/test_knowledge.py ....                                       [ 61%]
-tests/handoff/test_handoff.py ..........                                 [ 63%]
-tests/knowledge/test_search.py ..............                            [ 65%]
-tests/ops/test_store.py ............                                     [ 67%]
-tests/pipeline/test_documents.py .........                               [ 68%]
-tests/pipeline/test_findings.py .....................                    [ 71%]
-tests/pipeline/test_labels.py ..............                             [ 73%]
-tests/pipeline/test_templates.py .........                               [ 75%]
-tests/replies/test_checks.py ...............................             [ 80%]
-tests/safety/test_safety.py ............................................ [ 87%]
-......                                                                   [ 88%]
-tests/scheduling/test_eligibility.py ................................... [ 93%]
-...........                                                              [ 95%]
-tests/scheduling/test_transactions.py ................                   [ 97%]
+tests/eval/test_grader_check_sheet.py .....                              [ 27%]
+tests/eval/test_retrieval_metrics.py ..................                  [ 29%]
+tests/eval/test_retrieval_runs.py .........                              [ 30%]
+tests/eval/test_run_guards.py .......                                    [ 31%]
+tests/eval/test_run_safety.py .........                                  [ 32%]
+tests/eval/test_run_stops.py ............                                [ 34%]
+tests/eval/test_scoring.py ...............                               [ 36%]
+tests/eval/test_threshold.py .................                           [ 38%]
+tests/flows/test_conversations.py ...................................... [ 42%]
+........................................................................ [ 51%]
+........................................................................ [ 60%]
+....................................................                     [ 67%]
+tests/flows/test_knowledge.py ...............                            [ 69%]
+tests/handoff/test_handoff.py ..........                                 [ 70%]
+tests/knowledge/test_search.py ..............                            [ 72%]
+tests/ops/test_store.py ............                                     [ 73%]
+tests/pipeline/test_documents.py .........                               [ 74%]
+tests/pipeline/test_findings.py .....................                    [ 77%]
+tests/pipeline/test_labels.py ..............                             [ 79%]
+tests/pipeline/test_templates.py .........                               [ 80%]
+tests/replies/test_checks.py .................................           [ 84%]
+tests/safety/test_safety.py ............................................ [ 89%]
+......                                                                   [ 90%]
+tests/scheduling/test_eligibility.py ................................... [ 94%]
+...........                                                              [ 96%]
+tests/scheduling/test_transactions.py .................                  [ 98%]
 tests/test_config.py ..........                                          [ 99%]
 tests/test_engine_interface.py ....                                      [100%]
 
-============================= 638 passed in 19.51s =============================
+============================= 806 passed in 38.77s =============================
 ```
 
 ## Requirement coverage
@@ -170,4 +170,21 @@ All the chosen findings were fixed test-first (commits 910fc1e to 1334222); the 
 - **Retrieval answers:** two graded runs of the frozen agent, combined search 92% and 96% correct, 96% faithful; the pooled threshold stays 0.25 (78% contained, 3 wrong confident answers over 50 answers).
 - **Grader check:** a fresh sample of the frozen agent's answers; Claude Fable 5.1 agrees with Codex on 30 of 30. Earlier sheets are archived with their hidden verdicts.
 - **Agent freeze:** hash `cfe0472409be496d646ce67830d4d185d9930f0f4c40dc8e3764bb6c45325419`, the hash both graded retrieval runs are filed under.
-- **Quick run:** pending.
+- **Quick run:** failed on the plan-savings case and a time-limit stop; see the next section.
+
+## Last round: quick-run failures, the agent's own answers and the threshold
+
+Every change test-first (commits 6167bbc to bae1eac); the suite is at 806 tests, all passing.
+
+- **Test-run fidelity:** turning off SDK retries had also removed the agent's own retries, so slow calls failed where production retries; now only the simulated caller loses retries within the 60-second cap. The grader was never told the test's fixed date and judged a Monday 19 October booking as past against the real date; each conversation now carries its "now" and the rubric judges dates against it.
+- **Plan savings (T9e29febc):** a question whether a plan saves money gets every member benefit, including the included tune-ups, and never a guess whether joining would save money.
+- **The agent's own answers:** the retrieval answers had been written by a separate short prompt, so the answer measures and the threshold curve did not describe the agent. Combined-search answers now come from the agent's knowledge flow, writer and checks; keyword-only and whole-knowledge-base answers keep the short prompt as a search comparison. Measured this way the agent first scored 80% and 84% correct, 76% and 72% faithful and 0% correct refusal.
+- **Fixes that showed:** the writer could not refuse a question the documents cannot answer (two of its rules contradicted each other); it now writes a hidden marker that, for a knowledge answer only, becomes a "not enough evidence" handoff with a ticket, and later sentences are still released. The final-price line now goes only on prices that vary by job, with the price-book passage it comes from.
+- **Retrieval answers (agent-written, two graded runs):** combined search 88% correct, 96% faithful, 100% citation accuracy, refusal 100% and 67%.
+- **Threshold:** the pooled curve over the two runs (50 answers) picks 0.35 (76% contained, 4 wrong confident answers, against 6 at 0.25 for the same containment); set to 0.35 as the agreed rule says (D48). The curve's runs were written with the threshold at 0, so they do not depend on its value.
+- **Adversarial set:** 32 of 32.
+- **Grader check:** a fresh sample of the latest answers; Claude Fable 5.1 agrees with Codex on 27 of 30 (90%), every disagreement a pass by Fable that Codex failed.
+- **Agent freeze:** hash `836b241517d187b64528c0e70a9ed4be3994d2dd18434256870f2a8c9897f01e`; it differs from the agent that wrote the graded runs only in the threshold setting.
+- **Quick run on the frozen agent:** passed 2 of 2. Knowledge 100% and 100%, bookings 100%, routing 100%, lookups 100%, safety and booking handoffs 100%, no wrong confident answers; containment 59% and 55% against a scope ceiling of 75% and an adjusted ceiling of 66%.
+- **Open:** the quick-run rule for a booking the caller never confirmed (D49) is proposed, awaiting the author.
+
