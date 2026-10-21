@@ -186,5 +186,5 @@ Every change test-first (commits 6167bbc to bae1eac); the suite is at 806 tests,
 - **Grader check:** a fresh sample of the latest answers; Claude Fable 5.1 agrees with Codex on 27 of 30 (90%), every disagreement a pass by Fable that Codex failed.
 - **Agent freeze:** hash `836b241517d187b64528c0e70a9ed4be3994d2dd18434256870f2a8c9897f01e`; it differs from the agent that wrote the graded runs only in the threshold setting.
 - **Quick run on the frozen agent:** passed 2 of 2. Knowledge 100% and 100%, bookings 100%, routing 100%, lookups 100%, safety and booking handoffs 100%, no wrong confident answers; containment 59% and 55% against a scope ceiling of 75% and an adjusted ceiling of 66%.
-- **Open:** the quick-run rule for a booking the caller never confirmed (D49) is proposed, awaiting the author.
+- **Settled:** the quick-run rule for a booking the caller never confirmed (D49), by the author.
 
