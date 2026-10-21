@@ -24,6 +24,7 @@
   .notice { margin: 0 0 12px; padding: 8px 12px; border-left: 3px solid #b26b00; background: #fff6e5; }
   #log { display: flex; flex-direction: column; gap: 8px; min-height: 160px; max-height: min(62vh, 640px);
          overflow-y: auto; overscroll-behavior: contain; margin-bottom: 12px; }
+  #log > * { flex-shrink: 0; }  /* the log scrolls; a clamped bubble must not be squeezed */
   .bubble { max-width: 85%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .bubble.agent { background: var(--agent); align-self: flex-start; }
   .bubble.caller { background: var(--caller); color: var(--brand-ink); align-self: flex-end; }
