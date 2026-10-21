@@ -511,7 +511,7 @@ The author can open the public site, chat, open the Staff view beside it, see th
 - [x] Task 23: Staff view, staff password, receipts and flagging. Requirements: R70, R71, R72, R75
 - [x] Task 24: Results tab. Requirements: R67, R68, R69
 - [x] Task 25: nightly reset gate, log purge, alerts, health and uptime monitor. Requirements: R74, R76, R86
-- [ ] Task 26: deploy to Fly.io with the rollback runbook. Requirements: R77, R83
+- [x] Task 26: deploy to Fly.io with the rollback runbook. Requirements: R77, R83
 
 ### Task 21: Chat page, message requests, sentence stream and visitor cookie
 
