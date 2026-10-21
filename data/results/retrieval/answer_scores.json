@@ -1,25 +1,25 @@
 {
  "keyword": {
   "answers": 25,
-  "correct": 0.8,
-  "faithful": 1.0,
+  "correct": 0.68,
+  "faithful": 0.92,
   "citation_ok": 1.0,
-  "refusal_ok": 1.0,
+  "refusal_ok": 0.3333333333333333,
   "stale_trap_correct": 0.8333333333333334
  },
  "combined": {
   "answers": 25,
-  "correct": 0.96,
-  "faithful": 1.0,
-  "citation_ok": 0.96,
+  "correct": 0.92,
+  "faithful": 0.96,
+  "citation_ok": 1.0,
   "refusal_ok": 1.0,
   "stale_trap_correct": 1.0
  },
  "whole_kb": {
   "answers": 25,
-  "correct": 0.96,
+  "correct": 0.88,
   "faithful": null,
-  "citation_ok": null,
+  "citation_ok": 1.0,
   "refusal_ok": 1.0,
   "stale_trap_correct": 1.0
  },

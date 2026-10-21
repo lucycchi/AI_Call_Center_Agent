@@ -2,8 +2,8 @@
  "set": "working",
  "questions": 50,
  "runs": 2,
- "answers_hash": "a38e601de711f7e27cfcbfc991456648a9bc55c59f6ba1122c3cb8832af410ab",
- "freeze_hash": "4b98dd5f03b5068f5e38c507666ddc746c21beca763c6003fa99d8be8ca13cd2",
+ "answers_hash": "f4bea90136da7a84a65ef7e264b0d76df9a4af275083b25bf722a8e6efbb2e0a",
+ "freeze_hash": "5b8f6899c76b23be395a0e225416a9d72ba3e9cdfa628e42a6c4b04e8eb33e45",
  "chosen": 0.25,
  "rule": {
   "floor": 0.25,
@@ -37,23 +37,23 @@
   },
   {
    "threshold": 0.45,
-   "containment": 0.64,
+   "containment": 0.66,
    "wrong_confident": 2
   },
   {
    "threshold": 0.5,
-   "containment": 0.56,
+   "containment": 0.58,
    "wrong_confident": 2
   },
   {
    "threshold": 0.55,
-   "containment": 0.28,
+   "containment": 0.3,
    "wrong_confident": 2
   },
   {
    "threshold": 0.6,
-   "containment": 0.16,
-   "wrong_confident": 2
+   "containment": 0.18,
+   "wrong_confident": 1
   },
   {
    "threshold": 0.65,
@@ -74,14 +74,14 @@
  "scores": [
   {
    "qid": "case-T0a995037",
-   "score": 0.5145,
+   "score": 0.5147,
    "correct": true,
    "unanswerable": false,
    "handed_off": false
   },
   {
    "qid": "case-T0a995037",
-   "score": 0.5145,
+   "score": 0.5147,
    "correct": true,
    "unanswerable": false,
    "handed_off": false
@@ -102,15 +102,15 @@
   },
   {
    "qid": "case-T738adaab",
-   "score": 0.5625,
+   "score": 0.5627,
    "correct": true,
    "unanswerable": false,
-   "handed_off": true
+   "handed_off": false
   },
   {
    "qid": "case-T738adaab",
-   "score": 0.5625,
-   "correct": true,
+   "score": 0.5627,
+   "correct": false,
    "unanswerable": false,
    "handed_off": false
   },
@@ -173,7 +173,7 @@
   {
    "qid": "case-Tc36da844",
    "score": 0.6003,
-   "correct": false,
+   "correct": true,
    "unanswerable": false,
    "handed_off": false
   },
@@ -187,9 +187,9 @@
   {
    "qid": "case-Tf7d382d9",
    "score": 0.4052,
-   "correct": true,
+   "correct": false,
    "unanswerable": false,
-   "handed_off": false
+   "handed_off": true
   },
   {
    "qid": "case-Tf7d382d9",
@@ -214,28 +214,28 @@
   },
   {
    "qid": "answerable-3",
-   "score": 0.634,
+   "score": 0.6343,
    "correct": true,
    "unanswerable": false,
    "handed_off": false
   },
   {
    "qid": "answerable-3",
-   "score": 0.634,
+   "score": 0.6343,
    "correct": true,
    "unanswerable": false,
    "handed_off": false
   },
   {
    "qid": "answerable-9",
-   "score": 0.5312,
+   "score": 0.5309,
    "correct": true,
    "unanswerable": false,
    "handed_off": false
   },
   {
    "qid": "answerable-9",
-   "score": 0.5312,
+   "score": 0.5309,
    "correct": true,
    "unanswerable": false,
    "handed_off": false
@@ -270,14 +270,14 @@
   },
   {
    "qid": "answerable-8",
-   "score": 0.5494,
+   "score": 0.5498,
    "correct": true,
    "unanswerable": false,
    "handed_off": false
   },
   {
    "qid": "answerable-8",
-   "score": 0.5494,
+   "score": 0.5498,
    "correct": true,
    "unanswerable": false,
    "handed_off": false
@@ -368,28 +368,28 @@
   },
   {
    "qid": "stale_trap-4",
-   "score": 0.5139,
+   "score": 0.5138,
    "correct": true,
    "unanswerable": false,
    "handed_off": false
   },
   {
    "qid": "stale_trap-4",
-   "score": 0.5139,
+   "score": 0.5138,
    "correct": true,
    "unanswerable": false,
    "handed_off": false
   },
   {
    "qid": "unanswerable-4",
-   "score": 0.345,
+   "score": 0.3454,
    "correct": true,
    "unanswerable": true,
    "handed_off": true
   },
   {
    "qid": "unanswerable-4",
-   "score": 0.345,
+   "score": 0.3454,
    "correct": true,
    "unanswerable": true,
    "handed_off": true
