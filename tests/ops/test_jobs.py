@@ -376,3 +376,11 @@ def test_messages_hold_the_gate_shared_so_they_wait_for_a_reset(store):
         time.sleep(0.2)
         assert started == []
     assert "hi" in client.get("/api/stream/m1").text and started == ["hello"]
+
+
+def test_health_answers_a_head_request_like_a_get(sched, store):
+    # UptimeRobot's free HTTP monitor checks with HEAD; a 405 showed the live site as down.
+    client = TestClient(create_app(SilentEngine(), store, cookie_secret=SECRET, scheduling_db=sched))
+    assert client.head("/health").status_code == 200
+    sched.unlink()
+    assert client.head("/health").status_code == 503

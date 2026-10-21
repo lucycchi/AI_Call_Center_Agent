@@ -12,7 +12,7 @@ from app.accounts.lookups import read_only
 def health_routes(store, scheduling_db: Path) -> APIRouter:
     router = APIRouter()
 
-    @router.get("/health")
+    @router.api_route("/health", methods=["GET", "HEAD"])  # HEAD for uptime monitors
     def health():
         try:
             if not Path(scheduling_db).exists():  # a read-only open would fail too, but say why
