@@ -290,6 +290,12 @@ def test_the_chat_page_has_the_staff_view_button_badge_and_panel(app):
     assert visitor(app, "alice").get("/static/staff.js").status_code == 200
 
 
+def test_the_hidden_badge_is_not_drawn(app):
+    # The badge's display rule would otherwise override the hidden attribute and show "0" with no new tickets.
+    page = visitor(app, "alice").get("/").text
+    assert re.search(r"\.badge\[hidden\]\s*\{\s*display:\s*none;?\s*\}", page)
+
+
 # -- Receipts ----------------------------------------------------------------------------------------------------
 
 NUMBER = re.compile(r"(?<![\w.-])0\.\d+|\b\d+\.\d{2,}\b(?!\))")  # a score such as 0.94; prices ($79.00) aside
