@@ -265,3 +265,25 @@ def test_a_read_back_that_also_says_another_window_is_unavailable_counts(tmp_pat
     from eval.grade_conversations import _read_back_before
     assert _read_back_before(attempt, "booked appointment 160", "2026-10-19", "13:00-17:00")
     assert not _read_back_before(attempt, "booked appointment 160", "2026-10-19", "12:00-16:00")  # the window turned down
+
+
+@pytest.mark.parametrize("read_back", [
+    "I'm sorry, Elena, but Monday, October 19 is the earliest opening I have. The one I can read back for you is an HVAC "
+    "repair visit on Monday, October 19, 2026, from 8:00 AM to 12:00 PM. Would you like me to go ahead with that? Please "
+    "reply with a clear yes to confirm.",
+    "Just to confirm, Priya: that's an HVAC repair visit on Monday, October 19, in the 8:00 a.m. to 12:00 p.m. window. "
+    "Can you give me a clear yes so I go ahead and book it?"])
+def test_quick_run_read_backs_count_even_when_another_sentence_says_to_confirm(tmp_path, read_back):
+    # Quick run (T70425efa, T81429224): "Please reply with a clear yes to confirm." names no window; the read-back
+    # sentence before it does.
+    conversation = [{"role": "caller", "text": "I need a repair"},
+                    {"role": "agent", "text": "Monday, October 19: 1) 8:00 AM to 12:00 PM, 2) 12:00 PM to 4:00 PM, or "
+                                              "3) 1:00 PM to 5:00 PM. Which one suits you?"},
+                    {"role": "caller", "text": "Can you do anything earlier?"},
+                    {"role": "agent", "text": read_back},
+                    {"role": "caller", "text": "Okay, do that. Please book the slot."},
+                    {"role": "agent", "text": "Booked: your HVAC repair visit on Monday, October 19, 8am to 12pm."}]
+    attempt = Attempt("c1", db_path=str(_db(tmp_path, sql=_book(56))), conversation=conversation,
+                      done_events=[{"db_actions": []}, {"db_actions": []}, {"db_actions": ["booked appointment 160"]}])
+    from eval.grade_conversations import _read_back_before
+    assert _read_back_before(attempt, "booked appointment 160", "2026-10-19", "08:00-12:00")

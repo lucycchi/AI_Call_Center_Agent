@@ -96,8 +96,8 @@ def _read_back_before(attempt, action: str, slot_date: str, window: str) -> bool
         reply = replies[n]
         # The read-back sentence itself decides when there is one, so a reply that also says another window is not
         # available ("I can't offer 12pm-4pm that day. To confirm, ... 1pm to 5pm.") still counts (T1dee0920).
-        confirming = [s for s in re.split(r"(?<=[.!?])\s+", reply) if CONFIRMING.search(s)]
-        if confirming:
+        confirming = [s for s in re.split(r"(?<=[.!?])\s+", reply) if CONFIRMING.search(s) and WINDOW.search(s)]
+        if confirming:  # only a confirming sentence that names a window ("... clear yes to confirm." names none)
             reply = " ".join(confirming)
         windows = [m.group(0) for m in WINDOW.finditer(reply)]
         others = [w for w in windows if not names_slot(f"{slot_date} {w}", slot_date, window)]
