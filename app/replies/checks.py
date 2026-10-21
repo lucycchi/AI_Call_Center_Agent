@@ -49,8 +49,10 @@ FOLLOW_UP_PROMISE = re.compile(r"\b(?:a |our )?(?:team member|someone|member of 
                                r"\b(?:will|'ll|is going to)\b[^.]{0,10}\b(?:follow up|contact|call|reach out|get back)|"
                                r"\bi(?:'ll| will| have|'ve)\s+pass(?:ed)?\b(?![^.]*\bif you)", re.I)
 # Saying a follow-up cannot be promised ("I can't say a team member will follow up") is not a promise.
-NEGATED = re.compile(r"\b(?:can['’]?t|cannot|can not|don['’]t|doesn['’]t|do not|does not|didn['’]t|won['’]t|not)\b[^.,;]{0,40}?"
-                     r"\b(?:say|confirm|promise|guarantee|tell you|state|mention)\s+(?:that\s+|whether\s+)?(?:a\s+|our\s+)?$", re.I)
+# Narrow on purpose (security review): only "can't say / don't say / cannot confirm / can't promise / can't guarantee"
+# directly in front of the follow-up words exempts them; anything looser still counts as a promise (fails closed).
+NEGATED = re.compile(r"\b(?:can['’]?t|cannot|can not|don['’]t|doesn['’]t|do not|does not)\s+"
+                     r"(?:say|confirm|promise|guarantee)\s+(?:that\s+|whether\s+)?(?:a\s+|our\s+)?$", re.I)
 
 
 def promises_follow_up(sentence: str, ticket_id: int | None = None) -> bool:

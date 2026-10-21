@@ -38,7 +38,9 @@ def test_the_published_benefit_sentences_blocked_in_quick_runs_are_labelled_to_b
     assert all(r["expected"] == "block" for r in ROWS if r.get("source") == "added with the quick-run blocks")
 
 
-@pytest.mark.parametrize("row", [r for r in ROWS if r.get("source") == "quick-run block" and not r["sentence"].startswith("It ")],
+# A sentence with words outside the plain statement vocabulary ("which ...") goes to the model instead (security review).
+@pytest.mark.parametrize("row", [r for r in ROWS if r.get("source") == "quick-run block" and not r["sentence"].startswith("It ")
+                                 and " which " not in r["sentence"]],
                          ids=lambda r: r["sentence"][:50])
 def test_a_plain_statement_of_published_terms_is_released_without_the_model(row):
     client = NoModel()
@@ -66,3 +68,17 @@ def test_a_sentence_about_it_is_released_in_code_only_when_the_sentence_before_n
     sentence = next(r["sentence"] for r in ROWS if r.get("source") == "quick-run block" and r["sentence"].startswith("It "))
     assert published_only(sentence, "Standard is $189 per year per system or $16.99 per month.")
     assert not published_only(sentence, "Your visit is booked for Monday.") and not published_only(sentence, "")
+
+
+# -- Security review: the code pre-check is a full-sentence allowlist, never a loophole -----------------------------
+
+@pytest.mark.parametrize("sentence", [
+    "Comfort Club members get 15% off all repairs (parts and labor), so this repair will be 15% off.",
+    "Standard members get the $89 diagnostic fee waived on all service calls, which applies to today's visit.",
+    "Comfort Club members get the $89 diagnostic fee waived on all service calls, effective immediately.",
+    "Plus members get 15% off plumbing repairs, and that covers this job.",
+    "Comfort Club members get 15% off all repairs (parts and labor) starting now.",
+])
+def test_published_terms_applied_to_this_caller_still_go_to_the_model(sentence):
+    from app.replies.money_check import published_only
+    assert not published_only(sentence, "")

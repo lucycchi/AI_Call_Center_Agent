@@ -110,6 +110,14 @@ _NOT_PLAIN = re.compile(r"\b(?:i|i'll|i'd|i'm|i've|me|my|we|we'll|we're|we've|we
                         r"if|unless|guarantee\w*)\b|[’']ll\b", re.I)
 
 
+_STATEMENT_WORDS = set("""a an and also as both each every get gets getting include includes including included adds add
+along with all of the that it its is are cost costs priced price plan plans member members membership comfort club
+standard plus per system on for or to in at year a-year annual annually month monthly benefits benefit following these
+those here what list lists offers offer provides provide receive receives plus' per-system then too
+one two seasonal tune ups cooling heating priority scheduling reminder filter change notifications inspection
+overview maintenance water heater flush whole home plumbing""".split())  # the plan's published non-money benefits
+
+
 def published_only(sentence: str, previous: str = "") -> bool:
     """True when the sentence plainly states published member benefits or plan prices and nothing else about money."""
     rest = _SOURCES.sub(" ", sentence)
@@ -129,7 +137,9 @@ def published_only(sentence: str, previous: str = "") -> bool:
             if condition == "additional" and "additional system" not in sentence.lower():
                 continue
             rest = rest[:match.start()] + " " * (match.end() - match.start()) + rest[match.end():]
-    return not touches_money(rest)
+    # A full-sentence allowlist: once the published terms are removed, every word left must belong to a plain
+    # statement of them ("Comfort Club members also get ..."); any other word sends the sentence to the model.
+    return not touches_money(rest) and all(w.lower() in _STATEMENT_WORDS for w in re.findall(r"[A-Za-z']+", rest))
 
 
 class MoneyCheck:

@@ -240,11 +240,22 @@ def test_plain_english_saying_not_in_documents_is_not_the_marker(sentence):
 @pytest.mark.parametrize("sentence", [
     "I can't add the membership myself here, and the facts don't say a team member will follow up on that.",
     "I can't say a team member will follow up.",
-    "I can't add the membership from this chat, and the documents I have don't cover how membership gets started, so I "
-    "can't confirm the steps or say that a team member will follow up on it.",
 ])
 def test_a_sentence_that_denies_a_follow_up_is_not_a_follow_up_promise(sentence):
     assert check_sentence(sentence, "").ok
+
+
+# Security review: the exemption is narrow, so loose or idiomatic negations still fail closed (the writer is told
+# not to talk about follow-ups the facts do not mention).
+@pytest.mark.parametrize("sentence", [
+    "I can't add the membership from this chat, and the documents I have don't cover how membership gets started, so I "
+    "can't confirm the steps or say that a team member will follow up on it.",
+    "I don't want to mention it twice, but a team member will follow up.",
+    "We can't tell you the total, but a team member will follow up tomorrow.",
+    "I didn't state it before: a team member will follow up.",
+])
+def test_a_loose_negation_does_not_exempt_a_follow_up_promise(sentence):
+    assert check_sentence(sentence, "").rule == "follow_up_promise"
 
 
 @pytest.mark.parametrize("sentence", ["A team member will follow up with you tomorrow.", "Someone will call you back today.",
