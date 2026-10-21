@@ -682,7 +682,7 @@ can only propose a decision; only the author settles one.
 
 ## D51: After the held-out measurement, may the live demo get fixes the measured agent did not have?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-21
 - **Options:**
   - Yes, for safety and demo clarity only, documented, with the held-out numbers left as measured
