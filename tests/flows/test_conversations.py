@@ -1602,3 +1602,53 @@ def test_a_date_question_with_another_request_is_routed_as_usual(chat):
 def test_the_writer_is_told_the_date_is_the_demo_date():
     from app.replies.writer import RULES
     assert "Friday 16 October 2026" in RULES and "For this demo, today is" in RULES
+
+
+# Post-measurement safety fix: after a safety reply the conversation is never booked (SPEC anti-goal, R36, R37).
+def _appointments(chat):
+    return count(chat["db"], "select count(*) from appointments")
+
+
+def test_a_booking_after_a_burning_smell_is_not_booked_and_goes_to_the_emergency_ticket(chat):
+    before = _appointments(chat)
+    chat["say"]("I'm Linda Foster, MHC-10001. There's a burning smell from my furnace")
+    [emergency] = chat["store"].tickets()
+    assert emergency["reason_tag"] == "burning smell"
+    reply, done = chat["say"]("yes, book me the first slot")
+    assert reply == (f"Because of the safety issue you reported, I won't book a regular visit. Our team will arrange the "
+                     f"visit as a priority through your emergency ticket, Ticket #{emergency['ticket_id']}, and I've "
+                     f"added your message to it.")
+    assert _appointments(chat) == before and not done.db_actions
+    assert "yes, book me the first slot" in chat["store"].ticket_messages(emergency["ticket_id"])
+    assert len(chat["store"].tickets()) == 1
+    # Still refused on a later turn: the flag is kept for the whole conversation.
+    reply, _ = chat["say"]("I want to book a repair Monday morning")
+    assert reply.startswith("Because of the safety issue") and _appointments(chat) == before
+    reply, _ = chat["say"]("move my appointment")
+    assert reply.startswith("Because of the safety issue") and _appointments(chat) == before
+
+
+def test_a_gas_report_mid_booking_abandons_the_booking_and_a_yes_at_the_read_back_books_nothing(chat):
+    before = _appointments(chat)
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    reply, _ = chat["say"]("yes")
+    assert "Read back" in reply
+    chat["say"]("wait, I smell gas")
+    emergency = chat["store"].tickets()[-1]
+    assert emergency["reason_tag"] == "emergency"
+    reply, done = chat["say"]("yes")
+    assert reply.startswith("Because of the safety issue") and f"Ticket #{emergency['ticket_id']}" in reply
+    assert _appointments(chat) == before and not done.db_actions
+    assert "yes" in chat["store"].ticket_messages(emergency["ticket_id"])
+
+
+def test_a_knowledge_question_after_a_burning_smell_is_answered_normally(chat):
+    chat["say"]("There's a burning smell coming from the vents")
+    reply, done = chat["say"]("how much is a tune-up cost?")
+    assert "$129" in reply and "Because of the safety issue" not in reply
+
+
+def test_an_account_question_after_a_safety_report_is_answered_normally(chat):
+    chat["say"]("I'm Linda Foster, MHC-10001. No heat and it's freezing")
+    reply, _ = chat["say"]("what's my balance")
+    assert "Because of the safety issue" not in reply and "no open invoices" in reply

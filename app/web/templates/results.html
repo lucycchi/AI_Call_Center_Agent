@@ -23,13 +23,23 @@
   .table-wrap { overflow-x: auto; }
   table.numbers { width: 100%; border-collapse: collapse; font-size: .9rem; }
   table.numbers th, table.numbers td { text-align: left; vertical-align: top; padding: 6px 8px; border-top: 1px solid var(--line); }
-  table.numbers td:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+  table.numbers > tbody > tr > td:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
   table.numbers { table-layout: fixed; }  /* widths from the heading row, so a long value cannot widen its column */
-  table.numbers thead th:nth-child(1) { width: 24%; }
-  table.numbers thead th:nth-child(2) { width: 26%; }
+  table.numbers > thead th:nth-child(1) { width: 24%; }
+  table.numbers > thead th:nth-child(2) { width: 26%; }
   table.numbers td.long { white-space: normal; overflow-wrap: anywhere; font-weight: normal; font-size: .8rem; }
-  table.numbers td:nth-child(3), .definition { color: var(--muted); font-weight: normal; }
+  table.numbers > tbody > tr > td:nth-child(3), .definition, table.modes td.what, table.modes caption { color: var(--muted); font-weight: normal; }
   .section-head th { padding-top: 14px; }
+  .sub-head th { padding-top: 10px; font-weight: 600; }
+  tr.group > td { padding: 4px 0 8px; }
+  table.modes { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  table.modes caption { text-align: left; caption-side: top; padding: 0 8px 4px; font-size: .8rem; }
+  table.modes th, table.modes td { padding: 4px 8px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.modes thead th { font-weight: 600; border-top: 0; }
+  table.modes td { font-variant-numeric: tabular-nums; }
+  table.modes td.what { font-size: .8rem; min-width: 12em; }
+  .frozen-note { margin: 12px 0 0; font-size: .85rem; color: var(--muted); }
+  .frozen-note code { overflow-wrap: anywhere; font-size: .8rem; }
   .not-run { font-weight: 600; }
   .live-traffic { background: var(--live); border-color: var(--live-line); }
   .live-numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0; }

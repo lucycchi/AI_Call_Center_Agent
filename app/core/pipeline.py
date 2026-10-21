@@ -41,6 +41,16 @@ REDIRECTS = {"hiring": "We don't take job applications by phone; openings and ap
 HANDOFF_TAGS = {"dispute": "dispute", "complaint": "complaint", "late technician": "late technician",
                 "commercial": "commercial", "person": "other", "other language": "other language", "other": "other"}
 SAFETY_TAGS = {"danger": "emergency", "burning": "burning smell", "urgent": "emergency"}
+# Post-measurement safety fix: after a safety reply, a booking request or a yes is never booked (SPEC anti-goal, R37).
+SAFETY_YES = re.compile(r"\b(yes|yeah|yep|yup|sure|correct|book|go ahead|please do|do it|that works|sounds good|"
+                        r"take it|let'?s do)\b", re.I)
+BOOKING_DETAILS = (None, "book", "reschedule")
+
+
+def _no_booking_after_safety(ticket_id: int | None) -> str:
+    through = f"your emergency ticket, Ticket #{ticket_id}" if ticket_id else "your emergency ticket"
+    return (f"Because of the safety issue you reported, I won't book a regular visit. Our team will arrange the visit as "
+            f"a priority through {through}, and I've added your message to it.")
 ANGRY = re.compile(r"\b(ridiculous|unacceptable|furious|angry|done with|worst|terrible|sick of)\b|!{2,}", re.I)
 OFFER_RETURN = "Offer to return to the booking afterwards."
 NEW_CUSTOMER = re.compile(r"\b(i'?m new|i am new|new customer|first time (calling|customer)|don'?t have an account)\b", re.I)
@@ -273,6 +283,7 @@ class AgentPipeline:
 
         def finish(route: str, outcome: str, receipt: dict, db_actions: list[str], label: str | None = None,
                    tags: list[str] = ()) -> DoneEvent:
+            state.after_safety = outcome == "safety"
             state.save(self.store)  # not quiet: without the state the conversation cannot continue (R59)
             self._quietly(self.store.log_agent_message, agent_message, " ".join(released))
             receipt_row = (agent_message, receipt.get("safety", "clear"), label or route, receipt.get("passages", []),
@@ -293,6 +304,9 @@ class AgentPipeline:
                 yield emit(sentence)
             for sentence in ticket(SAFETY_TAGS[safety.kind], safety.kind, turn.text):
                 yield emit(sentence)
+            state.safety_reported = state.safety_reported or safety.kind
+            if turn_tickets:
+                state.safety_ticket = turn_tickets[-1]
             yield finish("safety", "safety", {"safety": safety.kind}, [])
             return
         # 2. Limits (R61).
@@ -328,6 +342,15 @@ class AgentPipeline:
             hour = f"{self.now:%I:%M}".lstrip("0") + (" a.m." if self.now.hour < 12 else " p.m.")
             yield emit(f"For this demo, today is {self.now:%A} {self.now.day} {self.now:%B %Y}, and the time is {hour} in Austin.")
             yield finish(state.active_flow or "none", "answered", {"safety": "clear"}, [])
+            return
+        if state.after_safety and not state.active_flow and SAFETY_YES.search(turn.text) and len(turn.text.split()) <= 8 \
+                and "?" not in turn.text:
+            # A yes straight after the safety reply (to a booking the safety report abandoned) books nothing.
+            if state.safety_ticket and state.safety_ticket != state.ticket_id:
+                add_to_open_ticket({"store": self.store, "ticket_id": state.safety_ticket}, caller_message)
+            state.ticket_notes += 1
+            yield emit(_no_booking_after_safety(state.safety_ticket))
+            yield finish("scheduling", "handed_off", {"safety": "clear"}, [])
             return
         if not state.active_flow and not state.pending:
             if ACKNOWLEDGEMENT.match(turn.text):
@@ -406,6 +429,20 @@ class AgentPipeline:
         if any(r.route == "scheduling" for r in requests) and WARRANTY.search(turn.text) \
                 and not any(r.route == "knowledge" for r in requests):
             requests = [Request(turn.text, "knowledge"), *requests]  # a warranty claim also gets the coverage answer
+        no_booking = False
+        if state.safety_reported:
+            # Never booked, rescheduled into or offered slots once a safety reply was given; other requests still run.
+            kept = [r for r in requests if not (r.route == "scheduling" and r.detail in BOOKING_DETAILS)
+                    and not (r.route == "continue" and state.flow.get("kind") in BOOKING_DETAILS)]
+            no_booking = len(kept) < len(requests)
+            requests = kept
+            state.pending = [p for p in state.pending if not (p["route"] == "scheduling" and p["detail"] in BOOKING_DETAILS)]
+            if no_booking:
+                if state.flow.get("kind") in BOOKING_DETAILS:
+                    state.flow, state.active_flow = {}, None
+                if state.safety_ticket and state.safety_ticket != state.ticket_id:
+                    add_to_open_ticket({"store": self.store, "ticket_id": state.safety_ticket}, caller_message)
+                state.ticket_notes += 1
         route_label = flow_before if requests and requests[0].route == "continue" else routed.route
         # 4. Flows. Account and scheduling requests wait for identification together, then run in turn (R39).
         results: list[FlowResult] = []
@@ -532,6 +569,9 @@ class AgentPipeline:
             fixed += ticket(tags[0], "; ".join(c for _, c, _ in handoffs if c),
                             "; ".join(dict.fromkeys(w for _, _, w in handoffs)), tags[1:])
             outcome = "declined" if tags[0] == "decline" else "handed_off"
+        if no_booking:
+            fixed.append(_no_booking_after_safety(state.safety_ticket))
+            outcome = "handed_off" if outcome == "answered" else outcome
         for sentence in fixed:
             yield emit(sentence)
         receipt = {"safety": "clear", "clear": routed.clear,

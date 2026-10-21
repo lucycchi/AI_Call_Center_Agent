@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import AUSTIN
+from app.config import AUSTIN, ROOT
 from app.ops.store import OpsStore
 from app.web.main import create_app
 from app.web.results import FIELDS, SECTIONS, executive_callouts
@@ -93,13 +93,15 @@ def test_every_summary_field_is_shown_with_a_one_line_definition(store, tmp_path
 
 
 def test_a_long_value_wraps_so_the_definitions_stay_on_screen(store, tmp_path):
-    # Value cells never wrap, so one long value (the run settings in "Other notes") pushed "What it means" off the page.
+    # Value cells never wrap, so one long value pushed "What it means" off the page; long lists are also cut short.
     settings = {f"setting_{i}": "x" * 20 for i in range(40)}
     summary = summary_fixture() | {"extra": {"settings": settings},
                                    "retrieval": {"keyword": {"misses": [f"case-T{i:08x}" for i in range(12)]}}}
     frozen = section(results_page(store, tmp_path, summary), "frozen-results")
     long_cells = re.findall(r'<td class="long">([^<]*)</td>', frozen)
-    assert any("setting_39" in cell for cell in long_cells) and any("case-T0000000b" in cell for cell in long_cells)
+    assert any("case-T00000000" in cell and "and 6 more (12 in all)" in cell for cell in long_cells)
+    assert "case-T0000000b" not in frozen  # the list is truncated with a count
+    assert "setting 39" in frozen and "{" not in frozen  # each setting is its own row, not a JSON blob
     assert re.search(r'<tr data-field="containment">.*?<td>62\.0%</td>', frozen, re.S)  # short values stay unwrapped
     page = results_page(store, tmp_path, summary)
     assert re.search(r"table\.numbers td\.long\s*\{[^}]*white-space:\s*normal", page)
@@ -126,6 +128,91 @@ def test_a_summary_without_the_validated_sections_is_not_shown_as_the_final_resu
         del summary["containment"]
     frozen = section(results_page(store, tmp_path, summary), "frozen-results")
     assert "Final results not yet run" in frozen and "data-field" not in frozen
+
+
+# -- Readable sections, the grader wording, consistency and the frozen-agent note ------------------------------------
+
+COMMITTED = ROOT / "data" / "results" / "final" / "summary.json"
+CONSISTENCY = {"cases": 15, "runs": 3, "seed": 3, "correct_all_three": 0.6666666666666666,
+               "correct_each_run": [0.8666666666666667, 0.8, 0.7333333333333333],
+               "not_always_correct": ["T28588235", "T3baed8ff", "T9f473de6", "Td1e329a6", "Teff9802d"]}
+
+
+def committed_summary() -> dict:
+    if not COMMITTED.exists():
+        pytest.skip("no committed final summary")
+    return json.loads(COMMITTED.read_text())
+
+
+def block(frozen: str, name: str) -> str:
+    match = re.search(rf'<tbody data-section="{name}">(.*?)</tbody>', frozen, re.S)
+    assert match, f"no {name} section"
+    return match.group(1)
+
+
+def test_the_committed_summary_shows_readable_tables_not_json(store, tmp_path):
+    frozen = section(results_page(store, tmp_path, committed_summary()), "frozen-results")
+    assert "{" not in frozen and "}" not in frozen  # no raw JSON anywhere in the frozen results
+    retrieval = block(frozen, "retrieval")
+    for column in ("Keyword search", "Meaning search", "Combined"):  # search modes are columns
+        assert f"<th scope=\"col\">{column}</th>" in retrieval
+    assert "Hit in top 5" in retrieval and "77.3%" in retrieval and "97.7%" in retrieval
+    assert "case-T2603f4e6" in retrieval
+    answers = block(frozen, "answers")
+    assert "Whole knowledge base" in answers and "92.0%" in answers and "not measured" in answers
+    grader = block(frozen, "grader_agreement")
+    assert "83.3%" in grader and "case-T7d8fb3e5 (whole knowledge base)" in grader
+    labels = block(frozen, "label_agreement")
+    assert re.search(r"Disagreements, Codex and Claude Haiku</th><td>none</td>", labels)
+    assert re.search(r"Human labels</th><td>0</td>", labels)
+    # The run settings: the four model roles are columns, and plain numbers are not turned into percentages.
+    for column in ("Simulated caller", "Router", "Reply writer", "Reply check"):
+        assert f"<th scope=\"col\">{column}</th>" in frozen
+    assert "claude-sonnet-5-5" in frozen and "$0.39" in frozen and "$8.00" in frozen
+    assert re.search(r"Search score threshold</th><td>0\.25</td>", frozen) and "25.0%" not in frozen
+    assert re.search(r"Ticket actionable</th><td>72\.7%</td>", frozen)
+    for _, (_, definition) in SECTIONS.items():
+        assert html.escape(definition) in frozen
+
+
+def test_section_values_are_escaped(store, tmp_path):
+    summary = summary_fixture() | {"retrieval": {"set": "<script>x</script>", "keyword": {"misses": ["<b>"]}}}
+    frozen = section(results_page(store, tmp_path, summary), "frozen-results")
+    assert "<script>" not in frozen and "&lt;script&gt;" in frozen and "&lt;b&gt;" in frozen
+
+
+def test_the_grader_check_is_described_as_claude_fable_grading_blind_not_a_human_check(store, tmp_path):
+    page = results_page(store, tmp_path, summary_fixture())
+    definition = SECTIONS["grader_agreement"][1]
+    assert "Claude Fable 5.1" in definition and "not a human check" in definition and "blind" in definition
+    assert "author's own" not in page and "own blind grades" not in page
+    assert not re.search(r"(the author|a person|a human|staff) (graded|checked|reviewed)", page, re.I)
+
+
+def test_the_consistency_result_is_shown_when_its_summary_exists(store, tmp_path):
+    path = tmp_path / "final" / "consistency" / "summary.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(CONSISTENCY))
+    frozen = section(results_page(store, tmp_path, summary_fixture()), "frozen-results")
+    consistency = block(frozen, "consistency")
+    assert re.search(r"Correct on all three runs</th><td>66\.7%</td>", consistency)
+    assert re.search(r"Cases</th><td>15</td>", consistency) and re.search(r"Runs</th><td>3</td>", consistency)
+    assert "86.7%, 80.0%, 73.3%" in consistency and "T28588235" in consistency
+    assert "{" not in consistency
+
+
+def test_without_a_consistency_summary_no_consistency_section_is_shown(store, tmp_path):
+    frozen = section(results_page(store, tmp_path, summary_fixture()), "frozen-results")
+    assert 'data-section="consistency"' not in frozen
+
+
+def test_a_note_names_the_frozen_agent_hash_and_the_later_live_build(store, tmp_path):
+    agent = "5b8f6899c76b23be395a0e225416a9d72ba3e9cdfa628e42a6c4b04e8eb33e45"
+    frozen = section(results_page(store, tmp_path, summary_fixture() | {"agent_hash": agent}), "frozen-results")
+    note = re.search(r'<p class="frozen-note">(.*?)</p>', frozen, re.S)
+    assert note and agent in note.group(1) and "held-out" in note.group(1)
+    assert "later build" in note.group(1) and "README" in note.group(1)
+    assert frozen.index("<table") < frozen.index('class="frozen-note"')  # under the frozen numbers
 
 
 # -- Try these ----------------------------------------------------------------------------------------------------

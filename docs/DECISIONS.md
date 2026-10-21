@@ -680,6 +680,18 @@ can only propose a decision; only the author settles one.
 - **Choice:** The site uses its own Anthropic key with a monthly limit set in the console. The public budget is set to $0 on Fly, so anyone can view the chat page, Results tab and test customers, but a public message gets a plain handoff with no model call. One reusable reviewer link, given with the submission, starts a 7-day reviewer session in any browser that opens it; all reviewer sessions share the $3-a-day reserve. This departs from the reviewer-link rule (R85), which said the token is used once.
 - **Reason:** The author's choice. The provider's limit is a hard stop even if the site's own caps failed, the site stays at a public address as the spec asks, and only people with the link can spend. Measured on the quick run, the agent costs about $0.01 a conversation, so the reserve covers about 300 conversations a day and a week at the full reserve is about $21; a reusable link lets every grader and device in, and a leaked link is capped by the reserve and the console limit.
 
+## D51: After the held-out measurement, may the live demo get fixes the measured agent did not have?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-21
+- **Options:**
+  - Yes, for safety and demo clarity only, documented, with the held-out numbers left as measured
+  - No, the live demo stays exactly the measured agent
+- **Research:**
+  - [data/results/final/summary.json](data/results/final/summary.json): In both burning-smell held-out cases the frozen agent (5b8f6899) gave the safety reply and a priority ticket, then booked an ordinary visit after the caller said yes, which breaks the rule that an emergency is never booked; callers asking the date also had no clear answer that the demo's date is fixed.
+- **Choice:** The live build gets two changes after the measurement: after any safety reply the agent never books, reschedules or offers slots in that conversation and points to the emergency ticket; and a question about today's date or time is answered as the demo's fixed date. The held-out numbers stay as measured on 5b8f6899, and the README and Results tab say the live build differs.
+- **Reason:** The author's choice. The held-out rule (R10) forbids re-measuring after seeing held-out results, not fixing a live safety bug; reporting the measured agent's numbers while the demo runs a documented later build keeps both honest.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take

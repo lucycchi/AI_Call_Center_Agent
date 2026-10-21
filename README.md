@@ -272,6 +272,16 @@ Looking at the first attempts (`data/results/final/attempts.jsonl`):
 - The north-zone plumbing case should have been a clean decline (no plumbing slots in the north zone); the agent said
   there was no capacity but its ticket left out the problem, so it was graded wrong.
 
+### The live build after the measurement
+
+The numbers above are the frozen agent's (agent hash `5b8f6899`, in `data/results/final/summary.json`). The live demo
+runs a later build with two changes made after the measurement and not re-measured, as the held-out rule (R10)
+requires (live fixes after the measurement (D51)):
+- after any safety reply, the agent never books, reschedules or offers slots in that conversation; it points to the
+  emergency ticket instead (the burning-smell bug described above);
+- a question about today's date or time is answered as the demo's fixed date (Friday 16 October 2026, 9:00 a.m. in
+  Austin), since the demo runs on a fixed "now".
+
 ### By call reason
 
 Accuracy on the reasons the agent should handle itself, and the escalation rate on the rest, from the same frozen
