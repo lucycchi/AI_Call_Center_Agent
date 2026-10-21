@@ -217,3 +217,19 @@ def test_the_writer_marks_what_the_facts_do_not_answer_instead_of_promising_a_fo
     from app.replies.checks import NOT_IN_DOCUMENTS
     from app.replies.writer import RULES
     assert NOT_IN_DOCUMENTS in RULES and "do not answer the question, say a team member will follow up" not in RULES
+
+
+@pytest.mark.parametrize("marker", ["[Not in documents]", "[NOT IN DOCUMENTS ]", "NOT IN DOCUMENTS", "[NOT_IN_DOCUMENTS]",
+                                    "[NOT IN DOCUMENT]", "[ not  in   documents ]", "[NOT IN", "[NOT"])
+def test_any_form_of_the_marker_or_a_cut_off_one_at_the_end_is_the_marker(marker):
+    stream = CheckedStream(iter([f"A tune-up is $129. {marker}"]), money_check=lambda s, p: True)
+    assert list(stream) == ["A tune-up is $129."] and stream.not_in_documents
+    alone = CheckedStream(iter(["A tune-up is $129.", marker]), money_check=lambda s, p: True)
+    assert list(alone) == ["A tune-up is $129."] and alone.not_in_documents
+
+
+@pytest.mark.parametrize("sentence", ["That is not in the documents I have.", "That's not in documents I have seen.",
+                                      "Not in documents? Let me check.", "It is not in our service area."])
+def test_plain_english_saying_not_in_documents_is_not_the_marker(sentence):
+    stream = CheckedStream(iter([sentence]), money_check=lambda s, p: True)
+    assert list(stream) == [sentence] and not stream.not_in_documents

@@ -120,6 +120,9 @@ def test_the_run_stops_at_the_budget_and_writes_a_partial_summary(tmp_path):
     summary = run_all(cases, Recorder(), lambda: CostlyCaller(["hello"]), budget, grade=lambda a, c: a, out=tmp_path)
     assert summary.stopped_at_budget is True and summary.scenarios < 5
     assert (tmp_path / "summary.json").exists() and (tmp_path / "attempts.jsonl").exists()
+    import json
+    saved = json.loads((tmp_path / "summary.json").read_text())
+    assert saved["stopped_at_budget_count"] == 5 - summary.scenarios == len(saved["stopped_at_budget_cases"])
 
 
 def test_a_failed_case_is_run_once_more_and_a_pass_on_the_retry_is_flaky(tmp_path):
@@ -221,3 +224,13 @@ def test_redirects_count_in_both_ceilings_and_action_gaps_only_leave_the_adjuste
     summary = score([_perfect(c) for c in cases], cases)
     assert summary.scope_ceiling == 1.0 and summary.adjusted_ceiling == 0.75 and summary.containment == 0.75
     assert summary.scope_ceiling_without_redirects == 1.0 and summary.adjusted_ceiling_without_redirects == 2 / 3
+
+
+def test_the_summary_names_the_cases_a_budget_stop_dropped():
+    cases = [case("a", 1), case("b", 1), case("c", 1), case("d", 1)]
+    attempts = [attempt("a"), attempt("b", correct=None), attempt("c", correct=False), attempt("c", n=2, correct=None)]
+    attempts[1].stopped = attempts[3].stopped = "budget"
+    summary = score(attempts, cases, stopped_at_budget=True)
+    assert summary.stopped_at_budget_cases == ["b|1", "c|2", "d|1"]  # cut at the cap, or never run once it was reached
+    assert summary.stopped_at_budget_count == 3 and summary.scenarios == 2
+    assert score([attempt("a")], [case("a", 1), case("b", 1)]).stopped_at_budget_cases == []  # no stop, nothing dropped

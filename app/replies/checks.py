@@ -50,7 +50,10 @@ FOLLOW_UP_PROMISE = re.compile(r"\b(?:a |our )?(?:team member|someone|member of 
                                r"\bi(?:'ll| will| have|'ve)\s+pass(?:ed)?\b(?![^.]*\bif you)", re.I)
 # The writer's sentence for "the facts do not answer this"; never shown, it ends the reply with a handoff.
 NOT_IN_DOCUMENTS = "[NOT IN DOCUMENTS]"
-MARKER = re.compile(re.escape(NOT_IN_DOCUMENTS) + r"[^\w$(]*")  # with any punctuation glued to it
+# Any spelling of it in brackets ("[Not in documents]", "[NOT_IN_DOCUMENT]"), the all-caps token without them, or one
+# cut off at the end of a sentence ("[NOT IN"), with any punctuation glued to it; "not in the documents" is English.
+MARKER = re.compile(r"(?:\[\s*(?i:not[\s_]+in[\s_]+documents?)\s*\]|\bNOT[\s_]+IN[\s_]+DOCUMENTS?\b|"
+                    r"\[\s*(?i:not(?:[\s_]+in(?:[\s_]+documents?)?)?)\W*$)[^\w$(]*")
 BREAKER_ADVICE = re.compile(r"\breset\w*\b[^.]*\bbreaker|\bbreaker\b[^.]*\breset|\bflip\w*\b[^.]*\bbreaker", re.I)
 
 
@@ -86,7 +89,7 @@ class CheckedStream:
     def __iter__(self) -> Iterator[str]:
         so_far = ""
         for sentence in self._sentences:
-            if NOT_IN_DOCUMENTS in sentence:  # never released; the rest of the line and later sentences still are
+            if MARKER.search(sentence):  # never released; the rest of the line and later sentences still are
                 self.not_in_documents, sentence = True, " ".join(MARKER.sub(" ", sentence).split())
                 if not sentence:
                     continue

@@ -21,10 +21,12 @@ class Point:
 
 def curve(questions: list[dict], thresholds: list[float] = THRESHOLDS) -> list[Point]:
     """questions: qid, the top meaning score, whether the combined-search answer was graded correct, and whether the
-    documents cannot answer it (then a correct answer is a refusal, which hands off and is never contained)."""
+    documents cannot answer it (then a correct answer is a refusal, which hands off and is never contained). An answer
+    that ended in the agent's handoff is a handoff at every threshold: neither contained nor a wrong confident answer
+    (faithfulness still grades what it said)."""
     points = []
     for t in thresholds:
-        answered = [q for q in questions if q["score"] >= t]
+        answered = [q for q in questions if q["score"] >= t and not q.get("handed_off")]
         contained = sum(1 for q in answered if q["correct"] and not q.get("unanswerable"))
         wrong = sum(1 for q in answered if not q["correct"])
         points.append(Point(t, contained / len(questions) if questions else 0.0, wrong))
@@ -49,9 +51,28 @@ def _agent_wrote(folder: Path) -> bool:
     return bool(combined) and all(a.get("writer") == "agent" for a in combined)
 
 
+def agent_hash() -> str:
+    """Runs are filed under the freeze hash without the retrieval threshold, which the answers do not depend on."""
+    from eval import freeze
+    return freeze.answers_hash()
+
+
+def hashes() -> dict:
+    from eval import freeze
+    return {"answers_hash": agent_hash(), "freeze_hash": freeze.freeze_agent()}
+
+
+def _handoffs(folder: Path) -> dict:
+    """Whether each combined answer ended in the agent's handoff: its stored flag, or for older answers the text."""
+    from eval.retrieval_eval import AGENT_HANDOFF
+    return {f"{a['qid']}|combined": bool(a.get("handed_off", AGENT_HANDOFF in (a.get("answer") or "")))
+            for a in map(json.loads, (folder / "answers_to_grade.jsonl").open()) if a.get("mode") == "combined" and "qid" in a}
+
+
 def pooled_verdicts(results: Path, agent_hash: str) -> list[dict]:
     """Every graded run of this agent, each as {answer id: verdict}; one run's grades swing on a single answer. An
-    answer set graded more than once counts once (its first kept run), so no answer is pooled twice."""
+    answer set graded more than once counts once (its first kept run), so no answer is pooled twice. Each combined
+    verdict carries "handed_off" from its answer."""
     from eval.grade_retrieval import run_answers_hash
     pooled, seen = [], set()
     for path in sorted((results / "runs" / agent_hash).glob("*/verdicts.jsonl"), key=lambda p: (len(p.parent.name), p.parent.name)):
@@ -61,7 +82,9 @@ def pooled_verdicts(results: Path, agent_hash: str) -> list[dict]:
         if not _agent_wrote(path.parent):  # answers from the simple prompt measure search, not the agent's replies
             continue
         seen.add(digest)
-        pooled.append({v["id"]: v for v in map(json.loads, path.open())})
+        handoffs = _handoffs(path.parent)
+        pooled.append({v["id"]: {**v, **({"handed_off": handoffs[v["id"]]} if v["id"] in handoffs else {})}
+                       for v in map(json.loads, path.open())})
     return pooled
 
 
@@ -75,12 +98,11 @@ def main() -> None:
     load_dotenv(ROOT / ".env")
     chunks, embeddings = load_index(ROOT / "data" / "index")
     searcher = Searcher(chunks, VoyageEmbedder(input_type="query"), embeddings)
-    from eval.freeze import freeze_agent
-
-    agent = freeze_agent()
-    runs = pooled_verdicts(ROOT / "data" / "results" / "retrieval", agent)
+    agent = hashes()
+    runs = pooled_verdicts(ROOT / "data" / "results" / "retrieval", agent["answers_hash"])
     if not runs:
-        raise SystemExit(f"no graded retrieval runs for agent {agent}; run eval.retrieval_eval and eval.grade_retrieval")
+        raise SystemExit(f"no graded retrieval runs for agent {agent['answers_hash']}; run eval.retrieval_eval and "
+                         "eval.grade_retrieval")
     questions = []
     for q in map(json.loads, (ROOT / "data" / "knowledge_questions.jsonl").open()):
         if q["set"] != "working":
@@ -93,10 +115,10 @@ def main() -> None:
             if score is None:
                 score = max(r.meaning_score for r in searcher.search(q["question"], mode="combined"))
             questions.append({"qid": q["qid"], "score": round(score, 4), "correct": bool(verdict["correct"]),
-                              "unanswerable": not q["evidence_spans"]})
+                              "unanswerable": not q["evidence_spans"], "handed_off": bool(verdict.get("handed_off"))})
     points = curve(questions)
     chosen = choose_threshold(points, len(questions))
-    report = {"set": "working", "questions": len(questions), "runs": len(runs), "agent": agent, "chosen": chosen, "rule": {"floor": FLOOR, "wrong_cost": WRONG_COST},
+    report = {"set": "working", "questions": len(questions), "runs": len(runs), **agent, "chosen": chosen, "rule": {"floor": FLOOR, "wrong_cost": WRONG_COST},
               "points": [asdict(p) for p in points],
               "scores": questions,
               "note": "Containment and wrong confident answers over the working-set knowledge questions, from every graded "

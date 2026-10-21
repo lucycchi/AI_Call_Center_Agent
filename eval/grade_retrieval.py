@@ -2,13 +2,15 @@
 base, scored pass or fail on correctness, faithfulness, citation accuracy and correct refusal.
 
 Run: python -m eval.grade_retrieval   (runs Codex; tell the author first)
-Writes data/results/retrieval/verdicts.jsonl and answer_scores.json. Refuses answers written under another agent
-(answers_meta.json records the agent hash), and keeps each graded answer set under runs/<agent hash>/ only once."""
+Writes data/results/retrieval/verdicts.jsonl (each batch to verdicts.jsonl.partial as it is graded; the full file
+is replaced only once every batch is in) and answer_scores.json. Refuses answers written under another agent
+(answers_meta.json records the agent hash, the freeze hash without the retrieval threshold: eval.freeze.answers_hash),
+and keeps each graded answer set under runs/<agent hash>/ only once."""
 
 import json
 from pathlib import Path
 
-from eval.grader import Verdict, grade, grader_model, runner_for, write_verdicts
+from eval.grader import Verdict, grade, grader_model, runner_for
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "data" / "results" / "retrieval"
@@ -68,6 +70,27 @@ def answers_to_grade(results: Path, agent_hash: str) -> tuple[list[dict], dict]:
     return [json.loads(line) for line in answers_path.open()], meta
 
 
+def agent_hash() -> str:
+    """The agent retrieval answers are filed under: the freeze hash without the retrieval threshold."""
+    from eval import freeze
+    return freeze.answers_hash()
+
+
+def grade_and_save(items: list[dict], runner, model: str, results: Path) -> list[Verdict]:
+    """Grades in batches, appending each finished batch to verdicts.jsonl.partial; verdicts.jsonl is replaced only
+    once every batch is graded, so a failure keeps the finished batches and the previous complete verdicts."""
+    from dataclasses import asdict
+    partial = results / "verdicts.jsonl.partial"
+    partial.write_text("")
+
+    def keep(verdicts):
+        with partial.open("a") as handle:
+            handle.write("".join(json.dumps(asdict(v)) + "\n" for v in verdicts))
+    verdicts = grade(items, runner, model, on_batch=keep)
+    partial.replace(results / "verdicts.jsonl")
+    return verdicts
+
+
 ANSWERS_HASH = "answers_sha256"  # in each kept run: the hash of the answers it graded
 
 
@@ -107,15 +130,12 @@ def main() -> None:
     from app.knowledge.index import load_index
     from app.knowledge.search import Searcher
 
-    from eval.freeze import freeze_agent
-
-    answers, meta = answers_to_grade(RESULTS, freeze_agent())  # refuses before anything is called
+    answers, meta = answers_to_grade(RESULTS, agent_hash())  # refuses before anything is called
     load_dotenv(ROOT / ".env")
     chunks, embeddings = load_index(ROOT / "data" / "index")
     searcher = Searcher(chunks, VoyageEmbedder(input_type="query"), embeddings)
     items = answer_items(answers, searcher)
-    verdicts = grade(items, runner_for(), grader_model())
-    write_verdicts(verdicts, RESULTS / "verdicts.jsonl")
+    verdicts = grade_and_save(items, runner_for(), grader_model(), RESULTS)
     keep_run(RESULTS, meta["agent_hash"])
     scores = answer_scores(items, verdicts)
     scores["grader_model"] = grader_model()

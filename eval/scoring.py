@@ -51,6 +51,8 @@ class Summary:
     human_baseline: float | None = None
     human_baseline_excluding_actions: float | None = None
     stopped_at_budget: bool = False
+    stopped_at_budget_cases: list[str] = field(default_factory=list)  # "case|attempt" cut at the cap or never run after it
+    stopped_at_budget_count: int = 0
     wrong_confident_cases: list[str] = field(default_factory=list)
     wrong_confident_share: float = 0.0  # call-weighted
     scope_ceiling_without_redirects: float = 0.0
@@ -78,7 +80,11 @@ def _weighted_containment(rows: list[tuple[dict, object]]) -> float:
 def score(attempts: list, cases: list[dict], seed: int = 20261016, resamples: int = 2000, human: dict | None = None,
           stopped_at_budget: bool = False) -> Summary:
     by_case = {c["case_id"]: c for c in cases}
-    attempts = [a for a in attempts if a.stopped != "budget"]  # cut off by the run's cap: never scored
+    # Cut off by the run's cap, or never run once it was reached: never scored, but named in the summary.
+    dropped = [f"{a.case_id}|{a.attempt}" for a in attempts if a.stopped == "budget"]
+    if stopped_at_budget:
+        dropped += [f"{cid}|1" for cid in by_case if cid not in {a.case_id for a in attempts if a.attempt == 1}]
+    attempts = [a for a in attempts if a.stopped != "budget"]
     first = {a.case_id: a for a in attempts if a.attempt == 1}
     retry = {a.case_id: a for a in attempts if a.attempt == 2}
     rows = [(by_case[cid], a) for cid, a in first.items() if cid in by_case]
@@ -127,4 +133,4 @@ def score(attempts: list, cases: list[dict], seed: int = 20261016, resamples: in
         scenarios=len(rows), weighted_calls=sum(weight(c) for c, _ in rows),
         human_baseline=human.get("resolved") if human else None,
         human_baseline_excluding_actions=human.get("resolved_excluding_actions") if human else None,
-        stopped_at_budget=stopped_at_budget)
+        stopped_at_budget=stopped_at_budget, stopped_at_budget_cases=sorted(dropped), stopped_at_budget_count=len(dropped))

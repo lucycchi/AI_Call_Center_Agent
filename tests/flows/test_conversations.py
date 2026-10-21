@@ -98,7 +98,7 @@ def test_omar_hears_his_balance_and_a_silent_billing_review_opens(chat):
 
 
 def test_a_payment_link_request_is_an_action_gap_handoff(chat):
-    _, done = chat["say"]("I'm Omar Patel, MHC-10002. Send me a payment link")
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
     assert done.outcome == "handed_off" and chat["store"].tickets()[-1]["reason_tag"] == "action gap"
 
 
@@ -1258,3 +1258,108 @@ def test_the_marker_in_a_booking_or_account_reply_is_dropped_without_a_handoff(c
 def test_the_writer_keeps_the_marker_to_questions_the_documents_should_answer():
     from app.replies.writer import RULES
     assert "never for booking, scheduling or account" in RULES
+
+
+# Review of the milestone 4 last round.
+
+@pytest.mark.parametrize("text", ["Alright, let me think about it", "That's fine, I'll call you back later", "fine I guess",
+                                  "all right, I'll sleep on it", "That's fine, appreciate it", "Alright",
+                                  "ok let me check my calendar"])
+def test_a_hedged_or_deferring_yes_at_a_read_back_does_not_book(chat, text):
+    before = count(chat["db"], "select count(*) from appointments")
+    book_to_read_back(chat)
+    chat["say"](text)
+    assert count(chat["db"], "select count(*) from appointments") == before
+
+
+@pytest.mark.parametrize("text", ["That's fine, yes please go ahead and book it.", "That's fine, please go ahead and book it.",
+                                  "That's fine.", "Yes, book it", "yes", "sure",
+                                  "perfect", "sounds good", "Yes please, sooner is better", "Yes, that's it"])
+def test_a_clear_yes_at_a_read_back_books(chat, text):
+    before = count(chat["db"], "select count(*) from appointments")
+    book_to_read_back(chat)
+    chat["say"](text)
+    assert count(chat["db"], "select count(*) from appointments") == before + 1
+
+
+@pytest.mark.parametrize("marker", ["[Not in documents]", "NOT IN DOCUMENTS", "[NOT_IN_DOCUMENTS]", "[NOT IN"])
+def test_a_variant_of_the_marker_is_never_shown_and_hands_off(chat, marker):
+    chat["writer_says"](lambda facts: facts + [marker])
+    reply, done = chat["say"]("how much is a tune-up cost")
+    assert "$129" in reply and "NOT" not in reply.upper().replace("NOTE", "") and done.outcome == "handed_off"
+    assert chat["store"].tickets()[-1]["reason_tag"] == "not enough evidence"
+
+
+def test_a_writer_reply_with_no_sentence_on_a_booking_turn_is_handed_off_not_left_empty(chat):
+    from app.replies.checks import NOT_IN_DOCUMENTS
+    chat["writer_says"](lambda facts: [NOT_IN_DOCUMENTS])
+    reply, done = chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    # The same handoff as a writer that fails: the error ticket and its message.
+    assert reply.startswith("I've passed this to our team: Ticket #") and done.ticket and done.outcome == "handed_off"
+    assert chat["store"].tickets()[-1]["reason_tag"] == "error" and "NOT IN" not in reply
+
+
+@pytest.mark.parametrize("pick_route", [None, request("Let's go with the first one", "account", "action"),
+                                        request("Let's go with the first one", "handoff", "other")])
+def test_a_slot_pick_with_a_ticket_open_goes_to_the_booking_not_the_ticket(chat, pick_route):
+    # Quick runs (T9e29febc): with an action-gap ticket open, the caller's pick became "I've added that to Ticket #1".
+    pick = "Let's go with the first one, 8:00 AM to 12:00 PM on Monday."
+    if pick_route:
+        chat["routes_add"]("go with the first one", clear(pick_route))
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+    assert done.ticket
+    reply, _ = chat["say"]("I want to book a repair Monday")
+    assert "1) Monday 2026-10-19, 08:00-12:00" in reply
+    before = count(chat["db"], "select count(*) from appointments")
+    reply, _ = chat["say"](pick)
+    assert "Read back" in reply and "Ticket #" not in reply
+    reply, _ = chat["say"]("yes")
+    assert "Booked" in reply and count(chat["db"], "select count(*) from appointments") == before + 1
+
+
+@pytest.mark.parametrize("text", ["Tuesday doesn't work, what about Thursday?", "Not Monday, how about Wednesday morning?"])
+def test_another_day_at_a_booking_offer_stays_in_the_booking_without_another_actions_verb(chat, text):
+    from app.core.state import ConversationState
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    chat["routes_add"](text.lower()[:12], clear(request(text, "scheduling", "reschedule")))
+    reply, _ = chat["say"](text)
+    assert ConversationState.load(chat["store"], "c1", "v1").flow["kind"] == "book" and "late fee" not in reply
+
+
+def test_a_pick_with_a_separate_action_request_reads_back_and_hands_off_the_action(chat):
+    text = "Yeah, add the membership and book the visit. The Monday 8:00 to 12:00 slot works."
+    chat["routes_add"]("add the membership", clear(request("add the membership", "account", "action"),
+                                                   request("book the visit Monday 8:00 to 12:00", "scheduling", "book")))
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    reply, done = chat["say"](text)
+    assert "Read back" in reply and "Ticket #" in reply and chat["store"].tickets()[-1]["reason_tag"] == "action gap"
+
+
+@pytest.mark.parametrize("text", ["Hi, I'm Linda Foster, MHC-10001", "Linda Foster, MHC-10001. I have a question",
+                                  "Hello, this is Linda Foster MHC-10001, I need some help"])
+def test_identifying_with_a_general_request_for_help_finds_the_account(chat, text):
+    reply, done = chat["say"](text)
+    assert reply == "Thanks, Linda, I've found your account. What can I help you with?" and not done.ticket
+
+
+def test_identifying_with_an_unclear_question_is_handed_off(chat):
+    reply, done = chat["say"]("I'm Linda Foster, MHC-10001. Why does my bill show a charge I don't recognize?")
+    assert "found your account" not in reply and done.ticket and chat["store"].tickets()[-1]["reason_tag"] == "unclear"
+
+
+@pytest.mark.parametrize("text", ["Perfect, appreciate it", "That's fine, take care", "Cool, cheers"])
+def test_a_pleasantry_at_an_open_offer_or_read_back_goes_to_the_flow(chat, text):
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    _, done = chat["say"](text)
+    assert done.outcome != "ended"
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning", conversation="c2")
+    chat["say"]("yes", conversation="c2")
+    _, done = chat["say"](text, conversation="c2")
+    assert done.outcome != "ended"
+
+
+@pytest.mark.parametrize("text", ["No, that's it. Thanks.", "Nothing else, bye", "Okay, that covers it", "That's all, thanks"])
+def test_a_goodbye_at_an_open_offer_or_read_back_ends_the_chat(chat, text):
+    book_to_read_back(chat)
+    _, done = chat["say"](text)
+    assert done.outcome == "ended"

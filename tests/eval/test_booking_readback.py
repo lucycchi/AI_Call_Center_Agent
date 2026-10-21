@@ -133,3 +133,75 @@ def test_the_quick_run_fails_hard_only_on_booking_faults():
     faulty = Attempt("c1", stopped="caller ended", grades={"booking_correct": False, "booking_fault": True})
     assert not any("booking check failed" in r for r in judge([missed], {"c1": case}).reasons)
     assert any("booking check failed" in r for r in judge([faulty], {"c1": case}).reasons)
+
+
+def test_an_unexpected_write_beside_a_correct_booking_fails_the_quick_run_outright(tmp_path):
+    # D49: a wrong change or an unexpected write is a fault, so the quick run fails hard on either.
+    from eval.quick_run import judge
+    db = _db(tmp_path, sql=_book(56) + ["update appointment_slots set status='blocked' where slot_id=57"])
+    attempt = _offered_then_read_back(db, "Monday, October 19, 8:00 AM to 12:00 PM")
+    attempt.stopped, attempt.all_correct = "caller ended", False
+    attempt.grades.update(_checks(_case(), attempt))
+    assert attempt.grades["booking_correct"] is True and attempt.grades["no_unexpected_writes"] is False
+    assert attempt.grades["booking_fault"] is True
+    result = judge([attempt], {"c1": _case()})
+    assert not result.passed and result.hard
+
+
+def test_an_unexpected_write_in_a_call_with_no_booking_check_fails_the_quick_run_outright(tmp_path):
+    from eval.quick_run import judge
+    case = _case("transfer", requests=[{"request": "transfer", "kind": "sub-reason", "expected_outcome": "contained",
+                                        "handoff_reason": None}])
+    attempt = _no_booking(_db(tmp_path, sql=_book(56)), [{"role": "caller", "text": "hi"}])
+    attempt.stopped, attempt.all_correct = "caller ended", False
+    attempt.grades.update(_checks(case, attempt))
+    result = judge([attempt], {"c1": case})
+    assert not result.passed and result.hard and any("unexpected" in r for r in result.reasons)
+
+
+# Read-backs and answers as the agent and the simulated caller wrote them in saved quick runs (quick-2 T1c979c8b,
+# quick-3 T9bb3779a), cut off before the booking so nothing was booked.
+SAVED_OFFER = ("The soonest openings we have are all on Monday, October 19, for an HVAC repair: 8:00 to 12:00, "
+               "12:00 to 16:00, or 13:00 to 17:00.")
+
+
+def _read_back_then(answer, ask):
+    return [{"role": "caller", "text": "I need a repair"}, {"role": "agent", "text": SAVED_OFFER},
+            {"role": "agent", "text": "Which one suits you?"},
+            {"role": "caller", "text": "As soon as possible, please."},
+            {"role": "agent", "text": "Just to confirm, Kim: that's an HVAC repair on Monday, October 19, 2026, in the "
+                                      "8:00 to 12:00 window."},
+            {"role": "agent", "text": ask}, {"role": "caller", "text": answer},
+            {"role": "agent", "text": "I'm not able to confirm the Monday booking from what I can see."}]
+
+
+@pytest.mark.parametrize("ask, answer", [
+    ("Can you give me a clear yes to go ahead?", "Yes, please go ahead and book the Monday, October 19 slot from 8:00 AM to 12:00 PM."),
+    ('Could you reply with a clear "yes" so I can go ahead?', "Yes, please book the Monday 8 to 12 slot."),
+    ("Could you reply with a clear “yes” so I can go ahead?", "Yes, please book the Monday 8 to 12 slot."),
+    ("Can you give me a clear yes so I can go ahead and book it?", "Yes, Monday morning is perfect."),
+    ("Please reply with a clear yes to confirm.", "Okay, do that. Please book the Monday 8:00 to 12:00 slot."),
+])
+def test_a_confirmed_read_back_in_the_agents_own_words_left_unbooked_is_a_fault(tmp_path, ask, answer):
+    from eval.grade_conversations import _confirmed_a_read_back
+    attempt = _no_booking(_db(tmp_path), _read_back_then(answer, ask))
+    assert _confirmed_a_read_back(attempt, [{"slot_date": "2026-10-19", "window": "08:00-12:00"}])
+    checks = _checks(_case(), attempt)
+    assert checks["booking_correct"] is False and checks["booking_fault"] is True
+
+
+def test_a_yes_for_a_different_slot_than_the_read_back_is_not_a_confirmation(tmp_path):
+    from eval.grade_conversations import _confirmed_a_read_back
+    attempt = _no_booking(_db(tmp_path), _read_back_then("Yes, but the Tuesday afternoon instead.",
+                                                         "Can you give me a clear yes to go ahead?"))
+    assert not _confirmed_a_read_back(attempt, [{"slot_date": "2026-10-19", "window": "08:00-12:00"}])
+
+
+def test_a_caller_who_named_an_offered_slot_and_got_nothing_booked_is_a_fault(tmp_path):
+    # The caller chose a slot the agent could pick, so nothing booked is the agent's fault, not a missed request.
+    conversation = [{"role": "caller", "text": "I need a repair"}, {"role": "agent", "text": OFFER + " Which one suits you?"},
+                    {"role": "caller", "text": "The afternoon one, please."},
+                    {"role": "agent", "text": "Is there anything else I can help with?"},
+                    {"role": "caller", "text": "No, that's it. Thanks."}]
+    checks = _checks(_case(), _no_booking(_db(tmp_path), conversation))
+    assert checks["booking_correct"] is False and checks["booking_fault"] is True

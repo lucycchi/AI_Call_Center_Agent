@@ -60,6 +60,7 @@ def test_the_grading_command_refuses_before_anything_is_called(tmp_path, monkeyp
         monkeypatch.setattr(module, name, never)
     monkeypatch.setattr(grading, "RESULTS", tmp_path)
     monkeypatch.setattr(freeze, "freeze_agent", lambda root=None: "agent-now")
+    monkeypatch.setattr(freeze, "answers_hash", lambda root=None: "agent-now")
     _write_answers(tmp_path, "agent-then")
     with pytest.raises(SystemExit, match="agent"):
         grading.main()
@@ -160,4 +161,155 @@ def test_the_agent_answerers_passages_include_the_final_price_sentence_it_states
     ask = agent_answerer(PriceSearcher(), FakeClient("Drain clearing runs $149 to $290."), money_check=lambda s, p: True)
     _, passages = ask("How much does it cost to clear a clogged drain?")
     assert any("Drain clearing" in p for p in passages)
-    assert any(p.startswith("[pricing/repair_price_book_2026.csv") and "confirms the final price on site" in p for p in passages)
+    assert any(p.startswith("[company pricing rule (R42)") and "confirms the final price on site" in p for p in passages)
+
+
+# -- one $8 cap for the whole retrieval run -------------------------------------------------------------------
+
+def _costly(budget, usd, text):
+    """A writer or agent answer that spends usd from the run's budget, as its model calls would."""
+    def call(*args):
+        budget.record("write", "m", "sdk", {}, 1, 1, 1, int(usd * 1_000_000))
+        return text
+    return call
+
+
+def test_the_simple_prompt_and_the_agents_answers_share_one_budget_and_stop_at_its_cap(tmp_path):
+    from eval.budget import BudgetExceeded, RunBudget
+    from eval.retrieval_eval import answer_both_ways
+    out = tmp_path / "answers_to_grade.jsonl"
+    out.write_text("previous answers\n")
+    budget = RunBudget(1.5)
+    agent = _costly(budget, 0.5, None)
+    questions = [{"qid": f"q{n}", "question": "fee?", "kind": "answerable", "reference_answer": "$89"} for n in range(3)]
+    with pytest.raises(BudgetExceeded):
+        answer_both_ways(questions, Searcher(), _costly(budget, 0.25, "simple"), whole_kb="KB", out=out, budget=budget,
+                         agent_answer=lambda q: (agent(q) or "agent", []))
+    assert out.read_text() == "previous answers\n"  # nothing partial over the old answers
+    assert budget.spent_usd == 1.75  # $1 a question: stopped at the second question's agent answer, which crossed it
+    assert not (tmp_path / "answers_meta.json").exists()
+
+
+def test_the_simple_prompt_writer_spends_from_the_runs_budget(monkeypatch):
+    import eval.retrieval_eval as retrieval
+    from eval.budget import RunBudget
+    from tests.eval.test_retrieval_metrics import FakeUsage
+
+    class Messages:
+        def create(self, **kwargs):
+            class Block:
+                type, text = "text", "answer"
+
+            class Response:
+                content, usage = [Block()], FakeUsage()
+            return Response()
+
+    class Client:
+        def __init__(self, **kwargs):
+            self.messages = Messages()
+
+    monkeypatch.setenv("EVAL_ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr("anthropic.Anthropic", Client)
+    budget = RunBudget(8.0)
+    budget.record("write", "m", "sdk", {}, 1, 1, 1, 4_000_000)  # the agent's own calls already spent $4
+    write = retrieval.sonnet_writer(budget=budget)
+    write("q", "c")  # $3 at Sonnet 5.5 prices
+    assert budget.spent_usd == pytest.approx(7.0) and not budget.crossed
+    write("q", "c")
+    assert budget.crossed
+    with pytest.raises(retrieval.BudgetExceeded):
+        write("q", "c")
+
+
+# -- retrieval grading saved per batch ------------------------------------------------------------------------
+
+def test_retrieval_grading_keeps_finished_batches_and_the_previous_verdicts_when_a_batch_fails(tmp_path):
+    from eval.grade_retrieval import grade_and_save
+    from tests.eval.test_grader import item
+    from tests.eval.test_grader_batches import FailsOnSecondBatch
+    (tmp_path / "verdicts.jsonl").write_text("previous verdicts\n")
+    with pytest.raises(RuntimeError, match="batch two"):
+        grade_and_save([item(n) for n in range(25)], FailsOnSecondBatch(), "m", tmp_path)
+    assert (tmp_path / "verdicts.jsonl").read_text() == "previous verdicts\n"
+    kept = [json.loads(line) for line in (tmp_path / "verdicts.jsonl.partial").open()]
+    assert [v["id"] for v in kept] == [f"i{n}" for n in range(20)]
+
+
+def test_retrieval_grading_replaces_the_verdicts_once_every_batch_is_graded(tmp_path):
+    from eval.grade_retrieval import grade_and_save
+    from tests.eval.test_grader import FakeRunner, item
+    (tmp_path / "verdicts.jsonl").write_text("previous verdicts\n")
+    verdicts = grade_and_save([item(n) for n in range(25)], FakeRunner(), "m", tmp_path)
+    assert len(verdicts) == 25 and not (tmp_path / "verdicts.jsonl.partial").exists()
+    assert [json.loads(line)["id"] for line in (tmp_path / "verdicts.jsonl").open()] == [f"i{n}" for n in range(25)]
+
+
+# -- the threshold curve: handoffs, and runs filed under the answers hash -------------------------------------
+
+def test_the_agents_combined_answers_record_whether_they_ended_in_a_handoff(tmp_path):
+    from eval.retrieval_eval import AGENT_HANDOFF, answer_both_ways
+    out = tmp_path / "answers_to_grade.jsonl"
+    replies = {"fee?": "The fee is $89.", "discount?": f"The fee is $89. {AGENT_HANDOFF}"}
+    answer_both_ways([{"qid": q, "question": q, "kind": "answerable", "reference_answer": None} for q in replies],
+                     Searcher(), lambda q, c: "simple", whole_kb="KB", out=out,
+                     agent_answer=lambda q: (replies[q], []))
+    combined = {a["qid"]: a["handed_off"] for a in map(json.loads, out.open()) if a["mode"] == "combined"}
+    assert combined == {"fee?": False, "discount?": True}
+
+
+def test_a_handed_off_answer_is_neither_contained_nor_wrong_at_any_threshold():
+    from eval.threshold import curve
+    questions = [{"qid": "a", "score": 0.8, "correct": False, "handed_off": True},
+                 {"qid": "b", "score": 0.8, "correct": True, "handed_off": True},
+                 {"qid": "c", "score": 0.8, "correct": True}]
+    for point in curve(questions, thresholds=[0.2, 0.5, 0.9]):
+        assert point.wrong_confident == 0 and point.containment <= 1 / 3
+
+
+def test_the_threshold_reads_the_handoff_flag_or_falls_back_to_the_handoff_text(tmp_path):
+    from eval.retrieval_eval import AGENT_HANDOFF
+    from eval.threshold import pooled_verdicts
+    folder = tmp_path / "runs" / "now" / "1"
+    folder.mkdir(parents=True)
+    answers = [{"qid": "q1", "mode": "combined", "writer": "agent", "answer": "x", "handed_off": True},
+               {"qid": "q2", "mode": "combined", "writer": "agent", "answer": f"Fee is $89. {AGENT_HANDOFF}"},
+               {"qid": "q3", "mode": "combined", "writer": "agent", "answer": "Fee is $89."}]
+    (folder / "answers_to_grade.jsonl").write_text("".join(json.dumps(a) + "\n" for a in answers))
+    (folder / "verdicts.jsonl").write_text("".join(json.dumps({"id": f"{q}|combined", "correct": False}) + "\n"
+                                                   for q in ("q1", "q2", "q3")))
+    [run] = pooled_verdicts(tmp_path, "now")
+    assert [run[f"{q}|combined"]["handed_off"] for q in ("q1", "q2", "q3")] == [True, True, False]
+
+
+def _agent_tree(root, threshold="0.35", engine="a"):
+    (root / "app/core").mkdir(parents=True, exist_ok=True)
+    (root / "app/core/engine.py").write_text(engine)
+    (root / "app/config.py").write_text("class Settings:\n    retrieval_threshold: float  # chosen on the curve\n\n"
+                                        f"SETTINGS = Settings(\n    retrieval_threshold={threshold},\n    other=1,\n)\n")
+    return root
+
+
+def test_the_answers_hash_leaves_out_only_the_retrieval_threshold(tmp_path):
+    from eval.freeze import answers_hash, freeze_agent
+    one, two = _agent_tree(tmp_path / "one"), _agent_tree(tmp_path / "two", threshold="0.5")
+    assert freeze_agent(one) != freeze_agent(two) and answers_hash(one) == answers_hash(two)
+    assert answers_hash(one) != freeze_agent(one)
+    (two / "app/config.py").write_text((two / "app/config.py").read_text().replace("other=1", "other=2"))
+    assert answers_hash(one) != answers_hash(two)
+    assert answers_hash(_agent_tree(tmp_path / "three", engine="b")) != answers_hash(one)
+
+
+def test_retrieval_answers_are_filed_and_graded_under_the_answers_hash(tmp_path, monkeypatch):
+    import eval.freeze as freeze
+    import eval.grade_retrieval as grading
+    import eval.retrieval_eval as retrieval
+    import eval.threshold as threshold
+    from eval.grade_retrieval import answers_to_grade, keep_run
+    monkeypatch.setattr(freeze, "answers_hash", lambda root=None: "answers-x")
+    monkeypatch.setattr(freeze, "freeze_agent", lambda root=None: "freeze-x")
+    _write_answers(tmp_path, freeze.answers_hash())
+    answers_to_grade(tmp_path, freeze.answers_hash())
+    (tmp_path / "verdicts.jsonl").write_text(json.dumps({"id": "q1|combined", "correct": True}) + "\n")
+    assert keep_run(tmp_path, "answers-x").parent.name == "answers-x"
+    assert retrieval.agent_hash() == grading.agent_hash() == threshold.agent_hash() == "answers-x"
+    assert threshold.hashes() == {"answers_hash": "answers-x", "freeze_hash": "freeze-x"}

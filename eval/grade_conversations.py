@@ -126,15 +126,54 @@ def _seed_status(slot_id: int) -> str:
         return seed.execute("select status from appointment_slots where slot_id = ?", (slot_id,)).fetchone()[0]
 
 
-def _confirmed_a_read_back(attempt) -> bool:
-    """The caller gave a plain yes straight after an agent read-back ("Just to confirm ... clear yes")."""
-    from app.flows.scheduling import YES
-    turns = attempt.conversation
-    for before, after in zip(turns, turns[1:]):
-        if before["role"] == "agent" and after["role"] == "caller" and \
-                re.search(r"\b(just to confirm|to read it back|clear yes)\b", before["text"], re.I) and YES.search(after["text"]):
+# The agent's read-back wording ("Just to confirm ...", "To read it back ...", "Can you give me a clear yes?",
+# 'a clear "yes"' with straight or curly quotes).
+READ_BACK = re.compile(r"\b(just to confirm|just to be sure|to read it back|can you give me a clear)\b|"
+                       r"\bclear\s+[\"\u201c\u201d']?yes\b", re.I)
+
+
+def _answers(attempt) -> list[tuple[str, str]]:
+    """Each agent reply with the caller message that answered it."""
+    replies, callers = _replies(attempt.conversation), [m["text"] for m in attempt.conversation if m["role"] == "caller"]
+    return list(zip(replies, callers[1:]))
+
+
+def _named(text: str, slots: list[dict]) -> list[dict]:
+    return [s for s in slots if names_slot(text, s["slot_date"], s["window"])]
+
+
+def _confirmed_a_read_back(attempt, slots: list[dict]) -> bool:
+    """The caller gave a clear yes straight after an agent read-back, by the agent's own confirm rule (R52): the
+    read-back's slot is found among slots, and a yes naming another day or time does not confirm it."""
+    from app.config import SETTINGS
+    from app.flows.scheduling import AFFIRMATIVE, HEDGE, confirms
+    for reply, answer in _answers(attempt):
+        if not READ_BACK.search(reply):
+            continue
+        read_back = _named(reply, slots)
+        if read_back and any(confirms(answer, s["slot_date"], s["window"], SETTINGS.now) for s in read_back):
+            return True
+        if not read_back and AFFIRMATIVE.search(answer) and not HEDGE.search(AFFIRMATIVE.sub("", answer, count=1)):
             return True
     return False
+
+
+def _picked_an_offered_slot(attempt, slots: list[dict]) -> bool:
+    """The caller named one of the slots the agent had just offered in a way the agent's own picker reads (a day and
+    window, a part of the day, an ordinal), so the agent could have booked it."""
+    from app.config import SETTINGS
+    from app.flows.scheduling import _pick
+    offered = []
+    for reply, answer in _answers(attempt):
+        offered = _named(reply, slots) or offered
+        if offered and _pick(answer, offered, SETTINGS.now):
+            return True
+    return False
+
+
+def _slots_in(db) -> list[dict]:
+    return [{"slot_date": d, "window": w} for d, w in db.execute("select distinct slot_date, window from appointment_slots "
+                                                                 "order by slot_date, window")]
 
 
 def conversation_now() -> str:
@@ -164,10 +203,11 @@ def database_checks(case: dict, attempt) -> dict:
                 missed_only = False
                 if booked != expected:
                     problems.append(f"booked {booked or 'nothing'}, expected {expected}")
-                    # Fewer bookings than expected, none of them wrong, and no confirmed read-back left unbooked:
-                    # the caller never chose a slot, a missed request rather than a booking fault (D49).
+                    # Fewer bookings than expected, none of them wrong, no confirmed read-back left unbooked and no
+                    # offered slot the caller named: the caller never chose a slot, a missed request, not a fault (D49).
+                    slots = _slots_in(db)
                     missed_only = all(service in expected for service in booked) and len(booked) < len(expected) \
-                        and not _confirmed_a_read_back(attempt)
+                        and not _confirmed_a_read_back(attempt, slots) and not _picked_an_offered_slot(attempt, slots)
                 for row in scheduled:
                     slot_date, window, service = _slot_of(db, row[2])
                     problems += _slot_problems(db, start, row[2], case, None)
@@ -217,6 +257,8 @@ def database_checks(case: dict, attempt) -> dict:
                   and not (table == "appointments" and key in allowed_appointments)
                   and not (table == "appointment_slots" and key in allowed_slots)]
     checks["no_unexpected_writes"] = not unexpected
+    if unexpected and "booking_fault" in checks:  # an unexpected write is a fault too (D49)
+        checks["booking_fault"] = True
     if problems:
         checks["booking_problems"] = problems
     if unexpected:

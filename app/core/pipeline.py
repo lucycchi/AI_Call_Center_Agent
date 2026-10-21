@@ -70,12 +70,17 @@ GOODBYE_WORDS = re.compile(r"\b(oh|sorry|about that|i think|i (needed|wanted)|ne
                            r"i'?m chatting|about my( \w+)? (tune-?up|appointment|visit)|this is (a )?chat|not a phone call|"
                            r"you (just )?confirmed my( \w+)? appointment|i don'?t think it'?s the wrong number|"
                            r"i can (hear you|see your messages)( fine)?|i'?ll hold off on the \w+ one)\b", re.I)
+OPEN_GOODBYE = re.compile(r"\b(bye|goodbye|that'?s (all|it|everything)|nothing else|that covers it)\b", re.I)
 GOODBYE = "Thanks for contacting Meridian Home Comfort. Have a great day."
 NOT_YOURS = "I can't open that conversation. Please start a new one."
 SCHEDULING_ACTIONS = ("book", "reschedule", "cancel", "confirm")
 BILLING_TAGS = ("dispute", "billing review")  # tickets that carry the invoice notes
 ACTION_VERBS = {"cancel": r"cancel", "reschedule": r"reschedule|move|change", "book": r"book"}
-NEGATION = re.compile(r"\b(not|don'?t|doesn'?t|won'?t|do not|no longer|anymore|never)\b", re.I)
+# At an offer, a message naming a day or time switches action only with that action's own verb ("Tuesday doesn't
+# work, what about Thursday?" is still about this booking, whatever the router calls it).
+SWITCH_VERBS = {"cancel": r"cancel|don'?t need|do not need|no longer need", "reschedule": r"reschedule|move|change",
+                "book": r"book|schedule|set up", "confirm": r"confirm|when is|what time"}
+NEGATION = re.compile(r"\b(not|don'?t|doesn'?t|won'?t|do not|no longer|anymore|never|can'?t|cannot)\b", re.I)
 BARE_REPLY = re.compile(r"^\W*(?:(?:um|uh|oh)\W+)?(yes|yeah|yep|yup|no|nope|sure|ok|okay|correct)\W*(?:please|thanks)?\W*$", re.I)
 
 
@@ -113,6 +118,18 @@ def _details_only(text: str, customer) -> bool:
     for pattern in (ACCOUNT, PHONE, STREET, *(re.compile(rf"\b{re.escape(w)}\b", re.I) for w in words)):
         text = pattern.sub(" ", text)
     return not WORD.search(text)
+
+
+# What may come with the caller's details for "I've found your account": a greeting or a general request for help.
+HELP_ONLY = re.compile(r"\b(?:(can|could|would) you (please )?help( me)?( out)?|i (have|had|got) (a|some|a few|a couple of) "
+                       r"questions?|i need (some )?help|i need (some )?assistance|hi|hello|hey|good (morning|afternoon|evening)|"
+                       r"this is|my name is|i'?m|i am|it'?s|here|yes|yeah|ok|okay|thanks|thank you|please|um|uh|and|my|"
+                       r"sure|account|phone|name|number|is|with)\b", re.I)
+
+
+def _details_or_help_only(text: str, customer) -> bool:
+    """Nothing but the caller's details, a greeting and a general request for help ("Hi, Linda Foster, can you help me?")."""
+    return _details_only(HELP_ONLY.sub(" ", text), customer)
 
 
 def _mood(text: str) -> str:
@@ -250,11 +267,13 @@ class AgentPipeline:
             yield emit(LIMIT)
             yield finish("limit", "limit", {"limit": limit}, [])
             return
-        at_read_back = state.flow.get("step") == "readback"
-        # A clear goodbye ends the chat, even with a flow open; at a read-back only "bye" does, since "okay, I'm good"
-        # may answer the read-back.
+        at_offer = state.flow.get("step") in ("offer", "readback")
+        # A clear goodbye ends the chat, even with a flow open; at an open offer or read-back only a plain closing does,
+        # since "okay, I'm good" or "perfect, appreciate it" may answer it ("yes, that's it" is still a yes).
         says_goodbye = ENDING.match(turn.text) or (_only(turn.text, GOODBYE_ANYWHERE, GOODBYE_WORDS) and "?" not in turn.text)
-        if says_goodbye and (not at_read_back or re.search(r"\b(bye|goodbye)\b", turn.text, re.I)):
+        yes_to_read_back = state.flow.get("step") == "readback" and scheduling.YES.search(turn.text)
+        closing = OPEN_GOODBYE.search(re.sub(r"\bthat'?s it\b", " ", turn.text, flags=re.I) if yes_to_read_back else turn.text)
+        if says_goodbye and (not at_offer or closing):
             state.flow, state.active_flow, state.pending = {}, None, []
             yield emit(GOODBYE)
             done = finish("none", "ended", {"safety": "clear"}, [])
@@ -303,7 +322,7 @@ class AgentPipeline:
         calm = _mood(turn.text) == "calm" and not names_a_handoff
         asks_nothing = "?" not in turn.text and calm and english_words(turn.text) > 0
         if identified_now and not state.active_flow and not state.pending and not routed.clear and calm \
-                and (english_words(turn.text) or _details_only(turn.text, identified_now)):
+                and _details_or_help_only(turn.text, identified_now):
             # A message that only gave the caller's details: nothing to hand off.
             yield emit(f"Thanks, {identified_now.name.split()[0]}, I've found your account. What can I help you with?")
             yield finish("account", "answered", {"safety": "clear"}, [])
@@ -384,9 +403,10 @@ class AgentPipeline:
             try:
                 stream = CheckedStream(self.writer(written[0].reply_type, facts, history), burning_mentioned=burning,
                                        money_check=self.money_check)
-                for count_released, sentence in enumerate(stream):
+                count_released = 0
+                for count_released, sentence in enumerate(stream, 1):
                     # The deadline is checked before each later sentence, so a slow reply is cut off (R59).
-                    if count_released and deadline.passed():
+                    if count_released > 1 and deadline.passed():
                         raise deadline.DeadlinePassed("the reply passed the message deadline")
                     yield emit(sentence)
                 if stream.blocked_rule:
@@ -396,6 +416,9 @@ class AgentPipeline:
                 elif stream.not_in_documents and any(r.reply_type in ("policy answer", "price answer") for r in written):
                     # the documents do not answer the caller's question: a ticket follows (only for a knowledge answer)
                     handoffs.append(("not enough evidence", "", turn.text))
+                elif not count_released:
+                    # No sentence at all (only the marker on a booking or account turn) is a writer failure.
+                    raise RuntimeError("the reply had no sentence")
             except Exception as error:
                 log.error("writer failed: %s", error)
                 error_event(f"writer failed: {type(error).__name__}: {error}")
@@ -450,12 +473,23 @@ class AgentPipeline:
                 and (scheduling.AFFIRMATIVE.search(text) or scheduling.YES.search(text) or scheduling.NO.search(text) or
                      scheduling.picks_a_slot(text, state.flow, self.now) and not NEGATION.search(text)) \
                 and not re.search(rf"\b({other})\b", text, re.I)
+            at_offer = state.flow.get("step") in ("offer", "readback", "which")
+            names_when = at_offer and scheduling.picks_a_slot(text, state.flow, self.now)
             switched_action = routed.clear and state.active_flow == "scheduling" and first is not None \
                 and first.route == "scheduling" and first.detail in SCHEDULING_ACTIONS \
-                and first.detail != state.flow.get("kind") and not BARE_REPLY.match(text) and not answers_read_back
+                and first.detail != state.flow.get("kind") and not BARE_REPLY.match(text) and not answers_read_back \
+                and not (names_when and not re.search(rf"\b({SWITCH_VERBS[first.detail]})\b", text, re.I))
             if asked_for_person or switched_action:
                 state.flow, state.active_flow = {}, None
                 return routed.requests, False
+            # A pick or a yes at an open offer or read-back always goes to the flow, even with a ticket open and the
+            # router calling it something else (T9e29febc); a separate request the router split off still runs.
+            answers_offer = at_offer and "?" not in text and (
+                names_when and not NEGATION.search(text) or state.flow.get("step") == "readback" and scheduling.YES.search(text))
+            if new_topic and answers_offer:
+                others = [r for r in routed.requests if r.route != "scheduling"
+                          and not scheduling.picks_a_slot(r.text, state.flow, self.now)]
+                return [Request(text, "continue"), *others], False
             if new_topic:
                 return routed.requests, state.active_flow == "scheduling"
             return [Request(text, "continue")], False

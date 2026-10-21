@@ -7,6 +7,7 @@ Run: python -m eval.freeze   (writes data/agent_freeze.json)"""
 import csv
 import hashlib
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -34,11 +35,29 @@ def agent_files(root: Path = ROOT) -> list[Path]:
     return sorted(files)
 
 
-def freeze_agent(root: Path = ROOT) -> str:
+def _hash(root: Path, without_threshold: bool) -> str:
     digest = hashlib.sha256()
     for path in agent_files(root):
-        digest.update(str(path.relative_to(root)).encode() + b"\0" + path.read_bytes() + b"\0")
+        content = path.read_bytes()
+        if without_threshold and path == root / "app" / "config.py":
+            content = THRESHOLD_SETTING.sub(b"retrieval_threshold=<set from the curve>", content)
+        digest.update(str(path.relative_to(root)).encode() + b"\0" + content + b"\0")
     return digest.hexdigest()
+
+
+def freeze_agent(root: Path = ROOT) -> str:
+    return _hash(root, without_threshold=False)
+
+
+THRESHOLD_SETTING = re.compile(rb"retrieval_threshold\s*=\s*[^,\n)]*")
+
+
+def answers_hash(root: Path = ROOT) -> str:
+    """The freeze hash with app/config.py's `retrieval_threshold=...` setting left out. Retrieval answers are written
+    with the threshold at 0 (eval/retrieval_eval.py agent_answerer) and the curve applies each threshold afterwards,
+    so the setting cannot change them; filing runs under this hash keeps them pooled when the chosen threshold is
+    written into the config (R32, D48). Any other change to the agent still files its answers apart."""
+    return _hash(root, without_threshold=True)
 
 
 def main() -> None:

@@ -16,6 +16,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from app.knowledge.index import DOCUMENT_LIST, Chunk
+from eval.budget import BudgetExceeded  # one stop for every paid test run
 
 ROOT = Path(__file__).resolve().parent.parent
 TOP = 5
@@ -94,13 +95,15 @@ def file_sha256(path: Path) -> str:
 
 def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str], str], whole_kb: str, out: Path,
                      model: str | None = None, agent_hash: str | None = None,
-                     agent_answer: Callable[[str], tuple[str, list[str]]] | None = None) -> None:
+                     agent_answer: Callable[[str], tuple[str, list[str]]] | None = None, budget=None) -> None:
     """Answers from the top five keyword-only and combined passages and from the whole knowledge base, for grading.
     With agent_answer, the combined answers are the agent's own (its knowledge flow, writer and checks), so the answer
     measures and the threshold curve describe the agent, stored with the passages the agent's flow used; keyword-only and whole-knowledge-base answers keep the simple
     prompt, a comparison of search methods (R30).
     With agent_hash, answers_meta.json beside them records that hash and the answers file's own hash, so grading can
-    refuse answers written under another agent."""
+    refuse answers written under another agent. With budget (the run's one RunBudget, which the simple-prompt writer
+    and the agent's own calls both spend from), the run stops with BudgetExceeded after the answer that crosses the
+    cap, and the previous answers stay as they were."""
     partial = out.with_name(out.name + ".partial")  # replaces the previous answers only once every answer is written
     with partial.open("w") as handle:
         for q in questions:
@@ -114,9 +117,14 @@ def answer_both_ways(questions: list[dict], searcher, writer: Callable[[str, str
                     reply, passages = agent_answer(q["question"])
                 else:
                     reply = writer(q["question"], context)
+                if budget is not None and budget.crossed:
+                    raise BudgetExceeded(f"retrieval run stopped at ${budget.spent_usd:.2f}, the ${budget.cap_usd:.2f} cap; "
+                                         "the previous answers are kept")
+                # The agent's reply ended in its handoff: a handoff at any threshold, never contained or wrong (R32).
+                handoff = {"handed_off": AGENT_HANDOFF in reply} if by_agent else {}
                 handle.write(json.dumps({"qid": q["qid"], "kind": q["kind"], "mode": mode, "question": q["question"],
                                          "answer": reply, "writer": "agent" if by_agent else "simple prompt", "model": model,
-                                         "reference_answer": q.get("reference_answer"), "passages": passages}) + "\n")
+                                         "reference_answer": q.get("reference_answer"), "passages": passages, **handoff}) + "\n")
     partial.replace(out)
     if agent_hash is not None:
         from datetime import datetime
@@ -150,8 +158,10 @@ def run_settings(answer_cost_usd: float | None) -> dict:
             "answer_cost_usd": answer_cost_usd}
 
 
-class BudgetExceeded(RuntimeError):
-    pass
+def agent_hash() -> str:
+    """The agent the answers are filed under: its freeze hash without the retrieval threshold (eval/freeze.py)."""
+    from eval import freeze
+    return freeze.answers_hash()
 
 
 WRITER_EFFORT = "low"
@@ -181,8 +191,9 @@ def agent_answerer(searcher, client, money_check) -> Callable[[str], tuple[str, 
     return ask
 
 
-def sonnet_writer(cap_usd: float | None = None) -> Callable[[str, str], str]:
-    """Sonnet with the separate test key, one retry, and a stop once the run's spend reaches the cap."""
+def sonnet_writer(cap_usd: float | None = None, budget=None) -> Callable[[str, str], str]:
+    """Sonnet with the separate test key, one retry, and a stop once the run's spend reaches the cap. With budget, it
+    spends from the run's one RunBudget, shared with the agent's own calls, so the run has a single cap."""
     import anthropic
 
     from app.config import SETTINGS, cost_usd
@@ -190,20 +201,23 @@ def sonnet_writer(cap_usd: float | None = None) -> Callable[[str, str], str]:
     key = os.environ.get("EVAL_ANTHROPIC_API_KEY")
     if not key:
         raise RuntimeError("EVAL_ANTHROPIC_API_KEY is not set; test runs never use the live key")
-    cap = SETTINGS.eval_run_cap_usd if cap_usd is None else cap_usd
+    if budget is None:
+        from eval.budget import RunBudget
+        budget = RunBudget(SETTINGS.eval_run_cap_usd if cap_usd is None else cap_usd)
     client = anthropic.Anthropic(api_key=key, max_retries=SETTINGS.eval_retries, timeout=SETTINGS.anthropic_timeout_s)
-    spent = [0.0]
 
     def write(question: str, context: str) -> str:
-        if spent[0] >= cap:
-            raise BudgetExceeded(f"test run stopped at ${spent[0]:.2f}, the ${cap:.2f} cap")
+        if budget.spent_usd >= budget.cap_usd:
+            raise BudgetExceeded(f"test run stopped at ${budget.spent_usd:.2f}, the ${budget.cap_usd:.2f} cap")
         response = client.messages.create(model=SETTINGS.writer_model, max_tokens=SETTINGS.eval_writer_max_tokens,
                                           output_config={"effort": WRITER_EFFORT},
                                           messages=[{"role": "user", "content": ANSWER_PROMPT.format(context=context, question=question)}])
-        spent[0] += cost_usd(SETTINGS.writer_model, response.usage.input_tokens, response.usage.output_tokens)
+        usd = cost_usd(SETTINGS.writer_model, response.usage.input_tokens, response.usage.output_tokens)
+        budget.record("eval writer", SETTINGS.writer_model, anthropic.__version__, {}, response.usage.input_tokens,
+                      response.usage.output_tokens, 0, round(usd * 1_000_000))
         return "".join(b.text for b in response.content if b.type == "text").strip()
 
-    write.spent = spent
+    write.budget = budget
     return write
 
 
@@ -233,20 +247,20 @@ def main(argv: list[str] | None = None) -> None:
         from app.config import SETTINGS
 
         whole_kb = "\n\n".join(p.read_text() for p in sorted((ROOT / "data" / "kb_text").glob("*.md")))
-        writer = sonnet_writer()
         from app.core.model_log import SINK
         from app.replies.money_check import MoneyCheck
         from eval.budget import RunBudget
-        from eval.freeze import freeze_agent
         from eval.run import build_client
-        client, budget = build_client(), RunBudget(SETTINGS.eval_run_cap_usd)
+        budget = RunBudget(SETTINGS.eval_run_cap_usd)  # one cap for the simple-prompt writer and the agent together
+        client, writer = build_client(), sonnet_writer(budget=budget)
         token = SINK.set(budget.record)  # the agent's own calls (writer and money check) count against the cap
         try:
             answer_both_ways(working, searcher, writer, whole_kb, out / "answers_to_grade.jsonl", model=SETTINGS.writer_model,
-                             agent_hash=freeze_agent(), agent_answer=agent_answerer(searcher, client, MoneyCheck(client)))
+                             agent_hash=agent_hash(), agent_answer=agent_answerer(searcher, client, MoneyCheck(client)),
+                             budget=budget)
         finally:
             SINK.reset(token)
-        cost = round(writer.spent[0] + budget.spent_usd, 4)
+        cost = round(budget.spent_usd, 4)
     report["settings"] = run_settings(cost)
     (out / "summary.json").write_text(json.dumps(report, indent=1))
     print(json.dumps({k: v for k, v in report.items() if k in ("set", "questions", "coverage", "coverage_basis", "keyword",

@@ -16,11 +16,15 @@ from app.scheduling import transactions as tx
 from app.scheduling.dates import parse_request
 from app.scheduling.eligibility import SERVICE_NAMES, Slot, offer, spoken_when
 
-# Only a plain yes confirms a change (R52); anything hedged gets the read-back again.
+# Only a plain yes confirms a change (R52); anything hedged gets the read-back again. "Fine" and "alright" alone are
+# not a yes; "that's fine" is one only on its own or followed by a yes ("that's fine, appreciate it" asks for a clear yes).
+FINE_THEN_YES = r"(?=\W*$|\W+[^.?!]*\b(?:yes|yeah|go ahead|book it|works|sounds good|please do|do it|take it)\b)"
 AFFIRMATIVE = re.compile(r"^\W*(?:(?:um|uh|oh)\W+)?(yes|yeah|yep|yup|sure|ok|okay|correct|that works|sounds good|book it|"
-                         r"do it|please do|perfect|go ahead|take it|works|let'?s do (?:it|that)|do that|great|that'?s fine|fine|"
-                         r"alright|all right)\b", re.I)
-HEDGE = re.compile(r"\?|\b(but|wait|actually|instead|hold on|not|no|nope|hmm|maybe|unless|first|which|what|how)\b", re.I)
+                         r"do it|please do|perfect|go ahead|take it|works|let'?s do (?:it|that)|do that|great|"
+                         rf"that'?s fine{FINE_THEN_YES})\b", re.I)
+HEDGE = re.compile(r"\?|\b(but|wait|actually|instead|hold on|not|no|nope|hmm|maybe|unless|first|which|what|how|"
+                   r"think about it|let me think|call (?:you )?back|later|sleep on it|i guess|check (?:my calendar|with)|"
+                   r"get back to you|not sure)\b", re.I)
 # A yes that names a day or time is about a different slot, not this read-back ("Yes, Tuesday works").
 NAMES_A_TIME = re.compile(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|morning|afternoon|"
                           r"evening|next week|january|february|march|april|june|july|august|september|october|november|"
