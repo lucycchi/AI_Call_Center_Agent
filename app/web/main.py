@@ -35,6 +35,7 @@ from app.core.model_log import PRE_CALL, SINK
 from app.core.types import DoneEvent, SentenceEvent, Turn
 from app.handoff.flow import ERROR_MESSAGE, NO_TICKET_MESSAGE
 from app.safety.check import check as safety_check
+from app.safety.replies import fixed_reply
 from app.web.health import health_routes
 from app.web.limits import LIMIT_MESSAGE, TURN_LIMIT, Limits
 from app.web.results import results_routes
@@ -179,10 +180,10 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
         quietly(store.save_reply_end, reply.conversation_id, message_id, list(reply.sentences), payload)
         reply.done = payload  # last: the stream reads it before the sentences
 
-    def settle(reply: Reply, sentence: str, done: DoneEvent) -> None:
+    def settle(reply: Reply, sentence: str | list[str], done: DoneEvent) -> None:
         """A reply worked out here without the agent (a blank or refused message): kept in memory only, no rows."""
         reply.close()
-        reply.sentences.append(sentence)
+        reply.sentences.extend([sentence] if isinstance(sentence, str) else sentence)
         reply.done = {"route": done.route, "ticket": done.ticket, "outcome": done.outcome, "proof": None}
 
     def error_ticket(conversation_id: str, text: str, detail: str) -> int | None:
@@ -285,20 +286,23 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
             if alerts:
                 alerts.check_errors()
 
-    def needs_safety_reply(conversation_id: str, text: str) -> bool:
-        """The agent's own safety check (R34), on the same history, so a refused message reporting a danger still
-        reaches it. Only reads; if it cannot read, the message goes to the agent (whose guard still refuses it)."""
+    def needs_safety_reply(conversation_id: str, text: str) -> str | None:
+        """The safety kind the agent's own check (R34) finds, on the same history, so a refused message reporting a
+        danger still reaches it; None when clear. Only reads; if it cannot read, "danger" (the agent's guard still
+        refuses anything but the safety reply)."""
         try:
             row = store.conversation(conversation_id)
             text = text.replace("\u2019", "'").replace("\u2018", "'")
             if row is None:
-                return safety_check(text, []).kind != "clear"
-            burning = bool(json.loads(row["flow_state"] or "{}").get("burning_mentioned"))
-            earlier = [m["content"] for m in store.history(conversation_id, 20) if m["role"] == "caller"]
-            return safety_check(text, earlier, burning).kind != "clear"
+                kind = safety_check(text, []).kind
+            else:
+                burning = bool(json.loads(row["flow_state"] or "{}").get("burning_mentioned"))
+                earlier = [m["content"] for m in store.history(conversation_id, 20) if m["role"] == "caller"]
+                kind = safety_check(text, earlier, burning).kind
+            return None if kind == "clear" else kind
         except Exception as error:
             log.error("safety pre-check failed, passing the message to the agent: %s", error)
-            return True
+            return "danger"
 
     @app.post("/api/message", status_code=202)
     def message(body: MessageIn, request: Request):
@@ -320,9 +324,14 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
         peer = request.client.host if request.client else None
         address = (request.headers.get("fly-client-ip") or peer) if trust_fly_header else peer
         limit = limits.allow(visitor_id, address)
-        if limit and not needs_safety_reply(body.conversation_id, text):
-            settle(reply, LIMIT_MESSAGE, DoneEvent(route="limit", ticket=None, outcome="limit"))
-            return accepted
+        if limit:
+            danger = needs_safety_reply(body.conversation_id, text)
+            if not danger:
+                settle(reply, LIMIT_MESSAGE, DoneEvent(route="limit", ticket=None, outcome="limit"))
+                return accepted
+            if not limits.allow_safety(visitor_id, address):  # the advice, from memory: no ticket, no rows
+                settle(reply, fixed_reply(danger, text), DoneEvent(route="safety", ticket=None, outcome="safety"))
+                return accepted
         try:
             store.open_conversation(visitor_id, body.conversation_id)
             owner = store.conversation(body.conversation_id)

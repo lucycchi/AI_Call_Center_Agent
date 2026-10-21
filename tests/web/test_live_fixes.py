@@ -246,3 +246,26 @@ def test_a_blank_message_still_streams_a_request_for_more(store):
     sentences, done = say(client, "c1", "  ")
     assert sentences == ["Could you tell me a bit more?"] and engine.turns == []
     assert count(store, "conversations") == 0 and count(store, "events") == 0
+
+
+def test_over_the_limit_only_a_few_emergencies_a_day_open_tickets_and_the_rest_still_get_the_advice(world):
+    # Security review: safety-first pass-throughs must not let an over-limit visitor flood staff with priority tickets.
+    engine, pipeline = world["build"](guard=turn_guard())
+    app_store = pipeline.store
+    limits = Limits(Clock(), per_10_min=1, per_day=100, site_per_minute=60, safety_per_day=2)
+    _, _, client = make(app_store, engine, limits=limits)
+    say(client, "c1", "what does the membership include")
+    tickets = []
+    for n in range(5):
+        sentences, done = say(client, f"g{n}", "I smell gas")
+        assert sentences[:len(fixed_reply("danger"))] == fixed_reply("danger")  # the advice every time
+        tickets.append(done["ticket"])
+    assert sum(1 for t in tickets if t) == 2 and len(app_store.tickets()) == 2
+    assert count(app_store, "conversations") <= 3  # the advice past the allowance writes nothing
+
+
+def test_the_safety_allowance_is_per_visitor_and_address_and_site_wide():
+    limits = Limits(Clock(), per_10_min=1, per_day=100, site_per_minute=60, safety_per_day=1, safety_site_per_day=2)
+    assert limits.allow_safety("v1", "10.0.0.1") and not limits.allow_safety("v1", "10.0.0.2")  # same visitor
+    assert not limits.allow_safety("v2", "10.0.0.1")  # same address
+    assert limits.allow_safety("v3", "10.0.0.3") and not limits.allow_safety("v4", "10.0.0.4")  # site-wide
