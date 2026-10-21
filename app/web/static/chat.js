@@ -29,7 +29,7 @@
     item.className = kind === "proof" || kind === "step" ? kind : "bubble " + kind;
     item.textContent = text;
     log.appendChild(item);
-    item.scrollIntoView({ block: "end" });
+    log.scrollTop = log.scrollHeight;  // the log scrolls inside its box, so the message box stays in view
     return item;
   }
 
