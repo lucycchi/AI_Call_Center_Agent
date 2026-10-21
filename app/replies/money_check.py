@@ -142,12 +142,19 @@ def published_only(sentence: str, previous: str = "") -> bool:
     return not touches_money(rest) and all(w.lower() in _STATEMENT_WORDS for w in re.findall(r"[A-Za-z']+", rest))
 
 
-_WRONG_PRICE = re.compile(r"\bPlus\b[^.;,$]{0,30}\$(?:189|16\.99)\b|\bStandard\b[^.;,$]{0,30}\$269\b", re.I)
+_CLAUSE = re.compile(r"[,;]|\band\b|\bor\b", re.I)
 
 
 def wrong_plan_price(sentence: str) -> bool:
-    """A plan named with another plan's price ("Comfort Club Plus is $189 per year"): a wrong fact, blocked in code."""
-    return bool(_WRONG_PRICE.search(sentence))
+    """A plan named with another plan's price in the same clause ("Comfort Club Plus is $189 per year", "$269 per year
+    for Standard"): a wrong fact, blocked in code. A clause naming both plans or neither is left to the other checks."""
+    for clause in _CLAUSE.split(sentence):
+        plus, standard = bool(re.search(r"\bPlus\b", clause)), bool(re.search(r"\bStandard\b", clause))
+        if plus and not standard and re.search(r"\$(?:189|16\.99)\b", clause):
+            return True
+        if standard and not plus and re.search(r"\$269\b", clause):
+            return True
+    return False
 
 
 class MoneyCheck:

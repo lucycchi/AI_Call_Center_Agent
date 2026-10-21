@@ -96,3 +96,7 @@ def test_the_right_plan_prices_are_not_taken_for_wrong_ones():
     from app.replies.money_check import wrong_plan_price
     assert not wrong_plan_price("Standard is $189 per year per system or $16.99 per month, and Comfort Club Plus is $269 per year.")
     assert not wrong_plan_price("Plus members get everything in Standard, which is $189 per year.")
+    # Quick run: the price before its plan, two plans in one sentence (blocked by the first version of the rule).
+    assert not wrong_plan_price("Current pricing is $189 per year for Standard and $269 per year for Plus.")
+    assert not wrong_plan_price("It's $269 a year for Plus, or $189 for Standard.")
+    assert wrong_plan_price("Current pricing is $269 per year for Standard and $189 per year for Plus.")
