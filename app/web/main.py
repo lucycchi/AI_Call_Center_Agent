@@ -70,8 +70,15 @@ def _sse(kind: str, data: dict) -> str:
     return f"event: {kind}\ndata: {json.dumps(data)}\n\n"
 
 
+def behind_fly() -> bool:
+    """Fly sets FLY_APP_NAME on its machines, where its proxy writes Fly-Client-IP itself."""
+    import os
+    return bool(os.environ.get("FLY_APP_NAME"))
+
+
 def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits | None = None, workers: int = 4,
-               stream_timeout_s: float = 40.0) -> FastAPI:
+               stream_timeout_s: float = 40.0, trust_fly_header: bool = False) -> FastAPI:
+    """trust_fly_header: trust the Fly-Client-IP header for the address limit; anywhere else a client could forge it."""
     app = FastAPI(title="Meridian Home Comfort chat", docs_url=None, redoc_url=None, openapi_url=None)
     cookies = VisitorCookie(cookie_secret)
     limits = limits or Limits(clock)
@@ -174,7 +181,8 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
             reply.sentences.append(TELL_ME_MORE)
             finish(reply, body.message_id, DoneEvent(route="none", ticket=None, outcome="answered"))
             return accepted
-        address = request.headers.get("fly-client-ip") or (request.client.host if request.client else None)
+        peer = request.client.host if request.client else None
+        address = (request.headers.get("fly-client-ip") or peer) if trust_fly_header else peer
         if limits.allow(visitor_id, address):
             reply.sentences.append(LIMIT_MESSAGE)
             finish(reply, body.message_id, DoneEvent(route="limit", ticket=None, outcome="limit"))
@@ -266,4 +274,4 @@ def build_app() -> FastAPI:
                              route_fn=lambda text, history: route(text, history, client),
                              writer=lambda reply_type, facts, history: write(reply_type, facts, history, client),
                              threshold=SETTINGS.retrieval_threshold, money_check=MoneyCheck(client))
-    return create_app(Engine(pipeline), store, cookie_secret=secret)
+    return create_app(Engine(pipeline), store, cookie_secret=secret, trust_fly_header=behind_fly())

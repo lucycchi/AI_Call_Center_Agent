@@ -179,7 +179,7 @@ def test_the_101st_message_in_a_day_gets_a_plain_handoff(store):
 
 def test_the_61st_site_wide_message_in_a_minute_gets_a_plain_handoff(store):
     clock = Clock()
-    app, engine, _ = make(store, clock=clock)
+    app, engine, _ = make(store, clock=clock, trust_fly_header=True)
     for n in range(60):
         assert not limited(*say(client_for(app), f"c{n}", "hello", {"Fly-Client-IP": f"10.0.0.{n}"}))
     assert limited(*say(client_for(app), "c60", "hello", {"Fly-Client-IP": "10.0.1.1"}))
@@ -188,13 +188,30 @@ def test_the_61st_site_wide_message_in_a_minute_gets_a_plain_handoff(store):
 
 
 def test_a_visitor_who_clears_their_cookie_is_still_limited_by_the_fly_client_address(store):
-    app, _, client = make(store, clock=Clock())
+    app, _, client = make(store, clock=Clock(), trust_fly_header=True)
     address = {"Fly-Client-IP": "203.0.113.7"}
     for _ in range(20):
         assert not limited(*say(client, "c1", "hello", address))
     fresh = client_for(app)  # no cookie: a new visitor id, the same address
     assert limited(*say(fresh, "c2", "hello", address))
     assert not limited(*say(client_for(app), "c3", "hello", {"Fly-Client-IP": "203.0.113.8"}))
+
+
+
+def test_the_fly_client_header_is_ignored_unless_the_app_runs_behind_fly(store):
+    # Anyone can send the header; only Fly's proxy sets it truthfully, so off Fly it cannot dodge the address limit.
+    app, _, client = make(store, clock=Clock())
+    for n in range(20):
+        assert not limited(*say(client_for(app), f"c{n}", "hello", {"Fly-Client-IP": f"203.0.113.{n}"}))
+    assert limited(*say(client_for(app), "c99", "hello", {"Fly-Client-IP": "198.51.100.1"}))
+
+
+def test_the_app_is_behind_fly_when_fly_sets_its_app_name(monkeypatch):
+    from app.web.main import behind_fly
+    monkeypatch.delenv("FLY_APP_NAME", raising=False)
+    assert not behind_fly()
+    monkeypatch.setenv("FLY_APP_NAME", "meridian-chat")
+    assert behind_fly()
 
 
 # -- Stream ------------------------------------------------------------------------------------------------------
