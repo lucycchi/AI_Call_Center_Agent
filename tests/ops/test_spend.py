@@ -244,29 +244,27 @@ def visitor_of(client):
     return VisitorCookie(SECRET).read(client.cookies.get(COOKIE))
 
 
-def test_the_correct_token_starts_a_reviewer_session_once(store, spend, caplog):
+def test_the_reviewer_link_starts_a_reviewer_session_every_time_it_is_opened(store, spend, caplog):
+    # One reusable link (D50): every browser that opens it chats from the shared $3 reserve.
     caplog.set_level(logging.DEBUG)
-    with client_for(reviewer_app(store, spend=spend)) as client:
+    app = reviewer_app(store, spend=spend)
+    with client_for(app) as client:
         response = client.post("/api/reviewer", json={"token": TOKEN})
         assert response.status_code == 200 and TOKEN not in response.text
         visitor = visitor_of(client)
         assert visitor and store.visitor_kind(visitor) == "reviewer" and spend.is_reviewer(visitor)
-        assert client.post("/api/reviewer", json={"token": TOKEN}).status_code == 404  # second use
-    with client_for(reviewer_app(store)) as other:
-        assert other.post("/api/reviewer", json={"token": TOKEN}).status_code == 404
-        assert store.visitor_kind(visitor_of(other)) != "reviewer"
+    with client_for(app) as other:  # another grader, or the same one on another device
+        assert other.post("/api/reviewer", json={"token": TOKEN}).status_code == 200
+        assert spend.is_reviewer(visitor_of(other))
     assert TOKEN not in caplog.text
     assert all(TOKEN not in str(record.args) for record in caplog.records)
 
 
-def test_a_used_token_stays_used_after_a_restart(tmp_path):
+def test_the_token_is_never_stored(tmp_path):
     with client_for(reviewer_app(OpsStore(tmp_path / "ops.sqlite"))) as client:
         assert client.post("/api/reviewer", json={"token": TOKEN}).status_code == 200
-    restarted = OpsStore(tmp_path / "ops.sqlite")
-    with client_for(reviewer_app(restarted)) as client:
-        assert client.post("/api/reviewer", json={"token": TOKEN}).status_code == 404
     raw = (tmp_path / "ops.sqlite").read_bytes() + b"".join(p.read_bytes() for p in tmp_path.glob("ops.sqlite-*"))
-    assert TOKEN.encode() not in raw  # only a hash of the token is stored
+    assert TOKEN.encode() not in raw
 
 
 @pytest.mark.parametrize("body", [{"token": "rv-wrong-token-0000000000000000"}, {"token": TOKEN[:-1]}, {"token": ""},
@@ -358,20 +356,9 @@ def test_reviewer_js_does_nothing_without_a_reviewer_fragment():
         assert run_reviewer_js(fragment) == {"fetch": [], "replace": []}
 
 
-# -- One link per reviewer (D50) -----------------------------------------------------------------------------------
+# -- Reviewer-only mode (D50) --------------------------------------------------------------------------------------
 
 OTHER = "rv-second-reviewer-token-abcdef123456"
-
-
-def test_each_reviewer_gets_their_own_one_time_link(store, spend):
-    app = reviewer_app(store, token=f"{TOKEN}, {OTHER}", spend=spend)
-    with client_for(app) as first, client_for(app) as second:
-        assert first.post("/api/reviewer", json={"token": TOKEN}).status_code == 200
-        assert second.post("/api/reviewer", json={"token": OTHER}).status_code == 200  # the other link still works
-        assert spend.is_reviewer(visitor_of(first)) and spend.is_reviewer(visitor_of(second))
-    with client_for(app) as third:
-        assert third.post("/api/reviewer", json={"token": TOKEN}).status_code == 404  # each is used once
-        assert third.post("/api/reviewer", json={"token": OTHER}).status_code == 404
 
 
 def test_a_too_short_token_in_the_list_is_dropped_but_the_others_work(store):

@@ -2,12 +2,11 @@
 sends it in a request line and it never reaches Fly's or the app's request logs; reviewer.js posts it once in a
 request body and clears it from the address.
 
-The tokens are a secret in the environment (REVIEWER_TOKEN, a Fly.io secret: one per reviewer, separated by
-commas, D50), compared in constant time. The right
-token, used for the first time, marks the signed visitor as a reviewer (their visitor id is in the signed cookie),
-so their spending draws on the reviewer reserve. Only a hash of the token is stored, to remember that it was used,
-including across restarts. A wrong, malformed or already used token, or no configured token, is a plain 404.
-Nothing here ever logs the token or the request body."""
+The token is a secret in the environment (REVIEWER_TOKEN, a Fly.io secret), compared in constant time. The right
+token marks the signed visitor as a reviewer (their visitor id is in the signed cookie), so their spending draws on
+the reviewer reserve. The link is reusable (D50): every browser that opens it gets a reviewer session, and the shared
+$3-a-day reserve and the key's console limit cap what it can spend. The token is never stored. A wrong or malformed
+token, or no configured token, is a plain 404. Nothing here ever logs the token or the request body."""
 
 import hashlib
 import hmac
@@ -32,7 +31,7 @@ def _digest(value: str) -> bytes:
 
 
 def reviewer_routes(store, token: str | None) -> APIRouter:
-    """token: one token, or several separated by commas, one per reviewer (D50); each works once."""
+    """token: the reviewer link's token (several, separated by commas, are also accepted)."""
     router = APIRouter()
     tokens = [t.strip() for t in (token or "").split(",") if t.strip()]
     if any(len(t) < MIN_LENGTH for t in tokens):
@@ -58,9 +57,6 @@ def reviewer_routes(store, token: str | None) -> APIRouter:
         matches = [d for d in digests if hmac.compare_digest(given, d)]
         if not matches:
             raise not_found()
-        expected = matches[0]
-        if not store.use_token(hashlib.sha256(b"reviewer-link:" + expected).hexdigest()):
-            raise not_found()  # the link works once
         store.make_reviewer(request.state.visitor_id)
         log.info("reviewer session started for visitor %s", request.state.visitor_id)
         return {"reviewer": True}

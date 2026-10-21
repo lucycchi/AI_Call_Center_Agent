@@ -30,7 +30,7 @@ set NAME="$v"; unset v`. `scripts/fly secrets list` shows the names (never the v
 | `ANTHROPIC_API_KEY` | A key made only for this site, in its own Anthropic console workspace with a monthly spend limit (D50); not the test-run key, which stays only in the local `.env` |
 | `VOYAGE_API_KEY` | The Voyage AI key for search embeddings |
 | `VISITOR_COOKIE_SECRET` | Signs the visitor cookie; at least 16 random characters (the plan calls it `SESSION_SECRET`; the code reads `VISITOR_COOKIE_SECRET`). Changing it signs every visitor and staff member out |
-| `REVIEWER_TOKEN` | The secrets behind the reviewer links `https://<app>.fly.dev/#r=<token>`: one per reviewer, separated by commas, each at least 16 characters; each link works once and starts a 7-day reviewer session |
+| `REVIEWER_TOKEN` | The secret behind the reviewer link `https://<app>.fly.dev/#r=<token>`, at least 16 random characters; every browser that opens the link gets a 7-day reviewer session sharing the $3-a-day reserve |
 | `STAFF_PASSWORD_HASH` | The staff password's hash, made with `.venv/bin/python -m app.web.staff`; never the password itself |
 | `ALERT_WEBHOOK_URL` | Where alerts are posted (error bursts, failed writes, a failed nightly reset, spend passing $5) |
 
@@ -95,8 +95,9 @@ rolled back to, and how long it took).
 
 The site is public to view: the chat page, the Results tab and the test customers. Chatting is reviewer-only.
 `fly.toml` sets the public budget to $0 (`PER_VISITOR_DAILY_USD = "0"`), so a public message gets a plain handoff
-before any model call, and the safety advice for an emergency still appears, since it is written in code. Each
-reviewer gets their own one-time link; it starts a reviewer session that chats from the $3-a-day reserve. The live
-key is a site-only key with a monthly limit in the Anthropic console, a hard stop behind the site's own caps.
+before any model call, and the safety advice for an emergency still appears, since it is written in code. One
+reusable reviewer link, included with the submission, starts a reviewer session in any browser that opens it;
+all reviewer sessions share the $3-a-day reserve (about 300 typical conversations a day). The live
+key is a site-only key with a monthly limit in the Anthropic console, a hard stop behind the site's own caps (about $25 a month covers a week at the full reserve).
 To open chat to the public later, remove that line from `fly.toml` and redeploy.
 

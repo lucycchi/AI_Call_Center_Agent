@@ -670,14 +670,14 @@ can only propose a decision; only the author settles one.
 - **Status:** proposed
 - **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
 - **Options:**
-  - A separate site-only key capped in the Anthropic console, and reviewer-only chat: the public budget is $0 and each reviewer gets a one-time link
+  - A separate site-only key capped in the Anthropic console, and reviewer-only chat: the public budget is $0 and one reusable reviewer link
   - Public chat with the built-in caps only
   - A password to send chat messages
   - A password on the whole site
 - **Research:**
   - [app/ops/spend.py](app/ops/spend.py): The spend check refuses a visitor whose day's spend has reached the cap, so a $0 public cap refuses every public message before the router or writer is called; the safety check runs first in code and costs nothing; reviewer sessions draw on the $3-a-day reserve (R61, R85).
-- **Choice:** The site uses its own Anthropic key with a monthly limit set in the console. The public budget is set to $0 on Fly, so anyone can view the chat page, Results tab and test customers, but a public message gets a plain handoff with no model call. Each reviewer gets their own one-time link (several tokens, each used once) that starts a reviewer session on the $3 reserve.
-- **Reason:** The author's choice. The provider's limit is a hard stop even if the site's own caps failed, the site stays at a public address as the spec asks, and only reviewers the author sends a link to can spend.
+- **Choice:** The site uses its own Anthropic key with a monthly limit set in the console. The public budget is set to $0 on Fly, so anyone can view the chat page, Results tab and test customers, but a public message gets a plain handoff with no model call. One reusable reviewer link, given with the submission, starts a 7-day reviewer session in any browser that opens it; all reviewer sessions share the $3-a-day reserve. This departs from the reviewer-link rule (R85), which said the token is used once.
+- **Reason:** The author's choice. The provider's limit is a hard stop even if the site's own caps failed, the site stays at a public address as the spec asks, and only people with the link can spend. Measured on the quick run, the agent costs about $0.01 a conversation, so the reserve covers about 300 conversations a day and a week at the full reserve is about $21; a reusable link lets every grader and device in, and a leaked link is capped by the reserve and the console limit.
 
 ## Glossary
 
