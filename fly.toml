@@ -13,6 +13,8 @@ primary_region = "dfw"  # Dallas, nearest to Austin
   DATABASE_PATH = "/data/scheduling.sqlite"
   OPS_DATABASE_PATH = "/data/operations.sqlite"
   PYTHONUNBUFFERED = "1"
+  # Reviewer-only (D50): public visitors can view the site, but only reviewer-link sessions can chat.
+  PER_VISITOR_DAILY_USD = "0"
 
 [mounts]
   source = "meridian_data"

@@ -375,3 +375,8 @@ def test_measure_latency_command_line_parses_the_base_url():
 
     args = measure_latency.parse_args(["https://meridian.fly.dev", "--messages", "60"])
     assert args.base_url == "https://meridian.fly.dev" and args.messages == 60 and args.warmup >= 1
+
+
+def test_the_deployed_site_is_reviewer_only(fly):
+    # Reviewer-only mode (D50): a $0 public budget refuses every public message before any model call.
+    assert float(fly["env"]["PER_VISITOR_DAILY_USD"]) == 0.0

@@ -356,3 +356,33 @@ def test_reviewer_js_posts_the_fragment_once_and_clears_it_from_the_address():
 def test_reviewer_js_does_nothing_without_a_reviewer_fragment():
     for fragment in ("", "#", "#other=1"):
         assert run_reviewer_js(fragment) == {"fetch": [], "replace": []}
+
+
+# -- One link per reviewer (D50) -----------------------------------------------------------------------------------
+
+OTHER = "rv-second-reviewer-token-abcdef123456"
+
+
+def test_each_reviewer_gets_their_own_one_time_link(store, spend):
+    app = reviewer_app(store, token=f"{TOKEN}, {OTHER}", spend=spend)
+    with client_for(app) as first, client_for(app) as second:
+        assert first.post("/api/reviewer", json={"token": TOKEN}).status_code == 200
+        assert second.post("/api/reviewer", json={"token": OTHER}).status_code == 200  # the other link still works
+        assert spend.is_reviewer(visitor_of(first)) and spend.is_reviewer(visitor_of(second))
+    with client_for(app) as third:
+        assert third.post("/api/reviewer", json={"token": TOKEN}).status_code == 404  # each is used once
+        assert third.post("/api/reviewer", json={"token": OTHER}).status_code == 404
+
+
+def test_a_too_short_token_in_the_list_is_dropped_but_the_others_work(store):
+    with client_for(reviewer_app(store, token=f"short,{TOKEN}")) as client:
+        assert client.post("/api/reviewer", json={"token": "short"}).status_code == 404
+        assert client.post("/api/reviewer", json={"token": TOKEN}).status_code == 200
+
+
+def test_a_zero_public_budget_refuses_every_public_message_but_not_a_reviewer(store):
+    # Reviewer-only mode (D50): PER_VISITOR_DAILY_USD=0 on Fly; nothing is spent before the refusal.
+    zero = Spend(store, per_visitor_usd=0.0)
+    assert not zero.allow("a-public-visitor")
+    store.make_reviewer("a-reviewer")
+    assert zero.allow("a-reviewer")

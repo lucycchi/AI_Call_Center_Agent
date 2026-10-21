@@ -665,6 +665,20 @@ can only propose a decision; only the author settles one.
 - **Choice:** The booking check records a booking fault for a wrong database change, an unexpected write, or a confirmed read-back left unbooked; fewer bookings than expected with none wrong and no confirmed read-back is a missed request, failing that conversation but not the quick run outright.
 - **Reason:** The author's choice. The quick run's hard stop exists to catch the agent changing the database wrongly; a caller who never chooses a slot is a conversation the agent could not finish, which already counts against containment.
 
+## D50: How should the deployed site protect the API spend, given that every chat message spends the key?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
+- **Options:**
+  - A separate site-only key capped in the Anthropic console, and reviewer-only chat: the public budget is $0 and each reviewer gets a one-time link
+  - Public chat with the built-in caps only
+  - A password to send chat messages
+  - A password on the whole site
+- **Research:**
+  - [app/ops/spend.py](app/ops/spend.py): The spend check refuses a visitor whose day's spend has reached the cap, so a $0 public cap refuses every public message before the router or writer is called; the safety check runs first in code and costs nothing; reviewer sessions draw on the $3-a-day reserve (R61, R85).
+- **Choice:** The site uses its own Anthropic key with a monthly limit set in the console. The public budget is set to $0 on Fly, so anyone can view the chat page, Results tab and test customers, but a public message gets a plain handoff with no model call. Each reviewer gets their own one-time link (several tokens, each used once) that starts a reviewer session on the $3 reserve.
+- **Reason:** The author's choice. The provider's limit is a hard stop even if the site's own caps failed, the site stays at a public address as the spec asks, and only reviewers the author sends a link to can spend.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
