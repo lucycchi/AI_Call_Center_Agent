@@ -12,6 +12,9 @@
   header { background: var(--brand); color: var(--brand-ink); padding: 14px 16px; }
   header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; }
   header p { margin: 2px 0 0; font-size: .85rem; opacity: .85; }
+  .tabs { display: flex; gap: 4px; margin-top: 10px; }
+  .tabs a { color: var(--brand-ink); text-decoration: none; padding: 4px 12px; border-radius: 6px 6px 0 0; opacity: .8; }
+  .tabs a[aria-current=page] { background: var(--paper); color: var(--brand); opacity: 1; font-weight: 600; }
   main { max-width: 1000px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: 1fr; }
   @media (min-width: 820px) { main { grid-template-columns: 2fr 1fr; } }
   .chat, .test-customers { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
@@ -42,6 +45,7 @@
 <header>
   <h1>Meridian Home Comfort</h1>
   <p>Heating, cooling and plumbing in the Austin area</p>
+  <nav class="tabs" aria-label="Tabs"><a href="/" aria-current="page">Chat</a><a href="/results">Results</a></nav>
 </header>
 <main>
   <section class="chat" aria-label="Chat">

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meridian results</title>
+<style>
+  :root { --ink: #1d2a33; --muted: #5b6b76; --line: #d8e0e5; --paper: #f5f7f8; --card: #ffffff; --brand: #0d5c63;
+          --brand-ink: #ffffff; --live: #fff8e6; --live-line: #e0c27a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--paper); }
+  header { background: var(--brand); color: var(--brand-ink); padding: 14px 16px; }
+  header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; }
+  header p { margin: 2px 0 0; font-size: .85rem; opacity: .85; }
+  .tabs { display: flex; gap: 4px; margin-top: 10px; }
+  .tabs a { color: var(--brand-ink); text-decoration: none; padding: 4px 12px; border-radius: 6px 6px 0 0; opacity: .8; }
+  .tabs a[aria-current=page] { background: var(--paper); color: var(--brand); opacity: 1; font-weight: 600; }
+  main { max-width: 1000px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+  h2 { margin: 0 0 8px; font-size: 1.05rem; }
+  .note { margin: 0 0 12px; font-size: .9rem; color: var(--muted); }
+  .table-wrap { overflow-x: auto; }
+  table.numbers { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  table.numbers th, table.numbers td { text-align: left; vertical-align: top; padding: 6px 8px; border-top: 1px solid var(--line); }
+  table.numbers td:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+  table.numbers td:nth-child(3), .definition { color: var(--muted); font-weight: normal; }
+  .section-head th { padding-top: 14px; }
+  .not-run { font-weight: 600; }
+  .live-traffic { background: var(--live); border-color: var(--live-line); }
+  .live-numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0; }
+  .live-numbers dt { font-size: .8rem; color: var(--muted); }
+  .live-numbers dd { margin: 0; font-weight: 600; }
+  .day { margin: 0 0 8px; font-size: .85rem; color: var(--muted); }
+  .try-these ul, .callouts ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  a.try { color: var(--brand); font-weight: 600; }
+  .question, .expected { margin: 2px 0 0; font-size: .9rem; }
+  .expected { color: var(--muted); }
+  .callout { border-left: 4px solid var(--brand); padding-left: 10px; }
+  .callout strong { display: block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Meridian Home Comfort</h1>
+  <p>Heating, cooling and plumbing in the Austin area</p>
+  <nav class="tabs" aria-label="Tabs"><a href="/">Chat</a><a href="/results" aria-current="page">Results</a></nav>
+</header>
+<main>
+  <section class="frozen-results" aria-label="Frozen test results">
+    <h2>Frozen held-out test results</h2>
+    <p class="note">Measured once on the frozen agent with simulated callers on held-out call templates, never on the live site. These numbers do not change with demo traffic.</p>
+    <div class="table-wrap">
+<!-- frozen results -->
+    </div>
+  </section>
+  <section class="live-traffic" aria-label="Live demo traffic">
+    <h2>Live demo traffic</h2>
+    <p class="note">Today's visitors on this site. Not part of the test results above.</p>
+<!-- live demo traffic -->
+  </section>
+  <section class="try-these" aria-label="Try these">
+    <h2>Try these</h2>
+    <p class="note">Each opens the Chat tab with the message filled in; press Send to run it through the normal path.</p>
+<!-- try these -->
+  </section>
+  <section class="callouts" aria-label="Executive findings">
+    <h2>Executive findings</h2>
+    <p class="note">From the transcript findings document.</p>
+<!-- executive callouts -->
+  </section>
+</main>
+</body>
+</html>

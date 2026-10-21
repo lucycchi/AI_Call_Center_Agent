@@ -25,6 +25,7 @@ from app.core.state import ConversationState, NotYourConversation
 from app.core.types import DoneEvent, SentenceEvent, Turn
 from app.handoff.flow import ERROR_MESSAGE
 from app.web.limits import LIMIT_MESSAGE, Limits
+from app.web.results import results_routes
 from app.web.reviewer import reviewer_routes
 from app.web.staff import staff_routes
 from app.web.visitor import COOKIE, VisitorCookie
@@ -81,11 +82,13 @@ def behind_fly() -> bool:
 
 def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits | None = None, workers: int = 4,
                stream_timeout_s: float = 40.0, trust_fly_header: bool = False, spend=None,
-               reviewer_token: str | None = None, staff_password_hash: str | None = None) -> FastAPI:
+               reviewer_token: str | None = None, staff_password_hash: str | None = None,
+               results_summary_path: Path | None = None) -> FastAPI:
     """trust_fly_header: trust the Fly-Client-IP header for the address limit; anywhere else a client could forge it.
     spend: an app.ops.spend.Spend that each turn's model calls are recorded against (the engine's pipeline asks it
     for a refusal after its safety check). reviewer_token: the secret behind the reviewer link (R85).
-    staff_password_hash: the shared staff password's hash (R72); None turns staff sign-in off."""
+    staff_password_hash: the shared staff password's hash (R72); None turns staff sign-in off.
+    results_summary_path: the final summary the Results tab shows (default data/results/final/summary.json)."""
     app = FastAPI(title="Meridian Home Comfort chat", docs_url=None, redoc_url=None, openapi_url=None)
     cookies = VisitorCookie(cookie_secret)
     limits = limits or Limits(clock)
@@ -99,6 +102,7 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
         "<!-- staff panel -->", (HERE / "templates" / "staff_panel.html").read_text())
     app.include_router(reviewer_routes(store, reviewer_token))
     app.include_router(staff_routes(store, cookie_secret, staff_password_hash, clock, trust_fly_header))
+    app.include_router(results_routes(store, clock, results_summary_path))
 
     @app.get("/", response_class=HTMLResponse)
     def chat():

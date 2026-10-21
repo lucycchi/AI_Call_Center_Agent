@@ -102,6 +102,17 @@
   });
   // End of suggested questions.
 
+  // Try these: fill the text box from the Results tab.
+  (function () {
+    var asked = new URLSearchParams(window.location.search).get("ask");
+    if (asked) {
+      box.value = asked.slice(0, 5000);
+      box.focus();
+      history.replaceState(null, "", window.location.pathname);  // a reload does not fill it again
+    }
+  })();
+  // End of try these.
+
   // A reload of this tab shows its conversation so far and any booking step in progress.
   fetch("/api/conversation/" + encodeURIComponent(conversation), { credentials: "same-origin" })
     .then(function (response) { return response.ok ? response.json() : null; })
