@@ -4,6 +4,7 @@ import json
 import re
 import sqlite3
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from app.accounts.fees import MEMBERSHIP_PRICE_CENTS
@@ -52,6 +53,20 @@ def membership(db: sqlite3.Connection, customer_id: str) -> Membership:
 def system(db: sqlite3.Connection, customer_id: str) -> System:
     return System(*db.execute("select system_brand, system_install_date from customers where customer_id = ?",
                               (customer_id,)).fetchone())
+
+
+def system_age(install_date: str, today: date) -> str:
+    """How long ago the system was installed, counted in whole months from the fixed "now", so the writer never has
+    to work it out ("installed last year" for a July 2026 install, T7d8fb3e5)."""
+    installed = date.fromisoformat(install_date)
+    months = (today.year - installed.year) * 12 + today.month - installed.month - (today.day < installed.day)
+    if months < 1:
+        return "less than a month ago"
+    if months < 12:
+        return f"about {months} month{'s' if months > 1 else ''} ago"
+    years, months = divmod(months, 12)
+    extra = f" and {months} month{'s' if months > 1 else ''}" if months else ""
+    return f"about {years} year{'s' if years > 1 else ''}{extra} ago"
 
 
 # The code backstop to the router (R48, D43): only requests that are never questions. Everything else about joining,

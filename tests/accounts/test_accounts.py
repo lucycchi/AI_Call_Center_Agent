@@ -108,3 +108,13 @@ def test_the_code_backstop_never_fires_on_a_labelled_question():
 def test_the_labelled_action_set_is_well_formed():
     rows = _labelled_actions()
     assert {row["expected"] for row in rows} == {"action", "not action"} and len(rows) >= 60
+
+
+@pytest.mark.parametrize("installed, age", [("2026-07-14", "about 3 months ago"), ("2026-10-01", "less than a month ago"),
+                                            ("2025-10-16", "about 1 year ago"), ("2025-11-30", "about 10 months ago"),
+                                            ("2023-05-14", "about 3 years and 5 months ago"),
+                                            ("2024-09-20", "about 2 years ago"), ("2016-08-09", "about 10 years and 2 months ago")])
+def test_the_system_age_is_counted_from_the_fixed_now(installed, age):
+    from datetime import date
+    from app.accounts.lookups import system_age
+    assert system_age(installed, date(2026, 10, 16)) == age

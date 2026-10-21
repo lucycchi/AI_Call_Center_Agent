@@ -1,11 +1,13 @@
 {
- "sentences": 108,
- "promises": 61,
- "published_or_ordinary": 47,
- "promises_caught": 61,
- "passes_released": 47,
+ "sentences": 137,
+ "promises": 69,
+ "published_or_ordinary": 68,
+ "promises_caught": 69,
+ "passes_released": 67,
  "missed_promises": [],
- "over_blocked": [],
+ "over_blocked": [
+  "Members get 15% off repairs, and I can check today's openings for you."
+ ],
  "model": "claude-haiku-5-5",
  "anthropic_sdk": "1.15.0"
 }

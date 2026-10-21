@@ -11,6 +11,7 @@ from collections.abc import Callable, Iterator
 from datetime import datetime
 from pathlib import Path
 
+from app.accounts import normalise
 from app.accounts.lookups import read_only
 from app.config import SETTINGS, real_now
 from app.accounts.lookups import is_action_request
@@ -20,7 +21,7 @@ from app.core.model_log import SINK
 from app.core.state import ConversationState, NotYourConversation
 from app.core.types import DoneEvent, Event, SentenceEvent, Turn
 from app.flows import scheduling
-from app.flows.account import account_answer
+from app.flows.account import about_address, account_answer
 from app.flows.identify import ACCOUNT, ASK, PHONE, STREET, find_customer, has_identifier
 from app.flows.knowledge import SAVINGS, answer
 from app.flows.protocol import FlowResult
@@ -148,6 +149,19 @@ def _asks(text: str) -> bool:
 FLOW_WORDS = re.compile(r"\b(?:earlier|later|sooner|slots?|times?|window|morning|afternoon|evening|monday|tuesday|wednesday|"
                         r"thursday|friday|saturday|sunday|today|tomorrow|week|book\w*|appointments?|technician|tech|visit|"
                         r"reschedul\w*|cancel\w*|availab\w*|openings?)\b", re.I)
+
+
+def _about_the_address(request: Request) -> bool:
+    """A router request that is only the caller's address question, which the account flow answers instead."""
+    if not about_address(request.text, identified_before=True):
+        return False
+    return (request.route == "account" and request.detail != "action"
+            or request.route == "scheduling" and request.detail in (None, "confirm")
+            or request.route == "handoff" and request.detail in (None, "other", "unclear"))
+
+
+def _spoken_street(text: str) -> str:
+    return " ".join(normalise.STREET_WORDS.get(w, w) for w in normalise.words(text))
 
 
 class AgentPipeline:
@@ -329,19 +343,28 @@ class AgentPipeline:
         # Another language is handed off even if the router missed it (D47).
         if other_language(turn.text):
             routed = RouteResult("handoff", True, [Request(turn.text, "handoff", "other language")])
+        # The service address (T70425efa, T9f56ade3): a question about it, or a changed address, is answered in fixed
+        # text by the account flow whatever the router called it, so the router's request for it is set aside. Once the
+        # caller is identified, a plain statement of the address counts too; at the identity prompt it identifies them.
+        address = about_address(turn.text, identified_before=bool(state.customer_id) and not identified_now) \
+            and not other_language(turn.text)
+        if address:
+            kept = [r for r in routed.requests if not _about_the_address(r)]
+            routed = RouteResult(kept[0].route if kept else (state.active_flow or "account"), routed.clear or not kept, kept)
         flow_before = state.active_flow
         # A request for a person, or a reason the router named, is handed off even when the route is unclear (R38).
         names_a_handoff = any(r.route == "handoff" and r.detail in HANDOFF_TAGS and r.detail != "other" for r in routed.requests)
         # The calm shortcuts below need a common English word, so gibberish ("asdf qwer") still goes to a person.
         calm = _mood(turn.text) == "calm" and not names_a_handoff
         asks_nothing = "?" not in turn.text and calm and english_words(turn.text) > 0
-        if identified_now and not state.active_flow and not state.pending and not routed.clear and calm \
+        if identified_now and not address and not state.active_flow and not state.pending and not routed.clear and calm \
                 and _details_or_help_only(turn.text, identified_now):
             # A message that only gave the caller's details: nothing to hand off.
             yield emit(f"Thanks, {identified_now.name.split()[0]}, I've found your account. What can I help you with?")
             yield finish("account", "answered", {"safety": "clear"}, [])
             return
-        if not routed.clear and not state.active_flow and not state.pending and asks_nothing and len(turn.text.split()) <= 15 \
+        if not routed.clear and not address and not state.active_flow and not state.pending and asks_nothing \
+                and len(turn.text.split()) <= 15 \
                 and not (state.ticket_id and _asks(turn.text)):
             # An unclear message that asks nothing ("okay, good to know") is not a request: no ticket (R38, tuned on
             # the working set). An angry message, a question or a longer message still goes to a handoff. With a ticket
@@ -354,6 +377,17 @@ class AgentPipeline:
             yield finish("none", "answered", {"safety": "clear"}, [])
             return
         requests, offer_return = self._requests(state, turn.text, routed)
+        flow_text, repeat_flow = turn.text, False
+        if address:
+            # The rest of the message still goes to an open booking ("Yes, Monday works. Same address as before, ...");
+            # an address question alone leaves it open and the offer or read-back is asked again.
+            rest = " ".join(s for s in re.split(r"(?<=[.?!])\s+", turn.text) if not about_address(s, identified_before=True))
+            if state.customer_id:
+                flow_text = rest
+            if state.active_flow == "scheduling" and not self._answers_flow(state, rest):
+                requests = [r for r in requests if r.route != "continue"]
+                repeat_flow, offer_return = True, False
+            requests = [*requests, Request(turn.text, "account", "address")]
         # "Add it" or "sign me up" after the plan was discussed is a request to join, an action the agent cannot take (R48).
         if JOIN_CONSENT.search(turn.text) and any(PLAN_WORDS.search(m["content"]) for m in history[-4:] + [{"content": turn.text}]) \
                 and not any(r.route == "handoff" or (r.route == "account" and r.detail == "action") for r in requests):
@@ -384,7 +418,9 @@ class AgentPipeline:
             results.append(result)
         if queued:
             continuing = fell_back or any(r.route == "continue" for r in requests)
-            results += self._advance_safely(state, turn.text, error_event, continuing)
+            results += self._advance_safely(state, flow_text, error_event, continuing)
+        if repeat_flow and state.flow and (again := scheduling.repeat(state.flow)):
+            results.append(again)
         written: list[FlowResult] = []
         handoffs: list[tuple[str, str, str]] = []  # reason tag, constraints, what the caller wants
         fixed: list[str] = []
@@ -399,6 +435,16 @@ class AgentPipeline:
             if result.reply_type == "decline":
                 fixed.append(_decline_sentence(*result.facts))
                 handoffs.append(("decline", result.facts[0], turn.text))
+                continue
+            if result.reply_type == "fixed":
+                # Fixed text written in code (the service address answer): checked, then said as written.
+                for sentence in result.facts:
+                    if check_sentence(sentence, " ".join(released)).ok:
+                        yield emit(sentence)
+                    else:
+                        log.error("fixed reply failed a check: %s", sentence)
+                if result.handoff_reason:
+                    handoffs.append((result.handoff_reason, "", turn.text))
                 continue
             if result.reply_type == "confirmation":
                 # A committed change is confirmed in code, so nothing after it (the writer, the deadline, a ticket
@@ -419,6 +465,7 @@ class AgentPipeline:
                                      excluded=last.excluded)
         # 5. Writer and checks: each sentence is released only once it passes (R36, R42, R43, R60).
         if written:
+            street = self._street_on_file(state)  # never read back to the caller, whatever the writer says
             burning = state.burning_mentioned or not breaker_advice_allowed(earlier + [turn.text])
             # A turn that mixes a knowledge answer with a booking or account result is written in two calls, knowledge
             # first, so the not-in-documents marker is only a handoff when it is written against the knowledge answer.
@@ -433,7 +480,12 @@ class AgentPipeline:
                     stream = CheckedStream(self.writer(part[0].reply_type, [f for r in part for f in r.facts], seen),
                                            burning_mentioned=burning, money_check=self.money_check, ticket_id=state.ticket_id)
                     part_released = 0
-                    for part_released, sentence in enumerate(stream, 1):
+                    for sentence in stream:
+                        if street and f" {street} " in f" {_spoken_street(sentence)} ":
+                            log.error("writer sentence with the street address withheld")
+                            self._quietly(self.store.log_event, "withheld sentence", "street address", turn.conversation_id)
+                            continue
+                        part_released += 1
                         count_released += 1
                         # The deadline is checked before each later sentence, so a slow reply is cut off (R59).
                         if count_released > 1 and deadline.passed():
@@ -549,6 +601,22 @@ class AgentPipeline:
         # On every route but a handoff, which is already handed off with the router's own reason.
         return request.route != "handoff" and is_action_request(request.text)
 
+    def _answers_flow(self, state: ConversationState, text: str) -> bool:
+        """The message, without any street address in it, answers the open offer or read-back."""
+        text = STREET.sub(" ", text)
+        return bool(scheduling.picks_a_slot(text, state.flow, self.now) or scheduling.YES.search(text)
+                    or scheduling.NO.search(text) or scheduling.EARLIER.search(text))
+
+    def _street_on_file(self, state: ConversationState) -> str | None:
+        if not state.customer_id:
+            return None
+        db = read_only(self.scheduling_db)
+        try:
+            row = db.execute("select service_address from customers where customer_id = ?", (state.customer_id,)).fetchone()
+        finally:
+            db.close()
+        return _spoken_street(row[0].split(",")[0]) if row and row[0] else None
+
     def _flow(self, request: Request, context: str = "", ticket_open: bool = False) -> FlowResult:
         if self._action(request):
             return FlowResult([], "handoff", handoff_reason="action gap")
@@ -604,7 +672,8 @@ class AgentPipeline:
             # Account questions are answered first, so a question asked mid-booking does not wait behind it.
             for request in [r for r in state.pending if r["route"] == "account"]:
                 state.pending.remove(request)
-                results.append(account_answer(read_only(self.scheduling_db), customer, request["detail"], state, self.store))
+                results.append(account_answer(read_only(self.scheduling_db), customer, request["detail"], state, self.store,
+                                              request.get("text") or ""))
             flow_text = text if continuing or not state.flow else None
             while True:
                 if state.flow and flow_text is not None:

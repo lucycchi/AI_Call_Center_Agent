@@ -1477,3 +1477,110 @@ def test_the_second_part_of_a_mixed_reply_sees_what_the_first_part_said(chat):
                                                    request("book a tune-up", "scheduling", "book", "hvac_tune_up")))
     chat["say"]("I'm Linda Foster, MHC-10001. How much is a tune-up and book a tune-up and book")
     assert len(seen) == 2 and any("$129" in m for m in seen[1])
+
+
+# -- the service address on file (quick run 20261021-031409: T70425efa, T9bb3779a, T9f56ade3) ----------------------
+ON_FILE = "service address on your account"
+PRIVATE = "For privacy, I don't read street addresses aloud."
+
+
+def _says_address_on_file(reply):
+    return ON_FILE in reply and PRIVATE in reply and "4412" not in reply and "oak hollow" not in reply.lower()
+
+
+@pytest.mark.parametrize("routed", [None, clear(request("Can you confirm the address on file?", "account", "none"))])
+def test_confirming_the_address_as_a_first_question_gets_the_fixed_answer_without_the_street(chat, routed):
+    # The router may call it an account question (an invoice lookup followed) or leave it unclear (a ticket followed).
+    if routed:
+        chat["routes_add"]("address on file", routed)
+    reply, done = chat["say"]("I'm Linda Foster, MHC-10001. Can you confirm the address on file?")
+    assert _says_address_on_file(reply) and "team member can update it" in reply
+    assert not done.ticket and not chat["store"].tickets() and "invoice" not in reply.lower()
+
+
+def test_asking_about_the_address_at_an_offer_keeps_the_booking_open(chat):
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    chat["routes_add"]("address you have", clear(request("Is the visit at the address you have?", "scheduling", "confirm")))
+    reply, done = chat["say"]("Is the visit at the address you have for me?")
+    assert _says_address_on_file(reply) and "2026-10-19, 08:00-12:00" in reply and not done.ticket
+    before = count(chat["db"], "select count(*) from appointments")
+    reply, _ = chat["say"]("yes")
+    assert "Read back" in reply
+    reply, _ = chat["say"]("Can you confirm my address before I say yes?")
+    assert _says_address_on_file(reply) and "clear yes" in reply.lower()
+    chat["say"]("yes")
+    assert count(chat["db"], "select count(*) from appointments") == before + 1
+
+
+def test_a_slot_pick_that_also_mentions_the_address_books_and_answers_the_address(chat):
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    reply, _ = chat["say"]("Yes, Monday morning works. Same address as before, 4412 Oak Hollow Dr in Round Rock.")
+    assert "Read back" in reply and _says_address_on_file(reply) and not chat["store"].tickets()
+
+
+@pytest.mark.parametrize("text", [
+    "Thanks. I think the address on file is right, it's whatever was there when we moved in.",
+    "Thanks! Is this visit at the same address on file, 4412 Oak Hollow Dr in Round Rock?",
+    "Okay, can you note 4412 Oak Hollow Dr, Round Rock as the service address for the Monday visit?"])
+def test_asking_about_the_address_after_booking_gets_the_fixed_answer(chat, text):
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    chat["say"]("yes")
+    chat["say"]("yes")
+    chat["routes_add"]("address", clear(request(text, "scheduling", "confirm")))
+    reply, done = chat["say"](text)
+    assert _says_address_on_file(reply) and "your visit" in reply.lower()
+    assert not done.ticket and not chat["store"].tickets() and "which" not in reply.lower()
+
+
+@pytest.mark.parametrize("text", ["We moved last month, my address is 77 Pecan Street, Austin now.",
+                                  "Can you note 12 Elm Way, Austin as the service address for the visit?",
+                                  "My address has changed, can you update it?"])
+def test_a_changed_address_opens_an_address_change_ticket_without_reading_any_street(chat, text):
+    chat["say"]("I'm Linda Foster, MHC-10001.")
+    reply, done = chat["say"](text)
+    assert done.ticket and chat["store"].tickets()[-1]["reason_tag"] == "address change"
+    assert PRIVATE in reply and "4412" not in reply and "77 Pecan" not in reply and "12 Elm" not in reply
+    assert "Ticket #" in reply
+
+
+@pytest.mark.parametrize("text", ["Linda Foster, 4412 Oak Hollow Dr, Round Rock",
+                                  "Linda Foster, the service address is 4412 Oak Hollow Dr, Round Rock."])
+def test_identity_messages_with_an_address_are_not_address_questions(chat, text):
+    if "service address" not in text:
+        reply, done = chat["say"](text)
+        assert reply == "Thanks, Linda, I've found your account. What can I help you with?" and not done.ticket
+    chat["say"]("I want to book a repair", conversation="c2")
+    reply, done = chat["say"](text, conversation="c2")
+    assert "08:00-12:00" in reply and ON_FILE not in reply and not done.ticket
+
+
+def test_the_working_set_caller_lines_that_count_as_address_messages():
+    import json
+    from app.flows.account import about_address
+    lines = json.loads((Path(__file__).parent / "caller_lines.json").read_text())
+    # Identified earlier in the conversation: questions, notes and statements about the address all count.
+    # All 18 ask about, note or restate the address after the caller was identified (checked against their runs).
+    found = [line for line in lines if about_address(line, identified_before=True)]
+    assert len(found) == 18 and all("address" in line for line in found), found
+    # At the identity prompt, giving the address is how the caller identifies themselves: only questions count.
+    at_prompt = [line for line in lines if about_address(line, identified_before=False)]
+    assert len(at_prompt) == 11 and not any(line.startswith(("Sure, the address is", "The service address is"))
+                                            for line in at_prompt)
+    assert not about_address("Can you confirm that the visit is moved to Monday afternoon?", identified_before=True)
+
+
+def test_the_system_lookup_says_how_long_ago_it_was_installed(chat):
+    chat["routes_add"]("what system", clear(request("what system do I have", "account", "system")))
+    reply, _ = chat["say"]("I'm Grace Garcia, MHC-95149. What system do I have?")
+    assert "installed 2026-07-12, about 3 months ago" in reply
+    reply, _ = chat["say"]("I'm Linda Foster, MHC-10001. What system do I have?", conversation="c2")
+    assert "installed 2023-05-14, about 3 years and 5 months ago" in reply
+
+
+def test_a_writer_sentence_that_reads_the_street_on_file_is_withheld(chat):
+    chat["writer_says"](lambda facts: ["Your address on file is 901 Brookside Court."] + facts)
+    reply, _ = chat["say"]("I'm Omar Patel, MHC-10002, what's my balance?")
+    assert "$478.00" in reply and "Brookside" not in reply
+    chat["writer_says"](lambda facts: ["Your address on file is 4412 Oak Hollow Drive."] + facts)
+    reply, _ = chat["say"]("I'm Linda Foster, MHC-10001, what's my balance?", conversation="c2")
+    assert "Oak Hollow" not in reply and "no open invoices" in reply
