@@ -114,6 +114,8 @@ def behind_fly() -> bool:
 
 REVIEWER_ONLY_NOTE = ("Chat on this demo is open to project reviewers with a reviewer link. You can still look around: "
                       "the test customers, the suggested questions and the Results tab.")
+REVIEWER_ONLY_REPLY = ("Chat on this demo is open to project reviewers with a reviewer link, so I can't answer here. "
+                       "If you have a gas smell, smoke or another emergency, tell me and I'll give you the safety steps.")
 
 
 def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits | None = None, workers: int = 4,
@@ -311,6 +313,17 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
             if alerts:
                 alerts.check_errors()
 
+    def public_refused(visitor_id: str) -> bool:
+        """Reviewer-only mode and a public visitor. If the store cannot be read, False: the agent's guard still
+        refuses, failing closed."""
+        if spend is None or spend.per_visitor > 0:
+            return False
+        try:
+            return not spend.is_reviewer(visitor_id)
+        except Exception as error:
+            log.error("reviewer check failed, passing the message to the agent: %s", error)
+            return False
+
     def needs_safety_reply(conversation_id: str, text: str) -> str | None:
         """The safety kind the agent's own check (R34) finds, on the same history, so a refused message reporting a
         danger still reaches it; None when clear. Only reads; if it cannot read, "danger" (the agent's guard still
@@ -346,6 +359,9 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
         if not body.text.strip():  # nothing to answer: no engine call, no limit counted, nothing written
             settle(reply, TELL_ME_MORE, DoneEvent(route="none", ticket=None, outcome="answered"))
             return accepted
+        if public_refused(visitor_id) and not needs_safety_reply(body.conversation_id, text):
+            settle(reply, REVIEWER_ONLY_REPLY, DoneEvent(route="limit", ticket=None, outcome="limit"))
+            return accepted  # reviewer-only (D50): the agent's own refusal would speak of a usage limit
         peer = request.client.host if request.client else None
         address = (request.headers.get("fly-client-ip") or peer) if trust_fly_header else peer
         limit = limits.allow(visitor_id, address)

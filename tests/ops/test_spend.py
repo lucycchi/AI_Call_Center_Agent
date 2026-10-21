@@ -384,3 +384,19 @@ def test_in_reviewer_only_mode_the_chat_page_says_chat_is_for_reviewers(store):
         assert REVIEWER_ONLY_NOTE in client.get("/").text
     with client_for(reviewer_app(store, spend=Spend(store))) as client:
         assert REVIEWER_ONLY_NOTE not in client.get("/").text
+
+
+def test_in_reviewer_only_mode_a_public_question_is_told_chat_is_for_reviewers(store):
+    # Seen in the final QA: a public question was answered "the site has reached its usage limit... try again
+    # tomorrow", which tomorrow does not change (D50). A safety report still reaches the agent; a reviewer still chats.
+    engine = SpendingEngine(store)
+    app = create_app(engine, store, cookie_secret=SECRET, spend=Spend(store, per_visitor_usd=0.0), reviewer_token=TOKEN)
+    with client_for(app) as public:
+        reply = send(public, "How much is a tune-up?")
+        assert "reviewer link" in reply and "usage limit" not in reply and "tomorrow" not in reply
+        assert engine.sinks == [] and store.spend_rows() == []  # no agent turn, nothing written
+        send(public, "I smell gas")
+        assert len(engine.sinks) == 1
+    with client_for(app) as reviewer:
+        reviewer.post("/api/reviewer", json={"token": TOKEN})
+        assert "Done." in send(reviewer, "How much is a tune-up?")

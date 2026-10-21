@@ -24,6 +24,7 @@ class OpsStore:
         self._db = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
         self._db.row_factory = sqlite3.Row
         self._lock = threading.Lock()
+        self._pending_lock = threading.Lock()  # the backup ticket file: one append or retry at a time
         self._db.execute("pragma journal_mode = wal")
         self._db.execute("pragma foreign_keys = on")
         self._db.executescript(SCHEMA)
@@ -92,9 +93,11 @@ class OpsStore:
         self._write("update messages set first_sentence_ms = ?, full_reply_ms = ?, cost_microdollars = ? "
                     "where message_id = ?", (first_sentence_ms, full_reply_ms, cost_microdollars, message_id))
 
-    def log_message(self, conversation_id: str, role: str, text: str, request_id: str | None = None) -> int:
+    def log_message(self, conversation_id: str, role: str, text: str, request_id: str | None = None,
+                    accepted_text: str | None = None) -> int:
         """A caller message with a request id replaces that request's accepted placeholder (accept_message), so the
-        message is stored once, in the order the agent handled it."""
+        message is stored once, in the order the agent handled it. accepted_text: accept_message's 'accepted' event,
+        written in the same transaction as its placeholder."""
         now = self._now()
         try:  # the failure alert is sent after the lock is released: recording it takes the lock again
             with self._lock:  # the message and the conversation's last-message time are written together
@@ -109,6 +112,10 @@ class OpsStore:
                                                   (conversation_id, role, mask(text), now, request_id)).lastrowid
                     self._db.execute("update conversations set last_message_at = ? where conversation_id = ?",
                                      (now, conversation_id))
+                    if accepted_text is not None:
+                        detail = json.dumps({"message_id": request_id, "text": mask(accepted_text)})
+                        self._db.execute("insert into events (conversation_id, kind, detail, created_at) values "
+                                         "(?, 'accepted', ?, ?)", (conversation_id, detail, now))
                     self._db.execute("commit")
                 except BaseException:
                     self._db.execute("rollback")
@@ -122,12 +129,9 @@ class OpsStore:
         """The web layer's record of a caller message it has accepted (202) but not yet handed to the agent: a caller
         message with no text (so the agent's history and the reloaded chat never show it twice or early) and an
         'accepted' event holding the masked text. A restart before the agent logs the message still finds it, as an
-        unfinished reply (request_reply); the agent's own log_message replaces the placeholder."""
-        message_id = self.log_message(conversation_id, "caller", "", request_id)
-        detail = json.dumps({"message_id": request_id, "text": mask(text)})
-        self._write("insert into events (conversation_id, kind, detail, created_at) values (?, 'accepted', ?, ?)",
-                    (conversation_id, detail, self._now()))
-        return message_id
+        unfinished reply (request_reply); the agent's own log_message replaces the placeholder. Both are written in
+        one transaction: a placeholder without its text would lose the message and turn away its retry."""
+        return self.log_message(conversation_id, "caller", "", request_id, accepted_text=text)
 
     def accepted_text(self, conversation_id: str, request_id: str) -> str | None:
         """The masked text of a caller message the web layer accepted, or None."""
@@ -206,11 +210,16 @@ class OpsStore:
             return self.create_ticket(**ticket)
         except Exception as error:
             log.error("%s ticket not saved, kept in %s: %s", ticket.get("reason_tag"), self._pending, error)
-            with self._pending.open("a") as handle:
-                handle.write(json.dumps(ticket) + "\n")
+            kept = ticket | {field: mask(ticket.get(field) or "") for field in ("who", "wants", "tried", "constraints")}
+            with self._pending_lock, self._pending.open("a") as handle:  # masked on disk too (R73)
+                handle.write(json.dumps(kept) + "\n")
             return None
 
     def retry_pending(self) -> None:
+        with self._pending_lock:  # an append during a retry is not erased, and two retries never save a ticket twice
+            self._retry_pending()
+
+    def _retry_pending(self) -> None:
         if not self._pending.exists():
             return
         waiting = [json.loads(line) for line in self._pending.read_text().splitlines() if line.strip()]

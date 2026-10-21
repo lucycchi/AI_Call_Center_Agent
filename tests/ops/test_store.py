@@ -107,3 +107,71 @@ def test_a_later_reason_adds_its_tag_and_new_constraints_once(store):
     store.add_reason(ticket, "action gap", "")
     assert store.ticket_tags(ticket) == ["action gap", "dispute"]
     assert store.tickets()[0]["constraints"] == "fee differs from schedule: after-hours 144 vs 149"
+
+
+def _failing_tickets(ops, monkeypatch):
+    def failing(*args, **kwargs):
+        raise sqlite3.OperationalError("disk full")
+    monkeypatch.setattr(ops, "create_ticket", failing)
+
+
+def test_a_ticket_kept_in_the_backup_file_is_masked_there(store, tmp_path, monkeypatch):
+    # Final review (F2): the backup file held the caller's phone number and street in plain text.
+    _failing_tickets(store, monkeypatch)
+    store.create_ticket_or_keep(conversation_id="c1", who="Linda Foster, 512-555-0101", wants="warranty claim: leak at "
+                                "901 Brookside Ct", tried="booked", constraints="", mood="", reason_tag="warranty review")
+    kept = (tmp_path / "ops.pending.jsonl").read_text()
+    assert "555-0101" not in kept and "Brookside" not in kept and "[phone]" in kept and "Linda Foster" in kept
+
+
+def test_a_ticket_kept_while_another_thread_retries_is_not_lost(store, tmp_path, monkeypatch):
+    # Final review (F7): a ticket appended after a retry read the file was erased when the retry rewrote it.
+    import threading
+    _failing_tickets(store, monkeypatch)
+    store.create_ticket_or_keep(conversation_id=None, who="first", wants="a", tried="", constraints="", mood="",
+                                reason_tag="warranty review")
+    monkeypatch.undo()
+    original, entered, release = store.create_ticket, threading.Event(), threading.Event()
+
+    def slow(**ticket):
+        entered.set()
+        release.wait(2)
+        return original(**ticket)
+    monkeypatch.setattr(store, "create_ticket", slow)
+    retry = threading.Thread(target=store.retry_pending)
+    retry.start()
+    entered.wait(2)
+
+    def keep():
+        store.create_ticket_or_keep(conversation_id=None, who="second", wants="b", tried="", constraints="", mood="",
+                                    reason_tag="warranty review")
+    monkeypatch.setattr(store, "create_ticket", lambda **t: (_ for _ in ()).throw(sqlite3.OperationalError("busy")))
+    keeper = threading.Thread(target=keep)
+    keeper.start()
+    keeper.join(0.3)
+    monkeypatch.setattr(store, "create_ticket", original)
+    release.set()
+    retry.join(5)
+    keeper.join(5)
+    store.retry_pending()
+    assert sorted(t["who"] for t in store.tickets()) == ["first", "second"]
+
+
+def test_an_accepted_message_and_its_text_are_saved_together(store, monkeypatch):
+    # Final review (F1): the empty placeholder was committed before the text, so a failed second write lost the text
+    # and a retry of the same message was ignored.
+    class FailingDb:  # the database refuses the accepted event, inside whatever transaction writes it
+        def __init__(self, db):
+            self.db = db
+
+        def execute(self, sql, params=()):
+            if "'accepted'" in sql:
+                raise sqlite3.OperationalError("disk full")
+            return self.db.execute(sql, params)
+    monkeypatch.setattr(store, "_db", FailingDb(store._db))
+    with pytest.raises(sqlite3.OperationalError):
+        store.accept_message("c1", "m1", "please send someone Tuesday")
+    monkeypatch.undo()
+    assert store.request_reply("v1", "m1") is None  # nothing half-saved, so a retry is accepted again
+    store.accept_message("c1", "m1", "please send someone Tuesday")
+    assert store.accepted_text("c1", "m1") == "please send someone Tuesday"
