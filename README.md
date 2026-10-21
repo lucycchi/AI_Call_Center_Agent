@@ -281,6 +281,8 @@ requires (live fixes after the measurement (D51)):
   emergency ticket instead (the burning-smell bug described above);
 - a question about today's date or time is answered as the demo's fixed date (Friday 16 October 2026, 9:00 a.m. in
   Austin), since the demo runs on a fixed "now".
+- a caller who gives their name and account number in the same message as an emergency is identified then, so the
+  priority ticket carries their details and they are not asked for them again.
 
 ### By call reason
 

@@ -297,11 +297,29 @@ class AgentPipeline:
         # 1. Safety, before anything else, even mid-flow or over a limit (R34 to R37). The advice goes out first.
         if not breaker_advice_allowed([turn.text]):
             state.burning_mentioned = True  # kept for the whole conversation
+        def identify():
+            """A caller who gives their details on any route is identified then, so they are not asked again later
+            (R45); an account number and a name may come in two messages. An open ticket is told who the caller is (R57)."""
+            if state.customer_id or not (has_identifier(turn.text) or (earlier and has_identifier(earlier[-1]))):
+                return False
+            lookup = read_only(self.scheduling_db)
+            try:
+                found = find_customer(lookup, turn.text) or (find_customer(lookup, f"{earlier[-1]} {turn.text}") if earlier else None)
+            finally:
+                lookup.close()
+            if not found:
+                return False
+            state.customer_id, state.who, state.id_attempts = found.customer_id, f"{found.name}, {found.customer_id}", 0
+            if state.ticket_id:
+                self._quietly(self.store.set_ticket_caller, state.ticket_id, state.who)
+            return found
+
         safety = check(turn.text, earlier, state.burning_mentioned)
         if safety.kind != "clear":
             state.flow, state.active_flow, state.pending = {}, None, []  # emergencies are never booked
             for sentence in fixed_reply(safety.kind, turn.text):
                 yield emit(sentence)
+            identify()  # after the advice: details given with the emergency go on its ticket and are not asked again
             for sentence in ticket(SAFETY_TAGS[safety.kind], safety.kind, turn.text):
                 yield emit(sentence)
             state.safety_reported = state.safety_reported or safety.kind
@@ -357,20 +375,7 @@ class AgentPipeline:
                 yield emit(ANYTHING_ELSE)
                 yield finish("none", "answered", {"safety": "clear"}, [])
                 return
-        identified_now = False
-        # A caller who gives their details on any route is identified then, so they are not asked again later (R45);
-        # an account number and a name may come in two messages. An open ticket is told who the caller is (R57).
-        if not state.customer_id and (has_identifier(turn.text) or (earlier and has_identifier(earlier[-1]))):
-            lookup = read_only(self.scheduling_db)
-            try:
-                found = find_customer(lookup, turn.text) or (find_customer(lookup, f"{earlier[-1]} {turn.text}") if earlier else None)
-            finally:
-                lookup.close()
-            if found:
-                state.customer_id, state.who, state.id_attempts = found.customer_id, f"{found.name}, {found.customer_id}", 0
-                identified_now = found
-                if state.ticket_id:
-                    self._quietly(self.store.set_ticket_caller, state.ticket_id, state.who)
+        identified_now = identify()
         # 3. Route, keeping follow-ups inside an active flow (R38, R40).
         history = self.store.history(turn.conversation_id)
         routed = self._route(turn.text, history, error_event)

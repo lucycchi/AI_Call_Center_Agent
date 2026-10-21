@@ -1652,3 +1652,17 @@ def test_an_account_question_after_a_safety_report_is_answered_normally(chat):
     chat["say"]("I'm Linda Foster, MHC-10001. No heat and it's freezing")
     reply, _ = chat["say"]("what's my balance")
     assert "Because of the safety issue" not in reply and "no open invoices" in reply
+
+
+def test_a_caller_who_identifies_with_an_emergency_is_not_asked_again(chat):
+    # Live check: "I'm Linda Foster, MHC-10001. There's a burning smell coming from my furnace." got a ticket that
+    # still asked for the name and account number.
+    reply, done = chat["say"]("I'm Linda Foster, MHC-10001. There's a burning smell coming from my furnace.")
+    assert "Ticket #" in reply and "please tell me your name" not in reply
+    ticket = chat["store"].tickets()[-1]
+    assert "Linda Foster" in ticket["who"] and "MHC-10001" in ticket["who"]
+
+
+def test_a_caller_who_reports_an_emergency_without_details_is_still_asked(chat):
+    reply, _ = chat["say"]("There's a burning smell coming from my furnace.")
+    assert "please tell me your name" in reply

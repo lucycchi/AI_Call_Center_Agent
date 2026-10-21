@@ -691,6 +691,7 @@ can only propose a decision; only the author settles one.
   - [data/results/final/summary.json](data/results/final/summary.json): In both burning-smell held-out cases the frozen agent (5b8f6899) gave the safety reply and a priority ticket, then booked an ordinary visit after the caller said yes, which breaks the rule that an emergency is never booked; callers asking the date also had no clear answer that the demo's date is fixed.
 - **Choice:** The live build gets two changes after the measurement: after any safety reply the agent never books, reschedules or offers slots in that conversation and points to the emergency ticket; and a question about today's date or time is answered as the demo's fixed date. The held-out numbers stay as measured on 5b8f6899, and the README and Results tab say the live build differs.
 - **Reason:** The author's choice. The held-out rule (R10) forbids re-measuring after seeing held-out results, not fixing a live safety bug; reporting the measured agent's numbers while the demo runs a documented later build keeps both honest.
+- **Revised 2026-10-21:** a third live-only change, chosen by the author: a caller who identifies in the same message as an emergency is identified then, so the priority ticket carries their details and they are not asked again.
 
 ## Glossary
 
