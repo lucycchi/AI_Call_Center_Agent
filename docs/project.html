@@ -58,11 +58,11 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </section>
 <h3>Key decisions</h3>
 <ul>
-<li>Who grades the grader-check sample blind in place of the author (R19)? Claude Fable 5.1 stands in for the author in the grader check, as it did for the blind third of the labelling (D38). Its blind grades are the check&#x27;s grades, and the published table (data/results/grader_check.json) compares them with Codex&#x27;s, stating that Fable graded in the author&#x27;s place.</li>
 <li>Should a knowledge answer fail for leaving out reference facts the caller&#x27;s question did not ask about? The grading rubric (eval/grader_prompt.md) adds that a reference may cover more than one question asked, since each was written for every caller with that kind of question, and facts the question did not ask about do not fail an answer that leaves them out. The references themselves are unchanged and frozen. Guessing still fails, and a required disclaimer is still a key fact.</li>
 <li>The grader saw the held-out requests and reference answers once by accident during testing: keep the held-out set or pick a new one? Keep the frozen held-out set (D42) and record the exposure here; the held-out guard now refuses a held-out run without the final flag and matching hashes.</li>
 <li>What should the agent do with a message in a language other than English? The agent replies in English that it can only help in English and that a team member will follow up, and opens a handoff ticket; the other-language case (a20) checks the handoff.</li>
 <li>One answer graded differently between two runs moved the threshold rule&#x27;s pick from 0.25 to 0.45: how should the threshold be chosen? The threshold script applies the same rule (0.25 floor, a wrong confident answer costs 2.5) over every graded combined-search run of the current agent, each answer counting once; each graded run is kept under the agent hash it measured.</li>
+<li>Should the quick run fail outright when a booking was missed because the simulated caller never chose a slot? The booking check records a booking fault for a wrong database change, an unexpected write, or a confirmed read-back left unbooked; fewer bookings than expected with none wrong and no confirmed read-back is a missed request, failing that conversation but not the quick run outright.</li>
 </ul>
 <section id="progress">
 <h2>Progress</h2>
@@ -646,7 +646,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>The safety check runs in code; nothing matches.</li>
 <li>Haiku 5.5 returns the route "knowledge" with the label "clear".</li>
 <li>Combined search returns the top five pieces; the old $79 FAQ is not in the index at all, because the document list excludes it.</li>
-<li>If the top piece's meaning-based score is below the chosen threshold (0.35, from the working-set curve), the engine goes to a handoff instead; here it is above, so the facts and a reply type go to Sonnet 5.5. The type is a "price answer", with the "technician confirms the final price on site" line and the price-book passage it comes from, only for a price that varies by job, such as drain clearing or a capacitor; a fixed fee, a tune-up, a cancellation fee, a membership price or a replacement estimate gets a "policy answer" (<code>app/flows/knowledge.py</code>).</li>
+<li>If the top piece's meaning-based score is below the chosen threshold (0.25, from the working-set curve), the engine goes to a handoff instead; here it is above, so the facts and a reply type go to Sonnet 5.5. The type is a "price answer", with the "technician confirms the final price on site" line and the price-book passage it comes from, only for a price that varies by job, such as drain clearing or a capacitor; a fixed fee, a tune-up, a cancellation fee, a membership price or a replacement estimate gets a "policy answer" (<code>app/flows/knowledge.py</code>).</li>
 <li>Sonnet writes the reply, which must name its source. When the facts do not answer a question the documents should answer, it states the facts that do apply and then writes the marker <code>[NOT IN DOCUMENTS]</code>; the marker is never shown, and for a knowledge answer it turns into a "not enough evidence" handoff with a ticket (never for a booking, scheduling or account reply).</li>
 <li>Each sentence is checked for promises, discounts, waivers and internal text, then released to the browser.</li>
 <li>The message, its receipt (route, passages, excluded stale document), its model calls and its cost are written to the operations database.</li>
@@ -963,7 +963,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>data/results/retrieval/answers_to_grade.jsonl</code></td><td>Answers from keyword-only search, combined search and the whole knowledge base, with the model, the writer and the passages each answer was written from, for grading on answer correctness (stale-trap accuracy is judged here). Combined answers are the agent's own (its knowledge flow, writer and checks, with the threshold at 0 so the curve can apply each threshold); keyword-only and whole-knowledge-base answers use a short prompt, as a comparison of search methods</td></tr>
 <tr><td><code>data/results/retrieval/verdicts.jsonl</code>, <code>answer_scores.json</code></td><td>Codex's verdict on each retrieval answer, and correctness, faithfulness, citation, refusal and stale-trap scores per search mode</td></tr>
 <tr><td><code>data/results/retrieval/runs/&lt;agent hash&gt;/&lt;N&gt;/</code></td><td>A copy of each graded retrieval run (answers and verdicts), kept under the hash of the agent it measured</td></tr>
-<tr><td><code>data/results/threshold.json</code></td><td>The threshold curve (containment and wrong confident answers at 0.20 to 0.75) over every graded run of the current agent pooled whose combined answers the agent wrote, the rule (0.25 floor, a wrong confident answer costs 2.5 correct contained ones; pooled threshold runs (D48)) and the chosen threshold; working-set questions only</td></tr>
+<tr><td><code>data/results/threshold.json</code></td><td>The threshold curve (containment and wrong confident answers at 0.20 to 0.75) over every graded run of the current agent pooled whose combined answers the agent wrote (an answer that ends in a handoff counts as neither contained nor wrong confident; runs filed under a hash that leaves out the threshold setting), the rule (0.25 floor, a wrong confident answer costs 2.5 correct contained ones; pooled threshold runs (D48)) and the chosen threshold; working-set questions only</td></tr>
 <tr><td><code>data/results/adversarial/summary.json</code>, <code>cases.jsonl</code></td><td>The adversarial runner's (<code>eval/run_adversarial.py</code>) pass rate, the booking-rule and instruction-extraction pass rates, failures and spend; and each case's conversation, failed checks and database actions</td></tr>
 <tr><td><code>data/agent_freeze.json</code></td><td>The agent freeze hash, the number of files and the paths it covers</td></tr>
 <tr><td><code>data/results/&lt;run&gt;/attempts.jsonl</code></td><td>One line per attempt, appended as each finishes and rewritten with grades: case, attempt number, first-run flag, conversation, done events, tickets, database checks, each purpose's model ids, SDK version and settings, the run settings, any error, grader verdict and grader model</td></tr>
@@ -1878,7 +1878,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D49: Should the quick run fail outright when a booking was missed because the simulated caller never chose a slot?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5), chosen by the author on 2026-10-20</li>
 <li><strong>Options:</strong>
 <ul>
@@ -2320,36 +2320,36 @@ tests/test_engine_interface.py ....                                      [100%]
 <p>Reviews of this milestone compare against <code>tortoise/milestone-3</code>, the last approval.</p>
 <h4>Tests</h4>
 <p><strong>Passed:</strong> <code>python -m pytest</code> finished with exit code 0.</p>
-<pre><code>tests/eval/test_grader_check_sheet.py .....                              [ 27%]
-tests/eval/test_retrieval_metrics.py ..................                  [ 29%]
-tests/eval/test_retrieval_runs.py .........                              [ 30%]
-tests/eval/test_run_guards.py .......                                    [ 31%]
-tests/eval/test_run_safety.py .........                                  [ 32%]
-tests/eval/test_run_stops.py ............                                [ 34%]
-tests/eval/test_scoring.py ...............                               [ 36%]
-tests/eval/test_threshold.py .................                           [ 38%]
-tests/flows/test_conversations.py ...................................... [ 42%]
-........................................................................ [ 51%]
-........................................................................ [ 60%]
-....................................................                     [ 67%]
-tests/flows/test_knowledge.py ...............                            [ 69%]
-tests/handoff/test_handoff.py ..........                                 [ 70%]
-tests/knowledge/test_search.py ..............                            [ 72%]
-tests/ops/test_store.py ............                                     [ 73%]
-tests/pipeline/test_documents.py .........                               [ 74%]
-tests/pipeline/test_findings.py .....................                    [ 77%]
+<pre><code>tests/eval/test_retrieval_runs.py ..................                     [ 29%]
+tests/eval/test_run_guards.py .......                                    [ 30%]
+tests/eval/test_run_safety.py .........                                  [ 31%]
+tests/eval/test_run_stops.py ............                                [ 32%]
+tests/eval/test_scoring.py ................                              [ 34%]
+tests/eval/test_threshold.py .................                           [ 36%]
+tests/flows/test_conversations.py ...................................... [ 40%]
+........................................................................ [ 48%]
+........................................................................ [ 56%]
+........................................................................ [ 64%]
+...................                                                      [ 67%]
+tests/flows/test_knowledge.py ..................................         [ 70%]
+tests/handoff/test_handoff.py ..........                                 [ 71%]
+tests/knowledge/test_search.py ..............                            [ 73%]
+tests/ops/test_store.py ............                                     [ 74%]
+tests/pipeline/test_documents.py .........                               [ 75%]
+tests/pipeline/test_findings.py .....................                    [ 78%]
 tests/pipeline/test_labels.py ..............                             [ 79%]
 tests/pipeline/test_templates.py .........                               [ 80%]
-tests/replies/test_checks.py .................................           [ 84%]
-tests/safety/test_safety.py ............................................ [ 89%]
-......                                                                   [ 90%]
-tests/scheduling/test_eligibility.py ................................... [ 94%]
+tests/replies/test_checks.py ........................................... [ 85%]
+..                                                                       [ 85%]
+tests/safety/test_safety.py ............................................ [ 90%]
+......                                                                   [ 91%]
+tests/scheduling/test_eligibility.py ................................... [ 95%]
 ...........                                                              [ 96%]
 tests/scheduling/test_transactions.py .................                  [ 98%]
 tests/test_config.py ..........                                          [ 99%]
 tests/test_engine_interface.py ....                                      [100%]
 
-============================= 806 passed in 38.77s =============================</code></pre>
+============================= 895 passed in 44.13s =============================</code></pre>
 <h4>Requirement coverage</h4>
 <p>Every requirement in SPEC.md is named by a task in PLAN.md.</p>
 <h4>Tasks</h4>
@@ -2489,7 +2489,47 @@ tests/test_engine_interface.py ....                                      [100%]
 <li><strong>Grader check:</strong> a fresh sample of the latest answers; Claude Fable 5.1 agrees with Codex on 27 of 30 (90%), every disagreement a pass by Fable that Codex failed.</li>
 <li><strong>Agent freeze:</strong> hash <code>836b241517d187b64528c0e70a9ed4be3994d2dd18434256870f2a8c9897f01e</code>; it differs from the agent that wrote the graded runs only in the threshold setting.</li>
 <li><strong>Quick run on the frozen agent:</strong> passed 2 of 2. Knowledge 100% and 100%, bookings 100%, routing 100%, lookups 100%, safety and booking handoffs 100%, no wrong confident answers; containment 59% and 55% against a scope ceiling of 75% and an adjusted ceiling of 66%.</li>
-<li><strong>Open:</strong> the quick-run rule for a booking the caller never confirmed (D49) is proposed, awaiting the author.</li>
+<li><strong>Settled:</strong> the quick-run rule for a booking the caller never confirmed (D49), by the author.</li>
+</ul>
+<h4>Review of the last round</h4>
+<p>Code reviews of <code>git diff a15994f..HEAD</code> (everything after the second review) by Codex (gpt-5.6-sol) and a fresh Claude agent. Claude ran all 806 tests (passed) and probed offline; Codex ran 21 targeted tests. No paid calls, no held-out runs.</p>
+<table>
+<thead><tr><th>Finding</th><th>Codex</th><th>Claude</th></tr></thead>
+<tbody>
+<tr><td>Hedged or deferring replies book at the read-back ("Alright, let me think about it", "That's fine, I'll call you back later", "fine I guess") since "fine" and "alright" became yes-words</td><td></td><td>yes (top)</td></tr>
+<tr><td>The final-price line is missing on price-book ranges (a new water heater, a member asking about a blower motor, an emergency repair), contrary to the pricing rule (R42); its source sentence is not in the original price book</td><td>yes (top)</td><td>yes (top)</td></tr>
+<tr><td>An unexpected database write never fails the quick run outright</td><td>yes (top)</td><td>yes</td></tr>
+<tr><td>The threshold curve counts answers that end in the agent's handoff as contained or as wrong; counted as neither, the rule picks 0.25 and containment at 0.35 is 64%, not 76%</td><td></td><td>yes (top)</td></tr>
+<tr><td>The threshold result is filed under a different agent hash from the freeze, so the threshold step cannot be rerun</td><td>yes (unclear)</td><td>yes (unclear)</td></tr>
+<tr><td>Marker variants reach the caller ("[Not in documents]", "NOT IN DOCUMENTS", a cut-off "[NOT IN")</td><td></td><td>yes (top)</td></tr>
+<tr><td>A marker-only writer reply on a booking or account turn sends the caller nothing</td><td></td><td>yes (top)</td></tr>
+<tr><td>Agent-written retrieval answers run under a second, unenforced $8 counter</td><td>yes (top)</td><td></td></tr>
+<tr><td>Retrieval grading still saves its verdicts only at the end</td><td>yes (top)</td><td></td></tr>
+<tr><td>The confirmed read-back check misses the agent's own wording (clear "yes") and its yes rule, so a real booking fault can pass as a miss</td><td></td><td>yes</td></tr>
+<tr><td>At a booking offer, "Tuesday doesn't work, what about Thursday?" can start a reschedule; "can't" is not a negation</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>A clear question after the caller's details is dropped by "found your account"</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>A pleasantry at a slot offer ("Perfect, appreciate it") ends the chat</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Budget-cut cases vanish from the scores without a count</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>A booking after a mid-read-back question is flagged as not read back; a marker on a mixed booking and knowledge turn opens a not-enough-evidence ticket; a blocked sentence after the marker loses its label</td><td></td><td>yes (unclear)</td></tr>
+</tbody>
+</table>
+<h4>Author's choices on the last round</h4>
+<p>The author chose "All recommended" (2026-10-20): "fine" and "alright" are no longer yes-words on their own and deferring phrases are hedges; the final-price line on every service-catalog or price-book range except fixed fees, tune-ups, cancellation fees, membership prices and the free replacement estimate, shown to the grader as the company pricing rule (R42); the marker matched in any case and spacing and a cut-off one stripped; an empty reply treated as a writer failure; at a slot offer a message naming a day or time switches action only with that action's verb, and "can't" is a negation; "found your account" only for a general request for help; at an open offer or read-back only "bye", "goodbye" or "that's all" end the chat; an unexpected write fails the quick run outright; the confirmed read-back check uses the agent's wording and yes rule; one $8 cap for retrieval runs; retrieval grades saved per batch; handoff answers counted as neither contained nor wrong confident in the curve, runs filed under an agent hash without the threshold setting, and the threshold set to the corrected curve's pick; budget-cut cases counted in the summary. The three minor items are accepted. Then the full rerun cycle.</p>
+<h4>Final reruns after the last-round fixes</h4>
+<p>Every chosen fix test-first (commit e64f3ea); 895 tests, all passing.</p>
+<ul>
+<li><strong>Adversarial set:</strong> 32 of 32.</li>
+<li><strong>Retrieval answers (agent-written, two graded runs):</strong> combined search 84% and 96% correct, 96% and 100% faithful, refusal 67% and 100%.</li>
+<li><strong>Threshold:</strong> the corrected curve (handoff answers neither contained nor wrong confident) over 50 answers picks 0.25: 66% contained, 2 wrong confident answers. The threshold is back at 0.25.</li>
+<li><strong>Agent freeze:</strong> hash <code>df6e5f69c05635f9856df617d022ea8e38bc1582ffb77aeb03bb7f768c3e81ec</code>; retrieval runs are filed under its answers hash, which leaves out the threshold setting.</li>
+<li><strong>Quick run on the frozen agent:</strong> passed 2 of 3. Runs 1 and 3: knowledge 100% and 94%, bookings, routing and lookups 100%, no wrong confident answers, containment about 54% to 56% (scope ceiling 75%, adjusted ceiling 66%). Run 2 failed knowledge (71%).</li>
+<li><strong>Grader check:</strong> a fresh sample; Claude Fable 5.1 agrees with Codex on 25 of 30 (83%), every disagreement a pass by Fable that Codex failed.</li>
+<li><strong>Known weaknesses carried forward:</strong>
+<ul>
+<li>The join-the-plan-and-book case (T9e29febc) stays the weakest: a money-check block can cut the savings answer short, and with a ticket open a question can become a ticket note.</li>
+<li>The converted price-book chunk in the search index still holds the sentence the conversion added ("Typical prices. The technician confirms the final price on site.").</li>
+<li>Accepted minor items from the last review: a booking after a mid-read-back question can be flagged as not read back, and a marker on a mixed booking and knowledge turn can open a not-enough-evidence ticket.</li>
+</ul></li>
 </ul>
 </section>
 <section id="final-checks">
