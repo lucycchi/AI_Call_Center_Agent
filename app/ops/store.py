@@ -94,23 +94,22 @@ class OpsStore:
 
     def log_message(self, conversation_id: str, role: str, text: str, request_id: str | None = None) -> int:
         now = self._now()
-        with self._lock:  # the message and the conversation's last-message time are written together
-            try:
+        try:  # the failure alert is sent after the lock is released: recording it takes the lock again
+            with self._lock:  # the message and the conversation's last-message time are written together
                 self._db.execute("begin immediate")
-            except Exception as error:
-                self._failed(error)
-                raise
-            try:
-                message_id = self._db.execute("insert into messages (conversation_id, role, text_masked, created_at, "
-                                              "request_id) values (?, ?, ?, ?, ?)",
-                                              (conversation_id, role, mask(text), now, request_id)).lastrowid
-                self._db.execute("update conversations set last_message_at = ? where conversation_id = ?",
-                                 (now, conversation_id))
-                self._db.execute("commit")
-            except BaseException as error:
-                self._db.execute("rollback")
-                self._failed(error)
-                raise
+                try:
+                    message_id = self._db.execute("insert into messages (conversation_id, role, text_masked, "
+                                                  "created_at, request_id) values (?, ?, ?, ?, ?)",
+                                                  (conversation_id, role, mask(text), now, request_id)).lastrowid
+                    self._db.execute("update conversations set last_message_at = ? where conversation_id = ?",
+                                     (now, conversation_id))
+                    self._db.execute("commit")
+                except BaseException:
+                    self._db.execute("rollback")
+                    raise
+        except Exception as error:
+            self._failed(error)
+            raise
         return message_id
 
     def message_text(self, message_id: int) -> str:
@@ -325,19 +324,23 @@ class OpsStore:
         old = ("select conversation_id from conversations where last_message_at < ? and not exists (select 1 from "
                "flags f join messages m using (message_id) where m.conversation_id = conversations.conversation_id)")
         mine = f"select message_id from messages where conversation_id in ({old})"
-        with self._lock:
-            self._db.execute("begin immediate")
-            try:
-                n = len(self._db.execute(old, (cutoff,)).fetchall())
-                for table in ("sentences", "receipts", "model_calls", "ticket_messages"):
-                    self._db.execute(f"delete from {table} where message_id in ({mine})", (cutoff,))
-                self._db.execute(f"update tickets set conversation_id = null where conversation_id in ({old})", (cutoff,))
-                self._db.execute(f"delete from events where conversation_id in ({old})", (cutoff,))
-                self._db.execute(f"delete from messages where conversation_id in ({old})", (cutoff,))
-                self._db.execute(f"delete from conversations where conversation_id in ({old})", (cutoff,))
-                self._db.execute("commit")
-            except BaseException as error:
-                self._db.execute("rollback")
-                self._failed(error)
-                raise
+        try:  # as in log_message, the failure alert waits until the lock is released
+            with self._lock:
+                self._db.execute("begin immediate")
+                try:
+                    n = len(self._db.execute(old, (cutoff,)).fetchall())
+                    for table in ("sentences", "receipts", "model_calls", "ticket_messages"):
+                        self._db.execute(f"delete from {table} where message_id in ({mine})", (cutoff,))
+                    self._db.execute(f"update tickets set conversation_id = null where conversation_id in ({old})",
+                                     (cutoff,))
+                    self._db.execute(f"delete from events where conversation_id in ({old})", (cutoff,))
+                    self._db.execute(f"delete from messages where conversation_id in ({old})", (cutoff,))
+                    self._db.execute(f"delete from conversations where conversation_id in ({old})", (cutoff,))
+                    self._db.execute("commit")
+                except BaseException:
+                    self._db.execute("rollback")
+                    raise
+        except Exception as error:
+            self._failed(error)
+            raise
         return n

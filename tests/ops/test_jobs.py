@@ -270,6 +270,26 @@ def test_a_failed_database_write_sends_a_write_failure_alert(store, alerts, webh
     assert [p[1]["kind"] for p in webhook.posts] == ["write failure"]
 
 
+@pytest.mark.parametrize("write", [lambda s: s.log_message("c1", "caller", "hello"),
+                                   lambda s: s.purge_before("2026-10-01T00:00:00")])
+def test_a_failed_transaction_write_alerts_without_deadlocking_on_the_store_lock(store, alerts, webhook, write):
+    alerts.watch(store)
+    store._db.close()
+    raised = []
+
+    def attempt():
+        try:
+            write(store)
+        except sqlite3.ProgrammingError as error:
+            raised.append(error)
+
+    worker = threading.Thread(target=attempt, daemon=True)
+    worker.start()
+    worker.join(2)
+    assert not worker.is_alive(), "the alert waited forever on the store's own lock"
+    assert raised and [p[1]["kind"] for p in webhook.posts] == ["write failure"]
+
+
 def test_a_webhook_that_fails_never_raises(store, clock):
     def down(url, payload, timeout):
         raise OSError("connection refused")
