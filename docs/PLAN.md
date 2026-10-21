@@ -506,7 +506,7 @@ The author can run the working set, read the numbers and the replayed conversati
 
 The author can open the public site, chat, open the Staff view beside it, see the Results tab, and receive a test alert.
 
-- [ ] Task 21: chat page, message requests, sentence stream and visitor cookie. Requirements: R62, R64, R65, R66
+- [x] Task 21: chat page, message requests, sentence stream and visitor cookie. Requirements: R62, R64, R65, R66
 - [ ] Task 22: spending budgets, reviewer link and instruction resistance. Requirements: R61, R63, R85
 - [ ] Task 23: Staff view, staff password, receipts and flagging. Requirements: R70, R71, R72, R75
 - [ ] Task 24: Results tab. Requirements: R67, R68, R69

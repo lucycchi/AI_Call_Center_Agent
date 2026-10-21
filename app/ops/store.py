@@ -110,6 +110,28 @@ class OpsStore:
         return [r["text_masked"] for r in self._rows("select text_masked from sentences where message_id = ? "
                                                      "order by sentence_id", (message_id,))]
 
+    def request_reply(self, visitor_id: str, request_id: str) -> dict | None:
+        """The visitor's caller message sent with this request id: its conversation and the agent message logged for
+        it (None until the agent message exists), so the web stream can replay its saved sentences."""
+        rows = self._rows("select m.conversation_id, (select min(a.message_id) from messages a where a.conversation_id = "
+                          "m.conversation_id and a.role = 'agent' and a.message_id > m.message_id) as agent_message_id "
+                          "from messages m join conversations c using (conversation_id) where c.visitor_id = ? and "
+                          "m.request_id = ? and m.role = 'caller' order by m.message_id limit 1", (visitor_id, request_id))
+        return rows[0] if rows else None
+
+    def save_reply_end(self, conversation_id: str, request_id: str, sentences: list[str], done: dict) -> None:
+        """The web stream's record that a message's reply finished: every sentence shown and the done event, kept as
+        a 'reply end' event so a reconnect after a restart replays it. The request id is stored unmasked."""
+        detail = json.dumps({"message_id": request_id, "sentences": [mask(s) for s in sentences], "done": done})
+        self._write("insert into events (conversation_id, kind, detail, created_at) values (?, 'reply end', ?, ?)",
+                    (conversation_id, detail, self._now()))
+
+    def reply_end(self, visitor_id: str, request_id: str) -> dict | None:
+        rows = self._rows("select e.detail from events e join conversations c using (conversation_id) where "
+                          "e.kind = 'reply end' and c.visitor_id = ? and json_extract(e.detail, '$.message_id') = ? "
+                          "order by e.event_id limit 1", (visitor_id, request_id))
+        return json.loads(rows[0]["detail"]) if rows else None
+
     def log_receipt(self, message_id: int, safety_result: str, route: str, passages: list, excluded: list,
                     db_action: str | None, outcome_label: str) -> None:
         self._write("insert or replace into receipts values (?, ?, ?, ?, ?, ?, ?)",
