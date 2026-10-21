@@ -113,3 +113,12 @@ time to the first sentence 2.55 seconds (target under 2.5) and to the full reply
 both targets were narrowly missed; the slowest replies were handoffs and long knowledge answers. The run is saved in
 `data/results/latency/live-20261021.txt`.
 
+## Uptime monitor
+
+An outside monitor (UptimeRobot, free plan) checks `https://ai-call-center-agent-bvgy9q.fly.dev/health` every 5
+minutes and emails the author when it fails. It checks with HEAD, so `/health` answers HEAD as well as GET (a 405 at
+first showed the live site as down). Tested once on 2026-10-21: with the machine's auto-start turned off, the machine
+was stopped at 16:10 UTC, the monitor reported the site down, and the machine was started again at 16:14 UTC (health
+200 again, auto-start back on). Without turning auto-start off, Fly would start the stopped machine on the monitor's
+next request, so a stop alone does not test the alert.
+
