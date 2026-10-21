@@ -213,3 +213,18 @@ Code reviews of `git diff a15994f..HEAD` (everything after the second review) by
 ## Author's choices on the last round
 
 The author chose "All recommended" (2026-10-20): "fine" and "alright" are no longer yes-words on their own and deferring phrases are hedges; the final-price line on every service-catalog or price-book range except fixed fees, tune-ups, cancellation fees, membership prices and the free replacement estimate, shown to the grader as the company pricing rule (R42); the marker matched in any case and spacing and a cut-off one stripped; an empty reply treated as a writer failure; at a slot offer a message naming a day or time switches action only with that action's verb, and "can't" is a negation; "found your account" only for a general request for help; at an open offer or read-back only "bye", "goodbye" or "that's all" end the chat; an unexpected write fails the quick run outright; the confirmed read-back check uses the agent's wording and yes rule; one $8 cap for retrieval runs; retrieval grades saved per batch; handoff answers counted as neither contained nor wrong confident in the curve, runs filed under an agent hash without the threshold setting, and the threshold set to the corrected curve's pick; budget-cut cases counted in the summary. The three minor items are accepted. Then the full rerun cycle.
+
+## Final reruns after the last-round fixes
+
+Every chosen fix test-first (commit e64f3ea); 895 tests, all passing.
+
+- **Adversarial set:** 32 of 32.
+- **Retrieval answers (agent-written, two graded runs):** combined search 84% and 96% correct, 96% and 100% faithful, refusal 67% and 100%.
+- **Threshold:** the corrected curve (handoff answers neither contained nor wrong confident) over 50 answers picks 0.25: 66% contained, 2 wrong confident answers. The threshold is back at 0.25.
+- **Agent freeze:** hash `df6e5f69c05635f9856df617d022ea8e38bc1582ffb77aeb03bb7f768c3e81ec`; retrieval runs are filed under its answers hash, which leaves out the threshold setting.
+- **Quick run on the frozen agent:** passed 2 of 3. Runs 1 and 3: knowledge 100% and 94%, bookings, routing and lookups 100%, no wrong confident answers, containment about 54% to 56% (scope ceiling 75%, adjusted ceiling 66%). Run 2 failed knowledge (71%).
+- **Grader check:** a fresh sample; Claude Fable 5.1 agrees with Codex on 25 of 30 (83%), every disagreement a pass by Fable that Codex failed.
+- **Known weaknesses carried forward:**
+  - The join-the-plan-and-book case (T9e29febc) stays the weakest: a money-check block can cut the savings answer short, and with a ticket open a question can become a ticket note.
+  - The converted price-book chunk in the search index still holds the sentence the conversion added ("Typical prices. The technician confirms the final price on site.").
+  - Accepted minor items from the last review: a booking after a mid-read-back question can be flagged as not read back, and a marker on a mixed booking and knowledge turn can open a not-enough-evidence ticket.
