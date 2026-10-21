@@ -278,3 +278,24 @@ def test_restating_the_promise_of_the_ticket_open_in_this_conversation_is_allowe
 def test_the_writer_never_mentions_reply_types_or_what_the_facts_do_not_say_about_follow_ups():
     from app.replies.writer import RULES
     assert "Never mention the reply type" in RULES and "what the facts do not say about a follow-up" in RULES
+
+
+# Milestone 5 review: naming the open ticket only allows restating its own promise, not a new timed commitment.
+@pytest.mark.parametrize("sentence", [
+    "Your request is with our team under Ticket #3, and someone will contact you within one business day.",
+    "Our team will contact you about Ticket #3.",
+    "Ticket #3 is open, and our team will contact you.",
+])
+def test_restating_the_open_tickets_own_promise_is_allowed(sentence):
+    assert check_sentence(sentence, "", ticket_id=3).ok
+
+
+@pytest.mark.parametrize("sentence", [
+    "A team member will call you within 10 minutes about Ticket #3.",
+    "our team will call you back today about Ticket #3",
+    "Someone will contact you within the hour about Ticket #3.",
+    "Our team will reach out tomorrow morning about Ticket #3.",
+    "Someone will contact you within 2 hours about Ticket #3.",
+])
+def test_a_new_timed_commitment_naming_the_open_ticket_is_still_blocked(sentence):
+    assert check_sentence(sentence, "", ticket_id=3).rule == "follow_up_promise"

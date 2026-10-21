@@ -93,11 +93,17 @@ class OpsStore:
                     "where message_id = ?", (first_sentence_ms, full_reply_ms, cost_microdollars, message_id))
 
     def log_message(self, conversation_id: str, role: str, text: str, request_id: str | None = None) -> int:
+        """A caller message with a request id replaces that request's accepted placeholder (accept_message), so the
+        message is stored once, in the order the agent handled it."""
         now = self._now()
         try:  # the failure alert is sent after the lock is released: recording it takes the lock again
             with self._lock:  # the message and the conversation's last-message time are written together
                 self._db.execute("begin immediate")
                 try:
+                    if role == "caller" and request_id:
+                        self._db.execute("delete from messages where conversation_id = ? and role = 'caller' and "
+                                         "request_id = ? and text_masked = '' and message_id not in (select message_id "
+                                         "from ticket_messages)", (conversation_id, request_id))
                     message_id = self._db.execute("insert into messages (conversation_id, role, text_masked, "
                                                   "created_at, request_id) values (?, ?, ?, ?, ?)",
                                                   (conversation_id, role, mask(text), now, request_id)).lastrowid
@@ -112,6 +118,23 @@ class OpsStore:
             raise
         return message_id
 
+    def accept_message(self, conversation_id: str, request_id: str, text: str) -> int:
+        """The web layer's record of a caller message it has accepted (202) but not yet handed to the agent: a caller
+        message with no text (so the agent's history and the reloaded chat never show it twice or early) and an
+        'accepted' event holding the masked text. A restart before the agent logs the message still finds it, as an
+        unfinished reply (request_reply); the agent's own log_message replaces the placeholder."""
+        message_id = self.log_message(conversation_id, "caller", "", request_id)
+        detail = json.dumps({"message_id": request_id, "text": mask(text)})
+        self._write("insert into events (conversation_id, kind, detail, created_at) values (?, 'accepted', ?, ?)",
+                    (conversation_id, detail, self._now()))
+        return message_id
+
+    def accepted_text(self, conversation_id: str, request_id: str) -> str | None:
+        """The masked text of a caller message the web layer accepted, or None."""
+        rows = self._rows("select detail from events where kind = 'accepted' and conversation_id = ? and "
+                          "json_extract(detail, '$.message_id') = ? order by event_id limit 1", (conversation_id, request_id))
+        return json.loads(rows[0]["detail"])["text"] if rows else None
+
     def message_text(self, message_id: int) -> str:
         return self._db.execute("select text_masked from messages where message_id = ?", (message_id,)).fetchone()[0]
 
@@ -125,9 +148,13 @@ class OpsStore:
 
     def request_reply(self, visitor_id: str, request_id: str) -> dict | None:
         """The visitor's caller message sent with this request id: its conversation and the agent message logged for
-        it (None until the agent message exists), so the web stream can replay its saved sentences."""
-        rows = self._rows("select m.conversation_id, (select min(a.message_id) from messages a where a.conversation_id = "
-                          "m.conversation_id and a.role = 'agent' and a.message_id > m.message_id) as agent_message_id "
+        it (None until the agent message exists; a later caller message before it means it belongs to that one), so the
+        web stream can replay its saved sentences."""
+        rows = self._rows("select m.conversation_id, m.message_id as caller_message_id, m.text_masked as caller_text, "
+                          "(select min(a.message_id) from messages a where a.conversation_id = m.conversation_id and "
+                          "a.role = 'agent' and a.message_id > m.message_id and not exists (select 1 from messages b "
+                          "where b.conversation_id = m.conversation_id and b.role = 'caller' and b.message_id > "
+                          "m.message_id and b.message_id < a.message_id)) as agent_message_id "
                           "from messages m join conversations c using (conversation_id) where c.visitor_id = ? and "
                           "m.request_id = ? and m.role = 'caller' order by m.message_id limit 1", (visitor_id, request_id))
         return rows[0] if rows else None
@@ -267,13 +294,6 @@ class OpsStore:
     def make_reviewer(self, visitor_id: str) -> None:
         self._write("insert into visitors (visitor_id, kind, first_seen) values (?, 'reviewer', ?) "
                     "on conflict (visitor_id) do update set kind = 'reviewer'", (visitor_id, self._now()))
-
-    def use_token(self, token_hash: str) -> bool:
-        """Mark a one-time token (only its hash is ever stored) as used; False if it was used before."""
-        with self._lock:
-            cursor = self._db.execute("insert or ignore into used_tokens (token_hash, used_at) values (?, ?)",
-                                      (token_hash, self._now()))
-            return cursor.rowcount == 1
 
     # -- the Staff view and flags (R70 to R72, R75) --------------------------------------------------------------
     def read(self, sql: str, params: tuple = ()) -> list[dict]:

@@ -176,5 +176,7 @@
   });
 
   refresh();
-  setInterval(function () { if (!document.hidden) refresh(); }, 8000);
+  // Poll every 8 seconds only while the panel is open; while it is closed, refresh the badge once a minute.
+  setInterval(function () { if (!document.hidden && !panel.hidden) refresh(); }, 8000);
+  setInterval(function () { if (!document.hidden && panel.hidden) refresh(); }, 60000);
 })();

@@ -7,7 +7,8 @@ in a day records one spend alert for that day. Only the web layer reports to it 
 the evaluation harness, which sets its own run-budget sink, never touches these pools.
 
 The agent's pipeline asks refusal(visitor) after its safety check, so an over-budget visitor reporting gas still gets
-the safety reply; a refusal becomes the pipeline's plain limit handoff."""
+the safety reply; a refusal becomes the pipeline's plain limit handoff. Within a turn, each model call is checked
+again before it is made (Recorder.before), so a turn that crosses the cap makes no further calls."""
 
 import logging
 import threading
@@ -77,11 +78,10 @@ class Spend:
         if self.notify:
             self.notify(detail)
 
-    def recorder(self, visitor_id: str) -> Callable:
-        """A model-call sink (app.core.model_log.SINK) that counts each call against this visitor."""
-        def sink(purpose, model_id, sdk_version, settings, input_tokens, output_tokens, ms, microdollars):
-            self.record(visitor_id, microdollars)
-        return sink
+    def recorder(self, visitor_id: str) -> "Recorder":
+        """A model-call sink (app.core.model_log.SINK) that counts each call against this visitor, with a before()
+        check the web layer sets as the pre-call check (app.core.model_log.PRE_CALL)."""
+        return Recorder(self, visitor_id)
 
     def totals(self, visitor_id: str | None = None) -> dict:
         """Today's spend in dollars: this visitor's, all public traffic (the site pool) and the reviewer reserve."""
@@ -89,3 +89,20 @@ class Spend:
         public = self.store.spend_microdollars(day, "public") / DOLLAR
         return {"visitor": self.store.spend_microdollars(day, None, visitor_id) / DOLLAR if visitor_id else 0,
                 "public": public, "reviewer": self.store.spend_microdollars(day, "reviewer") / DOLLAR, "site": public}
+
+
+class Recorder:
+    """One visitor's model-call sink for one turn."""
+
+    def __init__(self, spend: Spend, visitor_id: str):
+        self.spend, self.visitor_id = spend, visitor_id
+
+    def __call__(self, purpose, model_id, sdk_version, settings, input_tokens, output_tokens, ms, microdollars):
+        self.spend.record(self.visitor_id, microdollars)
+
+    def before(self) -> None:
+        """Raise CallRefused if this visitor's budget is already spent; the call is then never made."""
+        from app.core.model_log import CallRefused
+        reason = self.spend.refusal(self.visitor_id)
+        if reason:
+            raise CallRefused(reason)

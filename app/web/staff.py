@@ -111,15 +111,25 @@ class SignInLimit:
 
 # -- shaping what the panel shows ----------------------------------------------------------------------------------
 
+# Fields the server generates itself, never caller text: masking could break them (a form token starting with ten
+# digits reads as a phone number), so they are passed through unchanged.
+SERVER_TOKENS = frozenset({"form_token"})
+
+
 def masked(value):
-    """Every string in a response, masked again: nothing unmasked reaches the Staff view."""
+    """Every string in a response, masked again: nothing unmasked reaches the Staff view (but server tokens)."""
     if isinstance(value, str):
         return mask(value)
     if isinstance(value, list):
         return [masked(v) for v in value]
     if isinstance(value, dict):
-        return {k: masked(v) for k, v in value.items()}
+        return {k: v if k in SERVER_TOKENS else masked(v) for k, v in value.items()}
     return value
+
+
+def sign_form(key: bytes, sid: str) -> str:
+    """The form token for a staff session: an HMAC of its id."""
+    return hmac.new(key, sid.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def _when(stamp: str) -> datetime:
@@ -222,7 +232,7 @@ def staff_routes(store, cookie_secret: str, password_hash: str | None, clock, tr
         return None if ended(data["sid"]) else data["sid"]
 
     def form_token(sid: str) -> str:
-        return hmac.new(token_key, sid.encode("utf-8"), hashlib.sha256).hexdigest()
+        return sign_form(token_key, sid)
 
     def address(request: Request) -> str:
         peer = request.client.host if request.client else None

@@ -127,6 +127,10 @@ def test_dockerignore_starts_by_excluding_everything():
     "data/results/quick-final-run1/summary.json", "data/results/threshold.json", "data/eval/action_requests.jsonl",
     "data/labels_codex.csv", "call_data/call_transcripts/x.txt", "eval/run.py", "tests/conftest.py",
     "app/__pycache__/x.pyc", "data/scheduling.sqlite", "data/operations.sqlite",
+    # The held-out run's conversations, verdicts and databases stay out; only its summaries ship.
+    "data/results/final/attempts.jsonl", "data/results/final/verdicts.jsonl", "data/results/final/ungraded-first.jsonl",
+    "data/results/final/ungraded-retry.jsonl", "data/results/final/databases/x.sqlite",
+    "data/results/final/consistency/run1/attempts.jsonl",
 ])
 def test_the_image_leaves_out(path):
     assert not in_context(path)
@@ -135,10 +139,22 @@ def test_the_image_leaves_out(path):
 @pytest.mark.parametrize("path", [
     "app/web/main.py", "data/index/chunks.jsonl", "data/index/embeddings.npy", "data/document_list.csv",
     "data/kb_text/pricing__2026_fee_schedule.md", "call_data/knowledge_base/x.md", SEED, "docs/FINDINGS.md",
-    "data/results/final/summary.json", "requirements.txt", "scripts/entrypoint.sh",
+    "data/results/final/summary.json", "data/results/final/run_summary.json", "data/results/final/per_driver.json",
+    "data/results/final/consistency/summary.json", "requirements.txt", "scripts/entrypoint.sh",
 ])
 def test_the_image_includes(path):
     assert in_context(path)
+
+
+RESULT_FILES = ["data/results/final/summary.json", "data/results/final/run_summary.json",
+                "data/results/final/per_driver.json", "data/results/final/consistency/summary.json"]
+
+
+def test_dockerfile_copies_only_the_final_runs_summaries():
+    results = [s for s in copy_sources() if s.startswith("data/result")]
+    assert results and all(s.endswith(".json") for s in results)
+    assert {s.replace("[s]", "s") for s in results} <= set(RESULT_FILES)
+    assert not any(s.rstrip("/") in ("data/results", "data/result[s]", "data/results/final") for s in results)
 
 
 def test_every_copied_source_is_in_the_build_context():

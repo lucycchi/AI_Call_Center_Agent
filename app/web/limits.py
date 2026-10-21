@@ -1,7 +1,13 @@
 """Message limits (R62): 20 messages per 10 minutes and 100 per day for each visitor, counted both by the visitor
 cookie and by the client address Fly.io supplies (so clearing the cookie does not reset them), and 60 messages a
-minute across the site. Kept in memory: the app runs one worker process, and operations use real time."""
+minute across the site. Kept in memory: the app runs one worker process, and operations use real time.
 
+Safety comes first (R34): the web layer counts each message here when it arrives, and a message over a limit is
+answered with the limit message only when the safety check finds nothing in it. One that reports a danger still goes
+to the agent with its limit set in TURN_LIMIT, and the agent's guard (turn_guard, asked after its safety check, as
+the spending caps are) refuses everything but the safety reply."""
+
+import contextvars
 import threading
 from collections import deque
 from collections.abc import Callable
@@ -52,3 +58,14 @@ class Limits:
         while times and times[0] <= now - TEN_MINUTES:
             times.popleft()
         return times
+
+
+# The limit this reply thread's message hit, or None; set by the web layer around each turn.
+TURN_LIMIT: contextvars.ContextVar[str | None] = contextvars.ContextVar("turn_limit", default=None)
+
+
+def turn_guard(spend=None):
+    """The agent pipeline's guard: the message limit this turn hit, or else the spending cap that refuses it."""
+    def guard(visitor_id: str) -> str | None:
+        return TURN_LIMIT.get() or (spend.refusal(visitor_id) if spend is not None else None)
+    return guard

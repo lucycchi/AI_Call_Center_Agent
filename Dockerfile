@@ -19,8 +19,11 @@ COPY data/document_list.csv data/
 COPY call_data/knowledge_base/ call_data/knowledge_base/
 COPY call_data/scheduling_db/meridian_scheduling.sqlite call_data/scheduling_db/
 COPY docs/FINDINGS.md docs/
-# The Results tab's final summary, once Task 27 writes data/results/final (the wildcard copies nothing until then).
-COPY data/result[s]/ data/results/
+# The Results tab reads only the final run's summaries; the held-out conversations, verdicts, ungraded files and
+# databases beside them never go in the image.
+COPY data/results/final/summary.json data/results/final/run_summary.json data/results/final/per_driver.json \
+     data/results/final/
+COPY data/results/final/consistency/summary.json data/results/final/consistency/
 COPY scripts/entrypoint.sh scripts/
 
 ENV DATABASE_PATH=/data/scheduling.sqlite \

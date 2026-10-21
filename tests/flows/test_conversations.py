@@ -1666,3 +1666,35 @@ def test_a_caller_who_identifies_with_an_emergency_is_not_asked_again(chat):
 def test_a_caller_who_reports_an_emergency_without_details_is_still_asked(chat):
     reply, _ = chat["say"]("There's a burning smell coming from my furnace.")
     assert "please tell me your name" in reply
+
+
+# Milestone 5 review: a yes with the caller's details after a safety reply identifies them and names them on the ticket.
+def test_a_yes_with_details_after_a_safety_reply_identifies_the_caller_on_the_emergency_ticket(chat):
+    before = _appointments(chat)
+    chat["say"]("I smell gas in the house")
+    emergency = chat["store"].tickets()[-1]
+    assert "Linda Foster" not in (emergency["who"] or "")
+    reply, done = chat["say"]("Sure, Linda Foster, MHC-10001")
+    assert reply == (f"Because of the safety issue you reported, I won't book a regular visit. Our team will arrange the "
+                     f"visit as a priority through your emergency ticket, Ticket #{emergency['ticket_id']}, and I've "
+                     f"added your message to it.")
+    ticket = next(t for t in chat["store"].tickets() if t["ticket_id"] == emergency["ticket_id"])
+    assert "Linda Foster" in ticket["who"] and "MHC-10001" in ticket["who"]
+    assert _appointments(chat) == before and not done.db_actions
+    reply, _ = chat["say"]("what's my balance")
+    assert "please tell me your name" not in reply and "no open invoices" in reply
+
+
+# Milestone 5 review: at an open booking offer or read-back, "what time?" or "what day?" asks about the offer.
+@pytest.mark.parametrize("text", ["Sorry, what time?", "what day?"])
+def test_a_time_question_at_an_open_offer_goes_to_the_booking_not_the_demo_date(chat, text):
+    reply, _ = chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    assert "Monday" in reply
+    reply, done = chat["say"](text)
+    assert not reply.startswith("For this demo") and done.route == "scheduling"
+
+
+@pytest.mark.parametrize("text", ["Sorry, what time?", "what day?"])
+def test_a_time_question_with_no_offer_open_gets_the_demo_date(chat, text):
+    reply, _ = chat["say"](text)
+    assert reply.startswith("For this demo, today is Friday 16 October 2026")

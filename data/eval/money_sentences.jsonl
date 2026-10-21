@@ -135,3 +135,7 @@
 {"sentence": "Plus members get the $49 late-cancellation fee waived.", "previous": "", "expected": "block", "source": "added with the quick-run blocks"}
 {"sentence": "Standard members get 15% off plumbing repairs.", "previous": "", "expected": "block", "source": "added with the quick-run blocks"}
 {"sentence": "Comfort Club Plus is $189 per year per system.", "previous": "", "expected": "block", "source": "added with the quick-run blocks"}
+{"sentence": "Comfort Club members get 15% off all repairs, including plumbing.", "previous": "", "expected": "block", "source": "milestone 5 review"}
+{"sentence": "Standard members get a whole home plumbing inspection and 15% off all repairs.", "previous": "", "expected": "block", "source": "milestone 5 review"}
+{"sentence": "Comfort Club members get the $89 diagnostic fee waived on all service calls, including water heater flush.", "previous": "", "expected": "block", "source": "milestone 5 review"}
+{"sentence": "Standard and Plus are $269 per year per system.", "previous": "", "expected": "block", "source": "milestone 5 review"}

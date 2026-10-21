@@ -3,13 +3,23 @@
 Each caller message is an ordinary request (POST /api/message) that returns 202 at once; the reply is worked out in a
 background thread, one message at a time per conversation, and its checked sentences are pushed to the stream for
 that message id (GET /api/stream/{message_id}) as the engine releases them, then a done event. The app is built by
-create_app with the engine and operations store passed in, so tests use fakes; build_app wires the real agent."""
+create_app with the engine and operations store passed in, so tests use fakes; build_app wires the real agent.
+
+Live-only fixes after the measurement (D51):
+- Safety before the message limits: a message over a limit is answered with the limit message only when the safety
+  check finds nothing in it; otherwise the agent gets it, with the limit set for its guard (app/web/limits.py).
+- Refused and blank messages write nothing; an accepted message is stored (as an accepted placeholder) before the
+  work is submitted, so a restart replays it as unfinished.
+- Every fallback reply (the stream giving up, a restart, the engine failing) opens one "error" ticket.
+- A turn the stream has given up on never starts, and one starts only while there is time for its whole deadline
+  before the stream would give up, so nothing it does lands after the caller was told it was passed on."""
 
 import asyncio
 import json
 import logging
 import shutil
 import threading
+import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
@@ -21,12 +31,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.config import real_now
-from app.core.model_log import SINK
-from app.core.state import ConversationState, NotYourConversation
+from app.core.model_log import PRE_CALL, SINK
 from app.core.types import DoneEvent, SentenceEvent, Turn
-from app.handoff.flow import ERROR_MESSAGE
+from app.handoff.flow import ERROR_MESSAGE, NO_TICKET_MESSAGE
+from app.safety.check import check as safety_check
 from app.web.health import health_routes
-from app.web.limits import LIMIT_MESSAGE, Limits
+from app.web.limits import LIMIT_MESSAGE, TURN_LIMIT, Limits
 from app.web.results import results_routes
 from app.web.reviewer import reviewer_routes
 from app.web.staff import staff_routes
@@ -49,12 +59,31 @@ class MessageIn(BaseModel):
 
 
 class Reply:
-    """One message's reply as it is released: the sentences so far, then the done event's payload (set last)."""
+    """One message's reply as it is released: the sentences so far, then the done event's payload (set last).
 
-    def __init__(self, conversation_id: str):
-        self.conversation_id = conversation_id
+    Whoever closes it first (the reply thread with the engine's done event, or a fallback) settles its done event;
+    a closed reply's turn never starts, and nothing the engine says after it closed is shown."""
+
+    def __init__(self, conversation_id: str, text: str = ""):
+        self.conversation_id, self.text = conversation_id, text  # the caller's message, for an error ticket
         self.sentences: list[str] = []
         self.done: dict | None = None
+        self.accepted_at = time.monotonic()
+        self.closed = False
+        self._lock = threading.Lock()
+
+    def begin(self) -> bool:
+        """True if the turn may start: nothing has closed the reply yet."""
+        with self._lock:
+            return not self.closed
+
+    def close(self) -> bool:
+        """Claim the right to settle the done event; True only for the first caller."""
+        with self._lock:
+            if self.closed:
+                return False
+            self.closed = True
+            return True
 
 
 STEPS = {"start": "getting the details", "offer": "choosing a time", "readback": "confirming the booking",
@@ -90,20 +119,22 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
                stream_timeout_s: float = 40.0, trust_fly_header: bool = False, spend=None,
                reviewer_token: str | None = None, staff_password_hash: str | None = None,
                results_summary_path: Path | None = None, gate=None, alerts=None,
-               scheduling_db: Path | None = None) -> FastAPI:
+               scheduling_db: Path | None = None, engine_deadline_s: float | None = None) -> FastAPI:
     """trust_fly_header: trust the Fly-Client-IP header for the address limit; anywhere else a client could forge it.
-    spend: an app.ops.spend.Spend that each turn's model calls are recorded against (the engine's pipeline asks it
-    for a refusal after its safety check). reviewer_token: the secret behind the reviewer link (R85).
+    spend: an app.ops.spend.Spend that each turn's model calls are recorded against and checked before (the engine's
+    pipeline asks its guard, app/web/limits.py turn_guard, for a refusal after its safety check). reviewer_token: the secret behind the reviewer link (R85).
     staff_password_hash: the shared staff password's hash (R72); None turns staff sign-in off.
     results_summary_path: the final summary the Results tab shows (default data/results/final/summary.json).
     gate: the reset gate (app/ops/gate.py), held shared for each reply. alerts: checked for an error burst after each
-    reply. scheduling_db: the live scheduling file that GET /health opens (R76)."""
+    reply. scheduling_db: the live scheduling file that GET /health opens (R76). engine_deadline_s: the agent's own
+    message deadline; a turn starts only while that much time is left before the stream would give up on it."""
     app = FastAPI(title="Meridian Home Comfort chat", docs_url=None, redoc_url=None, openapi_url=None)
     cookies = VisitorCookie(cookie_secret)
     limits = limits or Limits(clock)
     executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="reply")
     replies: OrderedDict[tuple[str, str], Reply] = OrderedDict()  # this process's replies, newest last
     registry_lock = threading.Lock()
+    replay_lock = threading.Lock()  # one restart replay (and its ticket) per message
     conversation_locks: dict[str, threading.Lock] = {}
     app.state.executor = executor
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
@@ -148,83 +179,162 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
         quietly(store.save_reply_end, reply.conversation_id, message_id, list(reply.sentences), payload)
         reply.done = payload  # last: the stream reads it before the sentences
 
+    def settle(reply: Reply, sentence: str, done: DoneEvent) -> None:
+        """A reply worked out here without the agent (a blank or refused message): kept in memory only, no rows."""
+        reply.close()
+        reply.sentences.append(sentence)
+        reply.done = {"route": done.route, "ticket": done.ticket, "outcome": done.outcome, "proof": None}
+
+    def error_ticket(conversation_id: str, text: str, detail: str) -> int | None:
+        """An "error" handoff ticket for a reply that could not be finished, as app/handoff/flow.py hand_off opens."""
+        who = None
+        try:
+            row = store.conversation(conversation_id)
+            who = json.loads(row["flow_state"] or "{}").get("who") if row else None
+        except Exception:
+            pass
+        try:
+            return store.create_ticket(conversation_id, who or "caller not identified", text or "not stated",
+                                       "nothing yet", detail, "calm", "error")
+        except Exception as error:
+            log.error("error ticket could not be saved for conversation %s: %s", conversation_id, error)
+            quietly(store.log_event, "write failure", f"ticket not saved: error: {error}", conversation_id)
+            return None
+
+    def fall_back(reply: Reply, message_id: str, detail: str, outcome: str) -> None:
+        """End the reply with the plain handoff message and its error ticket, once per message."""
+        if not reply.close():
+            return
+        quietly(store.log_event, "error", detail, reply.conversation_id)
+        ticket = error_ticket(reply.conversation_id, reply.text, detail)
+        reply.sentences.append(ERROR_MESSAGE if ticket is not None else NO_TICKET_MESSAGE)
+        finish(reply, message_id, DoneEvent(route="unknown", ticket=ticket, outcome=outcome))
+
     def remember(key: tuple[str, str], reply: Reply) -> None:
         """Keep this reply for its stream; finished ones beyond the newest thousand are replayed from the store."""
         replies[key] = reply
         for old in [k for k, r in replies.items() if r.done is not None][:max(0, len(replies) - KEEP_REPLIES)]:
             del replies[old]
 
-    def saved_reply(visitor_id: str, message_id: str) -> Reply | None:
-        """A reply from the store: finished, or left unfinished by a restart, which becomes a plain handoff (R59)."""
-        end = store.reply_end(visitor_id, message_id)
-        if end:
-            reply = Reply("")
-            reply.sentences, reply.done = end["sentences"], end["done"]
-            return reply
-        request = store.request_reply(visitor_id, message_id)
-        if request is None:
-            return None
-        agent = request["agent_message_id"]
-        reply = Reply(request["conversation_id"])
-        reply.sentences = (store.sentences(agent) if agent else []) + [ERROR_MESSAGE]
-        quietly(store.log_event, "error", "reply left unfinished by a restart", request["conversation_id"])
-        finish(reply, message_id, DoneEvent(route="unknown", ticket=None, outcome="incomplete"))
+    def from_end(end: dict) -> Reply:
+        reply = Reply("")
+        reply.sentences, reply.done, reply.closed = end["sentences"], end["done"], True
         return reply
 
-    def process(reply: Reply, turn: Turn, shortened: bool) -> None:
+    def saved_reply(visitor_id: str, message_id: str) -> Reply | None:
+        """A reply from the store: finished, or left unfinished by a restart (accepted, or part-way through), which
+        becomes a plain handoff with an error ticket (R59)."""
+        end = store.reply_end(visitor_id, message_id)
+        if end:
+            return from_end(end)
+        with replay_lock:
+            end = store.reply_end(visitor_id, message_id)  # another stream may have just replayed it
+            if end:
+                return from_end(end)
+            request = store.request_reply(visitor_id, message_id)
+            if request is None:
+                return None
+            agent, conversation_id = request["agent_message_id"], request["conversation_id"]
+            reply = Reply(conversation_id, request["caller_text"] or store.accepted_text(conversation_id, message_id) or "")
+            reply.sentences = store.sentences(agent) if agent else []
+            fall_back(reply, message_id, "reply left unfinished by a restart", "incomplete")
+            return reply
+
+    def out_of_time(reply: Reply) -> bool:
+        """Too little time is left for the agent's whole deadline before the stream would give up."""
+        if engine_deadline_s is None:
+            return False
+        return stream_timeout_s - (time.monotonic() - reply.accepted_at) < engine_deadline_s
+
+    def process(reply: Reply, turn: Turn, shortened: bool, limit: str | None) -> None:
         with lock_for(turn.conversation_id):  # one message at a time per conversation
-            done = None
-            if shortened:
-                reply.sentences.append(SHORTENED)
-            # This reply thread's model calls count against the visitor's budget (R61); reset after the turn, so a
-            # reused thread never keeps it. The pipeline passes each call on to this sink as it records it.
-            sink = SINK.set(spend.recorder(turn.visitor_id) if spend else None)
-            try:
-                with gate.shared() if gate else nullcontext():  # waits while the nightly reset runs (R74)
+            done, failure = None, None
+            with gate.shared() if gate else nullcontext():  # waits while the nightly reset runs (R74)
+                if not reply.begin():
+                    return  # the stream gave up while this waited, and opened its ticket: never act now
+                if out_of_time(reply):
+                    fall_back(reply, turn.message_id, "the reply could not start in time", "incomplete")
+                    return
+                if shortened:
+                    reply.sentences.append(SHORTENED)
+                # This reply thread's model calls count against the visitor's budget (R61), each checked before it
+                # is made; the message limit it hit is the pipeline guard's (asked after safety). All are reset
+                # after the turn, so a reused thread never keeps them.
+                recorder = spend.recorder(turn.visitor_id) if spend else None
+                tokens = (SINK.set(recorder), PRE_CALL.set(recorder.before if recorder else None),
+                          TURN_LIMIT.set(limit))
+                try:
                     for event in engine.handle(turn):
                         if isinstance(event, SentenceEvent):
-                            reply.sentences.append(event.text)
+                            if not reply.closed:  # after a fallback, nothing more is shown
+                                reply.sentences.append(event.text)
                         elif isinstance(event, DoneEvent):
                             done = event
                             break
-            except Exception as error:  # the engine ends every turn itself; this is the last resort
-                log.exception("reply failed for conversation %s: %s", turn.conversation_id, error)
-            finally:
-                SINK.reset(sink)
+                except Exception as error:  # the engine ends every turn itself; this is the last resort
+                    log.exception("reply failed for conversation %s: %s", turn.conversation_id, error)
+                    failure = f"reply failed: {type(error).__name__}: {error}"
+                finally:
+                    SINK.reset(tokens[0])
+                    PRE_CALL.reset(tokens[1])
+                    TURN_LIMIT.reset(tokens[2])
+            if done is None:
+                fall_back(reply, turn.message_id, failure or "the reply ended without a done event", "error")
+            elif reply.close():
+                finish(reply, turn.message_id, done)
             if alerts:
                 alerts.check_errors()
-            if done is None:
-                reply.sentences.append(ERROR_MESSAGE)
-                done = DoneEvent(route="unknown", ticket=None, outcome="error")
-            finish(reply, turn.message_id, done)
+
+    def needs_safety_reply(conversation_id: str, text: str) -> bool:
+        """The agent's own safety check (R34), on the same history, so a refused message reporting a danger still
+        reaches it. Only reads; if it cannot read, the message goes to the agent (whose guard still refuses it)."""
+        try:
+            row = store.conversation(conversation_id)
+            text = text.replace("\u2019", "'").replace("\u2018", "'")
+            if row is None:
+                return safety_check(text, []).kind != "clear"
+            burning = bool(json.loads(row["flow_state"] or "{}").get("burning_mentioned"))
+            earlier = [m["content"] for m in store.history(conversation_id, 20) if m["role"] == "caller"]
+            return safety_check(text, earlier, burning).kind != "clear"
+        except Exception as error:
+            log.error("safety pre-check failed, passing the message to the agent: %s", error)
+            return True
 
     @app.post("/api/message", status_code=202)
     def message(body: MessageIn, request: Request):
         visitor_id = request.state.visitor_id
-        try:
-            ConversationState.load(store, body.conversation_id, visitor_id)  # opens a new conversation for this visitor
-        except NotYourConversation:
-            raise HTTPException(404, "conversation not found") from None
+        row = store.conversation(body.conversation_id)  # only read: nothing is written for a refused message
+        if row is not None and row["visitor_id"] != visitor_id:
+            raise HTTPException(404, "conversation not found")
         key = (visitor_id, body.message_id)
         accepted = {"message_id": body.message_id}
+        text = body.text[:MAX_CHARACTERS]  # cut before the engine, so the router never sees more
         with registry_lock:  # the same message sent twice, even across a restart: one reply
             if key in replies or store.reply_end(*key) or store.request_reply(*key):
                 return accepted
-            reply = Reply(body.conversation_id)
+            reply = Reply(body.conversation_id, text)
             remember(key, reply)
-        if not body.text.strip():  # nothing to answer: no engine call, no limit counted
-            reply.sentences.append(TELL_ME_MORE)
-            finish(reply, body.message_id, DoneEvent(route="none", ticket=None, outcome="answered"))
+        if not body.text.strip():  # nothing to answer: no engine call, no limit counted, nothing written
+            settle(reply, TELL_ME_MORE, DoneEvent(route="none", ticket=None, outcome="answered"))
             return accepted
         peer = request.client.host if request.client else None
         address = (request.headers.get("fly-client-ip") or peer) if trust_fly_header else peer
-        if limits.allow(visitor_id, address):
-            reply.sentences.append(LIMIT_MESSAGE)
-            finish(reply, body.message_id, DoneEvent(route="limit", ticket=None, outcome="limit"))
+        limit = limits.allow(visitor_id, address)
+        if limit and not needs_safety_reply(body.conversation_id, text):
+            settle(reply, LIMIT_MESSAGE, DoneEvent(route="limit", ticket=None, outcome="limit"))
             return accepted
-        text = body.text[:MAX_CHARACTERS]  # cut before the engine, so the router never sees more
+        try:
+            store.open_conversation(visitor_id, body.conversation_id)
+            owner = store.conversation(body.conversation_id)
+            if owner is None or owner["visitor_id"] != visitor_id:  # opened by another visitor a moment ago
+                raise HTTPException(404, "conversation not found")
+            store.accept_message(body.conversation_id, body.message_id, text)  # before the work: survives a restart
+        except BaseException:
+            with registry_lock:
+                replies.pop(key, None)
+            raise
         executor.submit(process, reply, Turn(body.conversation_id, visitor_id, body.message_id, text),
-                        len(body.text) > MAX_CHARACTERS)
+                        len(body.text) > MAX_CHARACTERS, limit)
         return accepted
 
     @app.get("/api/conversation/{conversation_id}")
@@ -270,7 +380,7 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
             raise HTTPException(404, "message not found")
 
         async def events():
-            sent, waited, pause = 0, 0.0, 0.002
+            sent, waited, pause, gave_up = 0, 0.0, 0.002, False
             while True:
                 done = reply.done  # read before the sentences: it is set only after the last one
                 while sent < len(reply.sentences):
@@ -279,10 +389,12 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
                 if done is not None:
                     yield _sse("done", done)
                     return
-                if waited >= stream_timeout_s:
-                    yield _sse("sentence", {"text": ERROR_MESSAGE})
-                    yield _sse("done", {"route": "unknown", "ticket": None, "outcome": "incomplete", "proof": None})
-                    return
+                if waited >= stream_timeout_s and not gave_up:
+                    # The turn is closed: if it has not started it never will, and its ticket is opened now.
+                    await asyncio.to_thread(fall_back, reply, message_id, "the reply did not finish in time",
+                                            "incomplete")
+                    gave_up = True
+                    continue
                 await asyncio.sleep(pause)
                 waited += pause
                 pause = min(pause * 2, 0.05)  # quick at first, then every 50 milliseconds
@@ -317,6 +429,7 @@ def build_app() -> FastAPI:
     from app.routing.router import route
     from app.web.reviewer import token_from_environment
     from app.web.staff import password_hash_from_environment
+    from app.web.limits import turn_guard
     from app.web.visitor import secret_from_environment
 
     secret = secret_from_environment()
@@ -338,8 +451,8 @@ def build_app() -> FastAPI:
                              route_fn=lambda text, history: route(text, history, client),
                              writer=lambda reply_type, facts, history: write(reply_type, facts, history, client),
                              threshold=SETTINGS.retrieval_threshold, money_check=MoneyCheck(client),
-                             guard=spend.refusal)  # asked after the safety check, so emergencies always get through
+                             guard=turn_guard(spend))  # asked after the safety check, so emergencies always get through
     return create_app(Engine(pipeline), store, cookie_secret=secret, trust_fly_header=behind_fly(), spend=spend,
                       reviewer_token=token_from_environment(),
                       staff_password_hash=password_hash_from_environment(), gate=gate, alerts=alerts,
-                      scheduling_db=SETTINGS.scheduling_db_path)
+                      scheduling_db=SETTINGS.scheduling_db_path, engine_deadline_s=SETTINGS.message_deadline_s)

@@ -42,5 +42,5 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS messages_by_conversation ON messages (conversation_id);
 CREATE INDEX IF NOT EXISTS sentences_by_message ON sentences (message_id);
 CREATE INDEX IF NOT EXISTS spend_by_day ON spend (day, pool);
--- One-time tokens already exchanged (the reviewer link, R85); only a hash is kept, never the token.
-CREATE TABLE IF NOT EXISTS used_tokens (token_hash TEXT PRIMARY KEY, used_at TEXT NOT NULL);
+-- The reviewer link is reusable (D50), so no one-time token table is kept; an older database's empty one is dropped.
+DROP TABLE IF EXISTS used_tokens;

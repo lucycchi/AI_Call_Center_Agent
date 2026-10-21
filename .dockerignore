@@ -1,6 +1,7 @@
 # The image holds only what the running app reads (R77). Everything is left out first, then each needed path is let
 # back in. Never let in .env (keys, including the test-run key), data/testset, data/split.json (the held-out split),
-# the test-run results (only data/results/final, which the Results tab reads) or the live databases.
+# the test-run results or the live databases. Of data/results/final only the summaries the Results tab reads go in,
+# never the held-out conversations (attempts, verdicts, ungraded files) or the run's databases.
 *
 
 !requirements.txt
@@ -9,7 +10,10 @@
 !data/index
 !data/kb_text
 !data/document_list.csv
-!data/results/final
+!data/results/final/summary.json
+!data/results/final/run_summary.json
+!data/results/final/per_driver.json
+!data/results/final/consistency/summary.json
 !call_data/knowledge_base
 !call_data/scheduling_db/meridian_scheduling.sqlite
 !docs/FINDINGS.md

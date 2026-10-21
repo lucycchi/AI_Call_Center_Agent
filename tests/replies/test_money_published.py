@@ -100,3 +100,41 @@ def test_the_right_plan_prices_are_not_taken_for_wrong_ones():
     assert not wrong_plan_price("Current pricing is $189 per year for Standard and $269 per year for Plus.")
     assert not wrong_plan_price("It's $269 a year for Plus, or $189 for Standard.")
     assert wrong_plan_price("Current pricing is $269 per year for Standard and $189 per year for Plus.")
+
+
+# Milestone 5 review: a plan named with a benefit outside its published list, or several plans sharing one price, was
+# released in code. Such a sentence now goes to the model (and a clear wrong price is still blocked in code).
+REVIEW_FALSE_RELEASES = [
+    "Comfort Club members get 15% off all repairs, including plumbing.",
+    "Standard members get a whole home plumbing inspection and 15% off all repairs.",
+    "Comfort Club members get the $89 diagnostic fee waived on all service calls, including water heater flush.",
+    "Standard and Plus are $269 per year per system.",
+]
+
+
+@pytest.mark.parametrize("sentence", REVIEW_FALSE_RELEASES)
+def test_a_benefit_outside_the_plans_list_or_one_price_for_several_plans_goes_to_the_model(sentence):
+    assert not published_only(sentence)
+    assert MoneyCheck(NoModel())(sentence, "") is False
+
+
+def test_the_review_false_releases_are_labelled_promises_to_block():
+    rows = {r["sentence"]: r for r in ROWS if r.get("source") == "milestone 5 review"}
+    assert set(REVIEW_FALSE_RELEASES) <= set(rows) and all(rows[s]["expected"] == "block" for s in REVIEW_FALSE_RELEASES)
+
+
+@pytest.mark.parametrize("sentence", ["Standard and Plus are $189 per year per system.",
+                                      "Standard and Plus are $16.99 per month."])
+def test_one_wrong_price_for_both_plans_is_blocked_in_code(sentence):
+    client = NoModel()
+    assert MoneyCheck(client)(sentence, "") is False and client.calls == 0
+
+
+@pytest.mark.parametrize("sentence", [
+    "Plus members also get an annual water heater flush and inspection, an annual whole-home plumbing inspection, and 15% off plumbing repairs.",
+    "Comfort Club Plus is $269 per year per system and adds an annual water heater flush and inspection, an annual whole-home plumbing inspection, and 15% off plumbing repairs.",
+    "Standard is $189 per year per system or $16.99 per month, and Comfort Club Plus is $269 per year.",
+])
+def test_published_plus_extras_said_of_plus_are_still_released(sentence):
+    client = NoModel()
+    assert MoneyCheck(client)(sentence, "") is True and client.calls == 0

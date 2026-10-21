@@ -94,6 +94,10 @@ _PHRASES = [
     (r"15% off all repairs(?: \(parts and labor\))?", None),
     (r"(?:the same waiver and )?15% repair discount", None),
     (r"15% off plumbing repairs", "plus"),
+    # Plus-only extras: free words only when said of Plus (Milestone 5 review: "Standard members get a whole home
+    # plumbing inspection" and "including plumbing" were released in code).
+    (r"(?:an )?(?:annual )?water heater flush and inspection", "plus"),
+    (r"(?:an )?(?:annual )?whole[- ]home plumbing inspection", "plus"),
     (r"(?:a )?\$500 (?:off (?:any|a) (?:full system replacement|new system|replacement)|"
      r"credit toward a full system replacement|full system replacement credit)", None),
     (r"\$189 (?:per|a) year(?: per system)?", "standard"),
@@ -110,12 +114,20 @@ _NOT_PLAIN = re.compile(r"\b(?:i|i'll|i'd|i'm|i've|me|my|we|we'll|we're|we've|we
                         r"if|unless|guarantee\w*)\b|[’']ll\b", re.I)
 
 
-_STATEMENT_WORDS = set("""a an and also as both each every get gets getting include includes including included adds add
+_STATEMENT_WORDS = set("""a an and also as both each every get gets getting include includes included adds add
 along with all of the that it its is are cost costs priced price plan plans member members membership comfort club
 standard plus per system on for or to in at year a-year annual annually month monthly benefits benefit following these
 those here what list lists offers offer provides provide receive receives plus' per-system then too
-one two seasonal tune ups cooling heating priority scheduling reminder filter change notifications inspection
-overview maintenance water heater flush whole home plumbing""".split())  # the plan's published non-money benefits
+one two seasonal tune ups cooling heating priority scheduling reminder filter change notifications
+overview maintenance""".split())  # the plan's published non-money benefits; the Plus-only extras are phrases above
+# "including" is left out on purpose: "15% off all repairs, including plumbing" stretches a benefit (Milestone 5 review).
+_PRICE_CONDITIONS = {"standard", "plus price"}  # the $99 additional-system price is the same for both plans
+
+
+def _several_plans(text: str) -> bool:
+    """Both plans named in front of one price ("Standard and Plus are $269 per year"): several plans, one price."""
+    return bool(re.search(r"\b(?:both|all) (?:plans|memberships|tiers)\b", text, re.I)) or (
+        bool(re.search(r"\bPlus\b", text)) and bool(re.search(r"\bStandard\b|\bComfort Club\b(?! Plus)", text)))
 
 
 def published_only(sentence: str, previous: str = "") -> bool:
@@ -128,6 +140,8 @@ def published_only(sentence: str, previous: str = "") -> bool:
     for pattern, condition in _PHRASES:
         for match in list(re.finditer(pattern + _END, rest, re.I)):
             before = rest[:match.start()]
+            if condition in _PRICE_CONDITIONS and _several_plans(re.split(r"[,;]|\$", before)[-1]):
+                return False
             if condition == "plus" and (not re.search(r"\bPlus\b", before) or re.search(r"\bStandard\b|\bComfort Club(?! Plus)", before)):
                 continue
             if condition == "standard" and re.search(r"\bPlus\b[^,;]{0,30}$", before):

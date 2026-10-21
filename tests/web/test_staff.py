@@ -513,3 +513,26 @@ def test_changing_the_staff_password_ends_every_session(app, store, clock):
     client = visitor(changed, "staffer", "10.0.0.9")
     client.cookies.set("meridian_staff", cookie)
     assert client.get("/api/staff/queue").status_code == 403
+
+
+# -- Milestone 5 review fixes (live-only, D51) ---------------------------------------------------------------------
+
+def test_the_form_token_is_never_masked_even_when_it_starts_with_ten_digits(app, store, monkeypatch):
+    import app.web.staff as staff_module
+    digits = "1234567890" + "ab" * 27
+    monkeypatch.setattr(staff_module, "sign_form", lambda key, sid: digits)
+    store.open_conversation("alice", "c1")
+    agent = reply(store, "c1", "hi", "Hello.")
+    client = staff(app)
+    token = client.get("/api/staff/panel").json()["form_token"]
+    assert token == digits
+    assert client.post("/api/staff/flag", json={"message_id": agent, "token": token, "correction": "x"}).status_code == 200
+
+
+def test_the_staff_panel_polls_only_while_it_is_open_and_the_badge_slowly():
+    from pathlib import Path
+    script = (Path(__file__).resolve().parents[2] / "app" / "web" / "static" / "staff.js").read_text()
+    polls = re.findall(r"setInterval\(function \(\) \{ (.*?) \}, (\d+)\);", script)
+    assert ("if (!document.hidden && !panel.hidden) refresh();", "8000") in polls
+    assert all(not (period == "8000" and "!panel.hidden" not in body) for body, period in polls)
+    assert any(int(period) >= 60000 and "panel.hidden" in body for body, period in polls)

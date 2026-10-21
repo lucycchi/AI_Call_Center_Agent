@@ -55,11 +55,21 @@ NEGATED = re.compile(r"\b(?:can['’]?t|cannot|can not|don['’]t|doesn['’]t|d
                      r"(?:say|confirm|promise|guarantee)\s+(?:that\s+|whether\s+)?(?:a\s+|our\s+)?$", re.I)
 
 
+# The open ticket's own promise is "someone will contact you within one business day" (or "as a priority" for an
+# emergency); a call or any other time ("within 10 minutes", "back today", "tomorrow") is a new commitment.
+TICKET_PROMISE_TIME = re.compile(r"\bwithin one business day\b|\bas a priority\b", re.I)
+NEW_COMMITMENT = re.compile(r"\b(?:call\w*|phone|ring|text|within|today|tonight|tomorrow|soon|shortly|right away|"
+                            r"immediately|asap|minutes?|hours?|mins?|hrs?|this (?:morning|afternoon|evening|week)|next|"
+                            r"by (?:the end|end|noon|\d)|before|after|at \d|\d+ ?(?:am|pm|a\.m\.|p\.m\.))\b", re.I)
+
+
 def promises_follow_up(sentence: str, ticket_id: int | None = None) -> bool:
     """A definite follow-up promise, unless it is denied or restates the promise of the ticket already open in this
-    conversation (named by its number, so a new promise about something else is still caught)."""
+    conversation: named by its number (so a promise about something else is still caught) and no more than that
+    ticket's own promise (so "will call you within 10 minutes about Ticket #3" is still caught)."""
     restates = ticket_id is not None and re.search(rf"\bticket #{ticket_id}\b", sentence, re.I) \
-        and not re.search(rf"\bticket #(?!{ticket_id}\b)\d", sentence, re.I)
+        and not re.search(rf"\bticket #(?!{ticket_id}\b)\d", sentence, re.I) \
+        and not NEW_COMMITMENT.search(TICKET_PROMISE_TIME.sub(" ", sentence))
     return any(not NEGATED.search(sentence[:m.start()]) and not restates for m in FOLLOW_UP_PROMISE.finditer(sentence))
 
 

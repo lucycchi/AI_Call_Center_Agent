@@ -356,11 +356,15 @@ class AgentPipeline:
                 yield emit(TAKE_YOUR_TIME)
             yield finish(state.active_flow or "none", "answered", {"safety": "clear"}, [])
             return
-        if _only(turn.text, DATE_QUESTION, DATE_WORDS):
+        # At an open offer or read-back, "what time?" or "what day?" asks about the offer, so the flow answers it.
+        if _only(turn.text, DATE_QUESTION, DATE_WORDS) and not at_offer:
             hour = f"{self.now:%I:%M}".lstrip("0") + (" a.m." if self.now.hour < 12 else " p.m.")
             yield emit(f"For this demo, today is {self.now:%A} {self.now.day} {self.now:%B %Y}, and the time is {hour} in Austin.")
             yield finish(state.active_flow or "none", "answered", {"safety": "clear"}, [])
             return
+        # Details given with a yes after a safety reply ("Sure, Linda Foster, MHC-10001") identify the caller and go on
+        # the emergency ticket before the fixed no-booking reply (Milestone 5 review).
+        identified_now = identify()
         if state.after_safety and not state.active_flow and SAFETY_YES.search(turn.text) and len(turn.text.split()) <= 8 \
                 and "?" not in turn.text:
             # A yes straight after the safety reply (to a booking the safety report abandoned) books nothing.
@@ -375,7 +379,6 @@ class AgentPipeline:
                 yield emit(ANYTHING_ELSE)
                 yield finish("none", "answered", {"safety": "clear"}, [])
                 return
-        identified_now = identify()
         # 3. Route, keeping follow-ups inside an active flow (R38, R40).
         history = self.store.history(turn.conversation_id)
         routed = self._route(turn.text, history, error_event)

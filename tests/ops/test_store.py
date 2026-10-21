@@ -80,6 +80,7 @@ def test_every_table_in_the_architecture_exists_in_write_ahead_logging_mode(tmp_
     tables = {r[0] for r in db.execute("select name from sqlite_master where type = 'table'")}
     section = (ROOT / "docs" / "ARCHITECTURE.md").read_text().split("### 4.2 Operations database")[1].split("## 5.")[0]
     documented = {name.lower() for name in re.findall(r"^    ([A-Z_]+) \{", section, re.M)}
+    documented.discard("used_tokens")  # removed: the reviewer link is reusable (D50), so no one-time tokens are kept
     assert documented and documented <= tables, documented - tables
 
 
