@@ -631,7 +631,7 @@ The author can open the public site, chat, open the Staff view beside it, see th
 The author can read the final numbers on the Results tab and in the README, and record the video from the outline.
 
 - [x] Task 27: final held-out run, summary and optional consistency runs. Requirements: R23
-- [ ] Task 28: README, video outline and repository contents. Requirements: R78, R79, R80
+- [x] Task 28: README, video outline and repository contents. Requirements: R78, R79, R80
 
 ### Task 27: Final held-out run, summary and optional consistency runs
 
