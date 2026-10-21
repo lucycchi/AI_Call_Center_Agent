@@ -1,7 +1,8 @@
 """Measure the reply sentence check, the code rules plus the money check (D43), on the labelled sentences in
 data/eval/money_sentences.jsonl.
 
-Run: python -m eval.money_check_eval   (needs EVAL_ANTHROPIC_API_KEY; about 110 short Haiku calls)
+Run: python -m eval.money_check_eval   (needs EVAL_ANTHROPIC_API_KEY; at most about 140 short Haiku calls,
+     fewer since plain published-benefit sentences are released in code)
 Writes data/results/money_check/summary.json with accuracy, missed promises and over-blocks."""
 
 import json

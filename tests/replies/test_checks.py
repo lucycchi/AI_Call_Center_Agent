@@ -233,3 +233,37 @@ def test_any_form_of_the_marker_or_a_cut_off_one_at_the_end_is_the_marker(marker
 def test_plain_english_saying_not_in_documents_is_not_the_marker(sentence):
     stream = CheckedStream(iter([sentence]), money_check=lambda s, p: True)
     assert list(stream) == [sentence] and not stream.not_in_documents
+
+
+# Quick runs: the follow-up rule blocked sentences that deny a follow-up and ones restating the open ticket's promise.
+
+@pytest.mark.parametrize("sentence", [
+    "I can't add the membership myself here, and the facts don't say a team member will follow up on that.",
+    "I can't say a team member will follow up.",
+    "I can't add the membership from this chat, and the documents I have don't cover how membership gets started, so I "
+    "can't confirm the steps or say that a team member will follow up on it.",
+])
+def test_a_sentence_that_denies_a_follow_up_is_not_a_follow_up_promise(sentence):
+    assert check_sentence(sentence, "").ok
+
+
+@pytest.mark.parametrize("sentence", ["A team member will follow up with you tomorrow.", "Someone will call you back today.",
+                                      "I can't fix that here, but someone will contact you within one business day.",
+                                      "I can't say when, but our team will reach out."])
+def test_a_follow_up_promise_is_still_blocked(sentence):
+    assert check_sentence(sentence, "").rule == "follow_up_promise"
+
+
+def test_restating_the_promise_of_the_ticket_open_in_this_conversation_is_allowed():
+    sentence = "Your earlier request is already with our team under Ticket #1, and someone will contact you within one business day."
+    assert check_sentence(sentence, "").rule == "follow_up_promise"  # no ticket open: a promise nobody keeps
+    assert check_sentence(sentence, "", ticket_id=1).ok
+    assert check_sentence(sentence.replace("#1", "#7"), "", ticket_id=1).rule == "follow_up_promise"  # not this ticket
+    assert check_sentence("A team member will call you about the refund.", "", ticket_id=1).rule == "follow_up_promise"
+    stream = CheckedStream(iter([sentence]), ticket_id=1)
+    assert list(stream) == [sentence] and stream.blocked_rule is None
+
+
+def test_the_writer_never_mentions_reply_types_or_what_the_facts_do_not_say_about_follow_ups():
+    from app.replies.writer import RULES
+    assert "Never mention the reply type" in RULES and "what the facts do not say about a follow-up" in RULES

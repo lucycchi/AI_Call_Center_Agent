@@ -205,3 +205,45 @@ def test_a_caller_who_named_an_offered_slot_and_got_nothing_booked_is_a_fault(tm
                     {"role": "caller", "text": "No, that's it. Thanks."}]
     checks = _checks(_case(), _no_booking(_db(tmp_path), conversation))
     assert checks["booking_correct"] is False and checks["booking_fault"] is True
+
+
+def _read_back_question_then_yes(db, between: list[str]) -> Attempt:
+    """Read back Monday 8 to 12, the caller asks a question, the agent answers (between), the caller says yes, and the
+    agent books without repeating the read-back."""
+    conversation = [{"role": "caller", "text": "I need a repair"},
+                    {"role": "agent", "text": OFFER},
+                    {"role": "caller", "text": "The morning one, please."},
+                    {"role": "agent", "text": "Just to confirm: an HVAC repair on Monday, October 19, 8:00 AM to 12:00 PM. "
+                                              "Can you give me a clear yes?"},
+                    {"role": "caller", "text": "Is there a fee if I cancel later?"}]
+    for text in between:
+        conversation.append({"role": "agent", "text": text})
+    conversation += [{"role": "caller", "text": "Okay. Yes, book it."},
+                     {"role": "agent", "text": "Booked: your HVAC repair visit on Monday, October 19, 8am to 12pm."}]
+    return Attempt("c1", db_path=str(db), conversation=conversation,
+                   done_events=[{"db_actions": []}] * 3 + [{"db_actions": ["booked appointment 160"]}])
+
+
+ANSWER = ("Cancelling more than 24 hours before the window is free; inside 24 hours there is a $49 late-cancellation fee "
+          "(faq/customer_faq.md). When you're ready, I can return to booking your visit.")
+
+
+def test_a_read_back_confirmed_after_a_question_answered_in_between_counts(tmp_path):
+    # Quick runs: the caller asked a question at the read-back, the agent answered it, the caller said yes and the
+    # agent booked without repeating the read-back; the grader called it "not read back" and failed the run.
+    from eval.grade_conversations import _read_back_before
+    attempt = _read_back_question_then_yes(_db(tmp_path, sql=_book(56)), [ANSWER])
+    assert _read_back_before(attempt, "booked appointment 160", "2026-10-19", "08:00-12:00") is True
+    assert _checks(_case(), attempt)["booking_correct"] is True
+
+
+@pytest.mark.parametrize("between", [
+    [ANSWER + " The 12:00 PM to 4:00 PM window on Monday is also open."],  # a different slot named in between
+    ["To read it back: an HVAC repair on Monday, October 19, 12:00 PM to 4:00 PM. Is that correct?"],  # read back again
+    [OFFER],  # offered again since the read-back
+])
+def test_a_different_slot_named_or_offered_after_the_read_back_is_still_a_fault(tmp_path, between):
+    from eval.grade_conversations import _read_back_before
+    attempt = _read_back_question_then_yes(_db(tmp_path, sql=_book(56)), between)
+    assert _read_back_before(attempt, "booked appointment 160", "2026-10-19", "08:00-12:00") is False
+    assert _checks(_case(), attempt)["booking_correct"] is False

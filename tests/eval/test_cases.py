@@ -363,7 +363,10 @@ def test_every_number_in_a_reference_answer_is_in_its_evidence_lines(tmp_path):
         missing = _digits(reference) - _digits(evidence) - stated
         assert not missing, (name, missing)
         if re.search(r"confirm\w* the (final )?price|confirmed by the technician", reference):
-            assert re.search(r"confirms the final price|quoted by the technician", evidence), (name, "price confirmation")
+            # For a price-book or catalog range the confirmation is the company pricing rule (R42), which the knowledge
+            # flow adds with its own source; the converted price book no longer carries a sentence saying it.
+            priced = any(span["file"] in ("pricing__repair_price_book_2026.md", "services__service_catalog.md") for span in spans)
+            assert priced or re.search(r"confirms the final price|quoted by the technician", evidence), (name, "price confirmation")
 
 
 def test_waitlist_calls_ask_for_an_earlier_slot_scored_by_the_earliest_slots(tmp_path):

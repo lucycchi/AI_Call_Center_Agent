@@ -48,6 +48,19 @@ INTERNAL_RUNS = _internal_runs()
 FOLLOW_UP_PROMISE = re.compile(r"\b(?:a |our )?(?:team member|someone|member of (?:our|the) team|our team|staff)\b[^.]{0,20}"
                                r"\b(?:will|'ll|is going to)\b[^.]{0,10}\b(?:follow up|contact|call|reach out|get back)|"
                                r"\bi(?:'ll| will| have|'ve)\s+pass(?:ed)?\b(?![^.]*\bif you)", re.I)
+# Saying a follow-up cannot be promised ("I can't say a team member will follow up") is not a promise.
+NEGATED = re.compile(r"\b(?:can['’]?t|cannot|can not|don['’]t|doesn['’]t|do not|does not|didn['’]t|won['’]t|not)\b[^.,;]{0,40}?"
+                     r"\b(?:say|confirm|promise|guarantee|tell you|state|mention)\s+(?:that\s+|whether\s+)?(?:a\s+|our\s+)?$", re.I)
+
+
+def promises_follow_up(sentence: str, ticket_id: int | None = None) -> bool:
+    """A definite follow-up promise, unless it is denied or restates the promise of the ticket already open in this
+    conversation (named by its number, so a new promise about something else is still caught)."""
+    restates = ticket_id is not None and re.search(rf"\bticket #{ticket_id}\b", sentence, re.I) \
+        and not re.search(rf"\bticket #(?!{ticket_id}\b)\d", sentence, re.I)
+    return any(not NEGATED.search(sentence[:m.start()]) and not restates for m in FOLLOW_UP_PROMISE.finditer(sentence))
+
+
 # The writer's sentence for "the facts do not answer this"; never shown, it ends the reply with a handoff.
 NOT_IN_DOCUMENTS = "[NOT IN DOCUMENTS]"
 # Any spelling of it in brackets ("[Not in documents]", "[NOT_IN_DOCUMENT]"), the all-caps token without them, or one
@@ -57,7 +70,8 @@ MARKER = re.compile(r"(?:\[\s*(?i:not[\s_]+in[\s_]+documents?)\s*\]|\bNOT[\s_]+I
 BREAKER_ADVICE = re.compile(r"\breset\w*\b[^.]*\bbreaker|\bbreaker\b[^.]*\breset|\bflip\w*\b[^.]*\bbreaker", re.I)
 
 
-def check_sentence(sentence: str, reply_so_far: str, burning_mentioned: bool = False) -> CheckResult:
+def check_sentence(sentence: str, reply_so_far: str, burning_mentioned: bool = False,
+                   ticket_id: int | None = None) -> CheckResult:
     said = sentence.lower()
     # Never advise resetting a breaker in a conversation that mentions a burning smell (R36, D19).
     if burning_mentioned and BREAKER_ADVICE.search(sentence):
@@ -65,7 +79,7 @@ def check_sentence(sentence: str, reply_so_far: str, burning_mentioned: bool = F
     for rule, patterns in RULES:
         if any(re.search(p, said) for p in patterns):
             return CheckResult(False, rule)
-    if FOLLOW_UP_PROMISE.search(sentence):
+    if promises_follow_up(sentence, ticket_id):
         return CheckResult(False, "follow_up_promise")
     # Across the whole reply so far, so a quote split over two sentences is still caught.
     words = _words(f"{reply_so_far} {sentence}")
@@ -78,8 +92,10 @@ class CheckedStream:
     """Yields each sentence once it passes; stops at the first failure and records which rule it broke, or at the
     not-in-documents marker, which is never yielded."""
 
-    def __init__(self, sentences: Iterable[str], burning_mentioned: bool = False, money_check=None):
+    def __init__(self, sentences: Iterable[str], burning_mentioned: bool = False, money_check=None,
+                 ticket_id: int | None = None):
         self._sentences = sentences
+        self._ticket_id = ticket_id  # the ticket already open in this conversation, whose promise may be restated
         self._burning = burning_mentioned
         self._money_check = money_check  # (sentence, previous) -> bool; every sentence touching money goes to it
         self.blocked_rule: str | None = None
@@ -93,7 +109,7 @@ class CheckedStream:
                 self.not_in_documents, sentence = True, " ".join(MARKER.sub(" ", sentence).split())
                 if not sentence:
                     continue
-            result = check_sentence(sentence, so_far, self._burning)
+            result = check_sentence(sentence, so_far, self._burning, self._ticket_id)
             if result.ok and touches_money(sentence):
                 previous = re.split(r"(?<=[.!?])\s+", so_far)[-1] if so_far else ""
                 if self._money_check is None or not self._money_check(sentence, previous):

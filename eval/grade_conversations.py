@@ -77,12 +77,30 @@ def names_slot(text: str, slot_date: str, window: str) -> bool:
     return any(re.search(d, text, re.I) for d in dates) and any(re.search(t, text, re.I) for t in times)
 
 
+_HOUR = r"(?:\d{1,2}(?::\d\d)?\s*(?:[ap]\.?m\.?)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|noon|midday)"
+# Any appointment window in a reply ("8:00 AM to 12:00 PM", "08:00-12:00", "eight to noon", "the morning window").
+WINDOW = re.compile(rf"\b{_HOUR}\s*(?:to|-|–|—|until|through)\s*{_HOUR}(?![\d:])|"
+                    r"\b(?:morning|afternoon|evening)\s+(?:window|slot|visit|appointment|time)\b", re.I)
+
+
 def _read_back_before(attempt, action: str, slot_date: str, window: str) -> bool:
-    """The read-back turn named the slot the change went to: the agent's reply just before the one that reported the
-    change. An earlier reply, such as the offer that listed several slots, does not count."""
+    """The slot the change went to was read back: the most recent agent reply that names a window, before the one
+    that reported the change, names this slot and no other window, and is the reply just before the report or a read-back
+    ("Just to confirm ..."). Replies naming no window in between (an answer to a question asked at the read-back)
+    do not matter; a reply in between naming or offering a different slot, or an offer of several, does."""
     replies = _replies(attempt.conversation)
     reported = next((n for n, event in enumerate(attempt.done_events) if action in event.get("db_actions", [])), None)
-    return bool(reported) and names_slot(replies[reported - 1], slot_date, window)
+    if not reported:
+        return False
+    for n in range(reported - 1, -1, -1):
+        reply = replies[n]
+        windows = [m.group(0) for m in WINDOW.finditer(reply)]
+        others = [w for w in windows if not names_slot(f"{slot_date} {w}", slot_date, window)]
+        if names_slot(reply, slot_date, window) and not others:
+            return n == reported - 1 or bool(READ_BACK.search(reply))
+        if windows or names_slot(reply, slot_date, window):
+            return False  # a different slot, or an offer of several, since the read-back
+    return False
 
 
 def _freed(seed_status: str) -> str:

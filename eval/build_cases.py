@@ -100,8 +100,7 @@ COMPRESSOR = ("If the unit is registered, the manufacturer covers the compressor
               "compressor replacement labor typically runs $600 to $900, confirmed by the technician on site.",
               [(WARRANTY, "Manufacturer parts warranty (residential, when registered)", ("| Trane |", "Labor to replace")),
                (WARRANTY, "New system installation warranty", ("2-year labor warranty", "5-year labor warranty")),
-               ("pricing__repair_price_book_2026.md", "HVAC repair", ("Compressor replacement labor",)),
-               ("pricing__repair_price_book_2026.md", "2026 Repair Price Book", ("confirms the final price",))])
+               ("pricing__repair_price_book_2026.md", "HVAC repair", ("Compressor replacement labor",))])
 MEMBERSHIP_SAVINGS = ("Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee "
                       "waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't "
                       "say whether those benefits apply to a visit booked on the day you join, so a team member confirms that "

@@ -32,8 +32,7 @@ ANSWERABLE = [
     ("Can I pay by card over the phone?", "Card numbers are never taken over the phone; Meridian sends a secure payment "
      "link by text or email, valid for 24 hours.", [(FAQ, "Payment", ("Card numbers",))]),
     ("How much does it cost to clear a clogged drain?", "Drain clearing typically costs $149 to $290 depending on access; "
-     "the technician confirms the final price on site.", [(CATALOG, "Plumbing (residential)", ("Drain clearing",)),
-     ("pricing__repair_price_book_2026.md", "2026 Repair Price Book", ("confirms the final price",))]),
+     "the technician confirms the final price on site.", [(CATALOG, "Plumbing (residential)", ("Drain clearing",))]),
     ("What appointment windows do you have?", "8am to 12pm, 12pm to 4pm and 1pm to 5pm, plus 4pm to 7pm on Tuesdays and "
      "Thursdays.", [(FAQ, "Scheduling", ("Standard appointment windows",))]),
     ("Do you do duct cleaning?", "Meridian does not do duct cleaning itself; it partners with a third party and can give "

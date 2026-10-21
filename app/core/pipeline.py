@@ -22,7 +22,7 @@ from app.core.types import DoneEvent, Event, SentenceEvent, Turn
 from app.flows import scheduling
 from app.flows.account import account_answer
 from app.flows.identify import ACCOUNT, ASK, PHONE, STREET, find_customer, has_identifier
-from app.flows.knowledge import answer
+from app.flows.knowledge import SAVINGS, answer
 from app.flows.protocol import FlowResult
 from app.handoff.flow import add_to_open_ticket, hand_off, safe
 from app.replies.checks import CheckedStream, check_sentence
@@ -134,6 +134,20 @@ def _details_or_help_only(text: str, customer) -> bool:
 
 def _mood(text: str) -> str:
     return "frustrated" if ANGRY.search(text) else "calm"
+
+
+KNOWLEDGE_REPLIES = ("policy answer", "price answer")
+
+
+def _asks(text: str) -> bool:
+    """A question, or the savings question without its question mark ("so it pays for itself basically.")."""
+    return "?" in text or bool(SAVINGS.search(text))
+
+
+# Words about the open booking itself, which a knowledge search must not take from it.
+FLOW_WORDS = re.compile(r"\b(?:earlier|later|sooner|slots?|times?|window|morning|afternoon|evening|monday|tuesday|wednesday|"
+                        r"thursday|friday|saturday|sunday|today|tomorrow|week|book\w*|appointments?|technician|tech|visit|"
+                        r"reschedul\w*|cancel\w*|availab\w*|openings?)\b", re.I)
 
 
 class AgentPipeline:
@@ -284,7 +298,7 @@ class AgentPipeline:
             again = scheduling.repeat(state.flow) if state.flow else None
             if again:
                 for sentence in CheckedStream(self.writer(again.reply_type, again.facts, self.store.history(turn.conversation_id)),
-                                              money_check=self.money_check):
+                                              money_check=self.money_check, ticket_id=state.ticket_id):
                     yield emit(sentence)
             else:
                 yield emit(TAKE_YOUR_TIME)
@@ -327,7 +341,8 @@ class AgentPipeline:
             yield emit(f"Thanks, {identified_now.name.split()[0]}, I've found your account. What can I help you with?")
             yield finish("account", "answered", {"safety": "clear"}, [])
             return
-        if not routed.clear and not state.active_flow and not state.pending and asks_nothing and len(turn.text.split()) <= 15:
+        if not routed.clear and not state.active_flow and not state.pending and asks_nothing and len(turn.text.split()) <= 15 \
+                and not (state.ticket_id and _asks(turn.text)):
             # An unclear message that asks nothing ("okay, good to know") is not a request: no ticket (R38, tuned on
             # the working set). An angry message, a question or a longer message still goes to a handoff. With a ticket
             # open, the message was added to it at the start of the turn (R58).
@@ -349,7 +364,8 @@ class AgentPipeline:
         route_label = flow_before if requests and requests[0].route == "continue" else routed.route
         # 4. Flows. Account and scheduling requests wait for identification together, then run in turn (R39).
         results: list[FlowResult] = []
-        queued = False
+        queued = fell_back = False
+        context = " ".join(earlier[-3:])  # a short follow-up question is searched again with these (T9e29febc)
         for request in requests:
             if request.route in ("account", "scheduling") and not self._action(request) or request.route == "continue":  # noqa: E501
                 waiting = {(p["route"], p["detail"]) for p in state.pending}
@@ -360,9 +376,14 @@ class AgentPipeline:
                                           "service_type": request.service_type, "text": request.text})
                 queued = True
                 continue
-            results.append(safe(lambda r=request: self._flow(r), error_event))
+            result = safe(lambda r=request: self._flow(r, context, bool(state.ticket_id)), error_event)
+            if request.detail == "follow-up" and result.handoff_reason == "not enough evidence":
+                # An unclear question at an open flow that the documents do not answer goes back to the flow.
+                queued, fell_back, offer_return = True, True, False
+                continue
+            results.append(result)
         if queued:
-            continuing = any(r.route == "continue" for r in requests)
+            continuing = fell_back or any(r.route == "continue" for r in requests)
             results += self._advance_safely(state, turn.text, error_event, continuing)
         written: list[FlowResult] = []
         handoffs: list[tuple[str, str, str]] = []  # reason tag, constraints, what the caller wants
@@ -398,27 +419,34 @@ class AgentPipeline:
                                      excluded=last.excluded)
         # 5. Writer and checks: each sentence is released only once it passes (R36, R42, R43, R60).
         if written:
-            facts = [fact for result in written for fact in result.facts]
             burning = state.burning_mentioned or not breaker_advice_allowed(earlier + [turn.text])
+            # A turn that mixes a knowledge answer with a booking or account result is written in two calls, knowledge
+            # first, so the not-in-documents marker is only a handoff when it is written against the knowledge answer.
+            knowledge = [r for r in written if r.reply_type in KNOWLEDGE_REPLIES]
+            parts = [knowledge, [r for r in written if r not in knowledge]] if 0 < len(knowledge) < len(written) else [written]
             try:
-                stream = CheckedStream(self.writer(written[0].reply_type, facts, history), burning_mentioned=burning,
-                                       money_check=self.money_check)
                 count_released = 0
-                for count_released, sentence in enumerate(stream, 1):
-                    # The deadline is checked before each later sentence, so a slow reply is cut off (R59).
-                    if count_released > 1 and deadline.passed():
-                        raise deadline.DeadlinePassed("the reply passed the message deadline")
-                    yield emit(sentence)
-                if stream.blocked_rule:
-                    self._quietly(self.store.log_event, "blocked sentence",
-                                  f"{stream.blocked_rule}: {stream.blocked_sentence}", turn.conversation_id)
-                    handoffs.append(("blocked reply", stream.blocked_rule, turn.text))
-                elif stream.not_in_documents and any(r.reply_type in ("policy answer", "price answer") for r in written):
-                    # the documents do not answer the caller's question: a ticket follows (only for a knowledge answer)
-                    handoffs.append(("not enough evidence", "", turn.text))
-                elif not count_released:
-                    # No sentence at all (only the marker on a booking or account turn) is a writer failure.
-                    raise RuntimeError("the reply had no sentence")
+                for part in parts:
+                    stream = CheckedStream(self.writer(part[0].reply_type, [f for r in part for f in r.facts], history),
+                                           burning_mentioned=burning, money_check=self.money_check, ticket_id=state.ticket_id)
+                    part_released = 0
+                    for part_released, sentence in enumerate(stream, 1):
+                        count_released += 1
+                        # The deadline is checked before each later sentence, so a slow reply is cut off (R59).
+                        if count_released > 1 and deadline.passed():
+                            raise deadline.DeadlinePassed("the reply passed the message deadline")
+                        yield emit(sentence)
+                    if stream.blocked_rule:
+                        self._quietly(self.store.log_event, "blocked sentence",
+                                      f"{stream.blocked_rule}: {stream.blocked_sentence}", turn.conversation_id)
+                        handoffs.append(("blocked reply", stream.blocked_rule, turn.text))
+                        break
+                    if stream.not_in_documents and part[0].reply_type in KNOWLEDGE_REPLIES:
+                        # the documents do not answer the caller's question: a ticket follows (only for a knowledge answer)
+                        handoffs.append(("not enough evidence", "", turn.text))
+                    elif not part_released:
+                        # No sentence at all (only the marker on a booking or account turn) is a writer failure.
+                        raise RuntimeError("the reply had no sentence")
             except Exception as error:
                 log.error("writer failed: %s", error)
                 error_event(f"writer failed: {type(error).__name__}: {error}")
@@ -492,6 +520,11 @@ class AgentPipeline:
                 return [Request(text, "continue"), *others], False
             if new_topic:
                 return routed.requests, state.active_flow == "scheduling"
+            if not routed.clear and state.ticket_id and _asks(text) and not (answers_read_back or names_when or confirming
+                                                                            or answering_id_prompt or FLOW_WORDS.search(text)):
+                # An unclear question that is not about the open flow, with a ticket open: answered from the documents
+                # when they can, otherwise it goes to the flow as before (T9e29febc).
+                return [Request(text, "knowledge", "follow-up")], state.active_flow == "scheduling"
             return [Request(text, "continue")], False
         if not routed.clear:
             reason = next((r.detail for r in routed.requests if r.route == "handoff" and r.detail in HANDOFF_TAGS
@@ -509,11 +542,17 @@ class AgentPipeline:
         # On every route but a handoff, which is already handed off with the router's own reason.
         return request.route != "handoff" and is_action_request(request.text)
 
-    def _flow(self, request: Request) -> FlowResult:
+    def _flow(self, request: Request, context: str = "", ticket_open: bool = False) -> FlowResult:
         if self._action(request):
             return FlowResult([], "handoff", handoff_reason="action gap")
         if request.route == "knowledge" or request.detail == "charged twice":
-            return answer(request.text, self.searcher, self.threshold)
+            return answer(request.text, self.searcher, self.threshold, context)
+        if request.route == "handoff" and request.detail in ("other", "unclear") and ticket_open and _asks(request.text):
+            # With a ticket already open, a question with no named handoff reason is answered when the documents can;
+            # only one they cannot answer is added to the ticket (T9e29febc).
+            found = answer(request.text, self.searcher, self.threshold, context)
+            if found.facts:
+                return found
         if request.route == "redirect":
             return FlowResult([REDIRECTS.get(request.detail, REDIRECTS["wrong number"])], "redirect")
         if self._action(request):

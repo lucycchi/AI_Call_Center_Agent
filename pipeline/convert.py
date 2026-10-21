@@ -32,7 +32,7 @@ def convert_pdf_table(path: Path) -> str:
 
 
 def convert_price_book(path: Path) -> str:
-    out = ["# 2026 Repair Price Book", "", "Typical prices. The technician confirms the final price on site.", ""]
+    out = ["# 2026 Repair Price Book", ""]
     categories: dict[str, list[str]] = {}
     for row in csv.DictReader(path.open()):
         low, high = row["low_price"], row["high_price"]

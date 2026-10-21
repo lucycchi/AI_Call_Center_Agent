@@ -67,10 +67,21 @@ def _fact(chunk: Chunk) -> str:
             f"{', effective ' + chunk.effective_date if chunk.effective_date else ''}]")
 
 
-def answer(question: str, searcher, threshold: float) -> FlowResult:
-    results = searcher.search(question, mode="combined")
+FOLLOW_UP_WORDS = 12  # a question this short may lean on the conversation ("so it pays for itself?")
+
+
+def _weak(results, threshold: float) -> bool:
     # Combined search always keeps meaning search's first result, so this is the top meaning score (R28, R32).
-    if not results or max(r.meaning_score for r in results) < threshold:
+    return not results or max(r.meaning_score for r in results) < threshold
+
+
+def answer(question: str, searcher, threshold: float, context: str = "") -> FlowResult:
+    """Context is the caller's recent earlier messages: a short follow-up question that finds nothing on its own is
+    searched again with them (quick run T9e29febc). The question alone still decides the reply's rules."""
+    results = searcher.search(question, mode="combined")
+    if _weak(results, threshold) and context.strip() and len(question.split()) <= FOLLOW_UP_WORDS:
+        results = searcher.search(f"{context.strip()} {question}", mode="combined")
+    if _weak(results, threshold):
         return FlowResult([], "handoff", handoff_reason="not enough evidence")
     chunks = [r.chunk for r in results]
     # The final-price line is for repair prices that vary by job, not fixed fees, tune-ups, memberships or replacements;

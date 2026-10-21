@@ -1,7 +1,5 @@
 # 2026 Repair Price Book
 
-Typical prices. The technician confirms the final price on site.
-
 ## HVAC repair
 
 - Run capacitor replacement: $180 to $260

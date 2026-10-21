@@ -1363,3 +1363,93 @@ def test_a_goodbye_at_an_open_offer_or_read_back_ends_the_chat(chat, text):
     book_to_read_back(chat)
     _, done = chat["say"](text)
     assert done.outcome == "ended"
+
+
+def test_a_reply_restating_the_open_tickets_promise_is_released_not_blocked(chat):
+    # Quick run: "...under Ticket #1, and someone will contact you within one business day." was blocked as a promise.
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+    assert done.ticket == 1
+    restated = "Your earlier request is already with our team under Ticket #1, and someone will contact you within one business day"
+    chat["writer_says"](lambda facts: facts + [restated])
+    reply, done = chat["say"]("how much is a tune-up cost")
+    assert restated in reply and "added that to Ticket" not in reply and done.outcome == "answered"
+
+
+PLAN = Chunk("membership__comfort_club_overview#1", "membership/comfort_club_overview.md", "Plans", "2026-01-01",
+             "Comfort Club members get 15 percent off all repairs.", 1, 2)
+
+
+class PlanSearcher:
+    """Finds the plan only when the question (or the context sent with it) names the plan."""
+    def search(self, question, mode="combined", k=5):
+        if "plan" in question.lower():
+            return [ScoredChunk(PLAN, 0.7, 3.0)]
+        return [ScoredChunk(TUNE_UP, 0.1, 0.5)]
+
+
+@pytest.mark.parametrize("label", ["knowledge", "handoff, clear", "handoff, unclear"])
+@pytest.mark.parametrize("question", ["So it pays for itself basically?", "So it pays for itself basically."])
+def test_a_follow_up_question_with_a_ticket_and_an_offer_open_is_answered_not_added_to_the_ticket(chat, label, question):
+    # Quick run (T9e29febc): with a ticket and a booking offer open, "So it pays for itself basically?" got only
+    # "I've added that to Ticket #1; our team will contact you within one business day."
+    chat["engine"]._pipeline.searcher = PlanSearcher()
+    chat["routes_add"]("maintenance plan", clear(request("does the maintenance plan save me money", "knowledge")))
+    routed = {"knowledge": clear(request(question, "knowledge")),
+              "handoff, clear": clear(request(question, "handoff", "other")),
+              "handoff, unclear": {"clear": False, "requests": [request(question, "handoff", "other")]}}[label]
+    chat["routes_add"]("pays for itself", routed)
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+    assert done.ticket == 1
+    reply, _ = chat["say"]("Would the maintenance plan save me money?")
+    assert "15 percent" in reply
+    reply, _ = chat["say"]("I want to book a repair Monday")
+    assert "1) Monday 2026-10-19, 08:00-12:00" in reply
+    reply, done = chat["say"](question)
+    assert "15 percent" in reply and "added that to Ticket" not in reply, reply
+    assert len(chat["store"].tickets()) == 1
+
+
+def test_an_unclear_message_with_a_ticket_open_is_still_added_to_it(chat):
+    chat["engine"]._pipeline.searcher = PlanSearcher()
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+    chat["say"]("I want to book a repair Monday")
+    text = "Why is everything so complicated with you people?"  # nothing the documents answer, even with context
+    chat["routes_add"]("so complicated", clear(request(text, "handoff", "other")))
+    reply, done = chat["say"](text)
+    assert "added that to Ticket #1" in reply and len(chat["store"].tickets()) == 1
+
+
+def test_an_unclear_question_the_documents_do_not_answer_at_an_open_offer_still_goes_to_the_offer(chat):
+    chat["engine"]._pipeline.searcher = PlanSearcher()
+    chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+    chat["say"]("I want to book a repair Monday")
+    reply, _ = chat["say"]("Why is everything so complicated with you people?")  # unclear by default in the script
+    assert "1) Monday 2026-10-19, 08:00-12:00" in reply and len(chat["store"].tickets()) == 1
+
+
+MIXED = "I'm Linda Foster, MHC-10001. How much is a tune-up and book a repair Monday morning"
+
+
+def _mixed_routes(chat):
+    chat["routes_add"]("tune-up and book", clear(request("how much is a tune-up", "knowledge"),
+                                                  request("book a repair Monday morning", "scheduling", "book", "hvac_repair")))
+
+
+def test_a_marker_against_the_booking_part_of_a_mixed_turn_opens_no_ticket(chat):
+    # Step 5 handed off "not enough evidence" whenever a knowledge answer was in the turn, even with the marker
+    # written against the booking part.
+    from app.replies.checks import NOT_IN_DOCUMENTS
+    _mixed_routes(chat)
+    chat["writer_says"](lambda facts: facts + [NOT_IN_DOCUMENTS] if any("08:00-12:00" in f for f in facts) else facts)
+    reply, done = chat["say"](MIXED)
+    assert "$129 for non-members" in reply and "08:00-12:00" in reply and "NOT IN" not in reply
+    assert "Ticket #" not in reply and not chat["store"].tickets() and done.outcome == "answered"
+
+
+def test_a_marker_against_the_knowledge_part_of_a_mixed_turn_still_hands_off(chat):
+    from app.replies.checks import NOT_IN_DOCUMENTS
+    _mixed_routes(chat)
+    chat["writer_says"](lambda facts: facts + [NOT_IN_DOCUMENTS] if any("$129" in f for f in facts) else facts)
+    reply, done = chat["say"](MIXED)
+    assert "$129 for non-members" in reply and "08:00-12:00" in reply and "NOT IN" not in reply
+    assert chat["store"].tickets()[-1]["reason_tag"] == "not enough evidence" and done.outcome == "handed_off"

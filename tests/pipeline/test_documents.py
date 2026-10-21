@@ -51,6 +51,15 @@ def test_price_book_is_one_readable_line_per_item():
     assert "Run capacitor replacement: $180 to $260" in text
 
 
+def test_the_converted_price_book_adds_no_sentence_the_source_csv_does_not_have():
+    # The conversion once added "Typical prices. The technician confirms the final price on site.", which is not in the
+    # CSV; the final-price line is the company pricing rule (R42), added by the knowledge flow with its own source.
+    for text in (convert_price_book(KB / "pricing" / "repair_price_book_2026.csv"),
+                 (ROOT / "data" / "kb_text" / "pricing__repair_price_book_2026.md").read_text()):
+        assert "Typical prices" not in text and "final price" not in text
+        assert text.startswith("# 2026 Repair Price Book\n\n## ")
+
+
 def test_conflict_register_has_a_row_for_every_conflicting_fact():
     rows = list(csv.DictReader((ROOT / "data" / "conflict_register.csv").open()))
     facts = {r["fact"] for r in rows}
