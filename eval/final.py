@@ -77,10 +77,27 @@ def _section(root: Path, name: str) -> dict | None:
     return {k: v for k, v in data.items() if k not in LEFT_OUT} if isinstance(data, dict) else None
 
 
+def human_baselines(root: Path = ROOT) -> dict:
+    """The staff rates on the 420 transcript calls (the data review): resolved on the call, and without the account
+    actions the agent may not take (R67)."""
+    from pipeline.findings import human_baseline
+    from pipeline.transcripts import load_transcripts
+    data = root / "call_data"
+    if not (data / "call_transcripts_index.csv").exists():  # a project folder without the transcripts
+        return {"resolved": None, "resolved_excluding_actions": None}
+    numbers = human_baseline(load_transcripts(data / "call_transcripts", data / "call_transcripts_index.csv"))
+    return {"resolved": numbers["resolved_on_call"] / numbers["calls"],
+            "resolved_excluding_actions": numbers["resolved_without_account_actions"] / numbers["calls"]}
+
+
 def finish_summary(root: Path = ROOT) -> dict:
     """The run's numbers, the freeze hashes and every section, validated, then written as summary.json."""
     out = final_folder(root)
     summary = json.loads((out / "run_summary.json").read_text())
+    if summary.get("human_baseline") is None or summary.get("human_baseline_excluding_actions") is None:
+        human = human_baselines(root)
+        summary["human_baseline"], summary["human_baseline_excluding_actions"] = (human["resolved"],
+                                                                                 human["resolved_excluding_actions"])
     summary["held_out_hash"] = json.loads((root / "data" / "split.json").read_text())["held_out_hash"]
     summary["agent_hash"] = json.loads((root / "data" / "agent_freeze.json").read_text())["hash"]
     for name in SECTIONS:

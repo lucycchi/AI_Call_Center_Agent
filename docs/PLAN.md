@@ -630,7 +630,7 @@ The author can open the public site, chat, open the Staff view beside it, see th
 
 The author can read the final numbers on the Results tab and in the README, and record the video from the outline.
 
-- [ ] Task 27: final held-out run, summary and optional consistency runs. Requirements: R23
+- [x] Task 27: final held-out run, summary and optional consistency runs. Requirements: R23
 - [ ] Task 28: README, video outline and repository contents. Requirements: R78, R79, R80
 
 ### Task 27: Final held-out run, summary and optional consistency runs
@@ -645,9 +645,9 @@ The author can read the final numbers on the Results tab and in the README, and 
 
 - [x] **Step 1: Write the failing tests.** `run_final` raises if any held-out file differs from the hash in `data/split.json`, or if the agent-behaviour hash differs from `data/agent_freeze.json`; changes to `app/web/` do not stop it. The final summary contains every `Summary` field plus `retrieval`, `answers`, `adversarial`, `grader_agreement` and `label_agreement` sections, and fails validation if any is missing. The consistency option runs 30 held-out cases three times each with seed 3 and reports the share correct on all three.
 - [x] **Step 2: Run** `python -m pytest tests/eval/test_final.py -v`. Expected: FAIL.
-- [ ] **Step 3: Implement** (code done in `eval/final.py`; the held-out run itself has not happened), then **tell the author** (Codex grading follows), run the final held-out set once, grade it, run the adversarial set, and complete the grader check with the author's blind grades.
-- [ ] **Step 4: Run** the tests. Expected: PASS and `data/results/final/summary.json` complete.
-- [ ] **Step 5: Commit** `feat: final held-out results`.
+- [x] **Step 3: Implement** (code done in `eval/final.py`; the held-out run itself has not happened), then **tell the author** (Codex grading follows), run the final held-out set once, grade it, run the adversarial set, and complete the grader check with the author's blind grades.
+- [x] **Step 4: Run** the tests. Expected: PASS and `data/results/final/summary.json` complete.
+- [x] **Step 5: Commit** `feat: final held-out results`.
 
 ### Task 28: README, video outline and repository contents
 

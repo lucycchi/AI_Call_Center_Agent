@@ -1,0 +1,18 @@
+{
+ "cases": 15,
+ "runs": 3,
+ "seed": 3,
+ "correct_all_three": 0.6666666666666666,
+ "correct_each_run": [
+  0.8666666666666667,
+  0.8,
+  0.7333333333333333
+ ],
+ "not_always_correct": [
+  "T28588235",
+  "T3baed8ff",
+  "T9f473de6",
+  "Td1e329a6",
+  "Teff9802d"
+ ]
+}

@@ -357,3 +357,17 @@ def test_resume_final_refuses_a_run_that_finished_but_lacks_a_section(root):
     with pytest.raises(SystemExit, match="already finished"):
         final.resume_final(resumer, root=root, confirmed=True)
     assert resumer.calls == []
+
+
+def test_the_final_summary_carries_both_human_baselines(root, monkeypatch):
+    # R67: the Results tab compares containment with the staff rate on the 420 transcript calls, raw and excluding
+    # account actions (the data review's 85 and 73 percent).
+    monkeypatch.setattr(final, "human_baselines", lambda root: {"resolved": 0.85, "resolved_excluding_actions": 0.73})
+    final.run_final(FakeRunner(), root=with_sections(root), confirmed=True)
+    summary = json.loads((root / "data" / "results" / "final" / "summary.json").read_text())
+    assert (summary["human_baseline"], summary["human_baseline_excluding_actions"]) == (0.85, 0.73)
+
+
+def test_the_human_baselines_come_from_the_420_transcripts():
+    numbers = final.human_baselines(final.ROOT)
+    assert round(numbers["resolved"], 2) == 0.85 and round(numbers["resolved_excluding_actions"], 2) == 0.73

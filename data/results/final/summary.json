@@ -1,0 +1,173 @@
+{
+ "containment": 0.29508196721311475,
+ "containment_without_redirects": 0.29508196721311475,
+ "scope_ceiling": 0.7459016393442623,
+ "adjusted_ceiling": 0.48360655737704916,
+ "action_gap": 0.16393442622950818,
+ "wrong_confident": 0,
+ "knowledge_accuracy": 1.0,
+ "routing_accuracy": 0.7619047619047619,
+ "handoff_correct_safety_and_booking": 1.0,
+ "handoff_correct_other": 1.0,
+ "booking_correct": 0.6981132075471698,
+ "lookup_correct": 1.0,
+ "clean_declines": 1,
+ "flaky": [],
+ "interval_low": 0.03571428571428571,
+ "interval_high": 0.5691056910569106,
+ "scenarios": 15,
+ "weighted_calls": 122,
+ "human_baseline": 0.8452380952380952,
+ "human_baseline_excluding_actions": 0.7333333333333333,
+ "stopped_at_budget": false,
+ "stopped_at_budget_cases": [],
+ "stopped_at_budget_count": 0,
+ "wrong_confident_cases": [],
+ "wrong_confident_share": 0.0,
+ "scope_ceiling_without_redirects": 0.7459016393442623,
+ "adjusted_ceiling_without_redirects": 0.48360655737704916,
+ "extra": {
+  "spent_usd": 0.3915,
+  "grader_model": "gpt-5.6-sol",
+  "settings": {
+   "sdk_version": "anthropic 1.15.0",
+   "now": "2026-10-16T09:00:00-05:00",
+   "simulator": {
+    "model": "claude-sonnet-5-5",
+    "max_tokens": 300,
+    "effort": "low"
+   },
+   "router": {
+    "model": "claude-haiku-5-5",
+    "max_tokens": 2000,
+    "effort": "low"
+   },
+   "writer": {
+    "model": "claude-sonnet-5-5",
+    "max_tokens": 800,
+    "effort": "low"
+   },
+   "check": {
+    "model": "claude-haiku-5-5",
+    "max_tokens": 2000,
+    "effort": "low"
+   },
+   "embedding_model": "voyage-4",
+   "retrieval_threshold": 0.25,
+   "retries": 1,
+   "simulator_retries_within_cap": 0,
+   "anthropic_timeout_s": 20,
+   "message_deadline_s": 15,
+   "max_caller_turns": 12,
+   "conversation_seconds": 60,
+   "run_cap_usd": 8.0,
+   "grader": "gpt-5.6-sol"
+  },
+  "ticket_actionable": 0.7272727272727273,
+  "errored": [],
+  "ungraded": [],
+  "resumed": true
+ },
+ "held_out_hash": "4423a9632bcd38f06b7945585c8bdf43bb005f5b038345d5a8b921cd303afa46",
+ "agent_hash": "5b8f6899c76b23be395a0e225416a9d72ba3e9cdfa628e42a6c4b04e8eb33e45",
+ "retrieval": {
+  "set": "working",
+  "questions": 25,
+  "coverage": 1.0,
+  "coverage_basis": "9 caller questions from 85 calls",
+  "index_has_excluded_documents": false,
+  "keyword": {
+   "recall_at_5": 0.7272727272727273,
+   "hit_at_5": 0.7727272727272727,
+   "stale_trap_hit_at_5": 0.8333333333333334,
+   "misses": [
+    "case-T2603f4e6",
+    "case-Tbaf67f84",
+    "case-Tbc5df324",
+    "answerable-6",
+    "stale_trap-7"
+   ]
+  },
+  "meaning": {
+   "recall_at_5": 0.9772727272727273,
+   "hit_at_5": 1.0,
+   "stale_trap_hit_at_5": 1.0,
+   "misses": []
+  },
+  "combined": {
+   "recall_at_5": 0.9318181818181818,
+   "hit_at_5": 1.0,
+   "stale_trap_hit_at_5": 1.0,
+   "misses": []
+  }
+ },
+ "answers": {
+  "keyword": {
+   "answers": 25,
+   "correct": 0.68,
+   "faithful": 0.92,
+   "citation_ok": 1.0,
+   "refusal_ok": 0.3333333333333333,
+   "stale_trap_correct": 0.8333333333333334
+  },
+  "combined": {
+   "answers": 25,
+   "correct": 0.92,
+   "faithful": 0.96,
+   "citation_ok": 1.0,
+   "refusal_ok": 1.0,
+   "stale_trap_correct": 1.0
+  },
+  "whole_kb": {
+   "answers": 25,
+   "correct": 0.88,
+   "faithful": null,
+   "citation_ok": 1.0,
+   "refusal_ok": 1.0,
+   "stale_trap_correct": 1.0
+  },
+  "grader_model": "gpt-5.6-sol",
+  "passages_searched_again": 0,
+  "grader_reported_model": [
+   "gpt-5"
+  ]
+ },
+ "adversarial": {
+  "pass_rate": 1.0,
+  "booking_rule_pass_rate": 1.0,
+  "extraction_pass_rate": 1.0,
+  "failures": [],
+  "stopped_at_budget": false,
+  "spent_usd": 0.0597
+ },
+ "grader_agreement": {
+  "both_right": 20,
+  "both_wrong": 5,
+  "fable_only": 5,
+  "grader_only": 0,
+  "agreement": 0.8333333333333334,
+  "note": "fable graded blind; this is model-vs-model agreement, not a human check",
+  "checker": "Claude Fable 5.1, standing in for the author (D44)",
+  "graded": 30,
+  "disagreements": [
+   "case-T7d8fb3e5|whole_kb",
+   "case-Tc36da844|combined",
+   "case-T7d8fb3e5|keyword",
+   "unanswerable-3|keyword",
+   "case-Tc36da844|whole_kb"
+  ]
+ },
+ "label_agreement": {
+  "codex_vs_haiku": 1.0,
+  "fable_vs_codex": 1.0,
+  "fable_labels": 17,
+  "human_labels": 0,
+  "fable_missing": [],
+  "status": "final",
+  "fable_vs_codex_sub_reason": 1.0,
+  "disagreements": {
+   "codex_vs_haiku": {},
+   "fable_vs_codex": {}
+  }
+ }
+}
