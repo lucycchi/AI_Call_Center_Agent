@@ -426,8 +426,11 @@ class AgentPipeline:
             parts = [knowledge, [r for r in written if r not in knowledge]] if 0 < len(knowledge) < len(written) else [written]
             try:
                 count_released = 0
+                said = []
                 for part in parts:
-                    stream = CheckedStream(self.writer(part[0].reply_type, [f for r in part for f in r.facts], history),
+                    # A later part sees what the earlier part said, so it neither repeats nor contradicts it.
+                    seen = history + ([{"role": "agent", "content": " ".join(said)}] if said else [])
+                    stream = CheckedStream(self.writer(part[0].reply_type, [f for r in part for f in r.facts], seen),
                                            burning_mentioned=burning, money_check=self.money_check, ticket_id=state.ticket_id)
                     part_released = 0
                     for part_released, sentence in enumerate(stream, 1):
@@ -435,6 +438,7 @@ class AgentPipeline:
                         # The deadline is checked before each later sentence, so a slow reply is cut off (R59).
                         if count_released > 1 and deadline.passed():
                             raise deadline.DeadlinePassed("the reply passed the message deadline")
+                        said.append(sentence)
                         yield emit(sentence)
                     if stream.blocked_rule:
                         self._quietly(self.store.log_event, "blocked sentence",
@@ -512,11 +516,14 @@ class AgentPipeline:
                 return routed.requests, False
             # A pick or a yes at an open offer or read-back always goes to the flow, even with a ticket open and the
             # router calling it something else (T9e29febc); a separate request the router split off still runs.
-            answers_offer = at_offer and "?" not in text and (
-                names_when and not NEGATION.search(text) or state.flow.get("step") == "readback" and scheduling.YES.search(text))
+            # A filler question in the same message ("Can you hear me okay? I'd like the first one") does not stop it.
+            spoken = " ".join(s for s in re.split(r"(?<=[.?!])\s+", text) if not _only(s, FILLER, FILLER_WORDS))
+            answers_offer = at_offer and "?" not in spoken and (
+                names_when and not NEGATION.search(spoken) or state.flow.get("step") == "readback" and scheduling.YES.search(spoken))
             if new_topic and answers_offer:
                 others = [r for r in routed.requests if r.route != "scheduling"
-                          and not scheduling.picks_a_slot(r.text, state.flow, self.now)]
+                          and not scheduling.picks_a_slot(r.text, state.flow, self.now)
+                          and not _only(r.text, FILLER, FILLER_WORDS)]  # "can you hear me okay?" is not a request
                 return [Request(text, "continue"), *others], False
             if new_topic:
                 return routed.requests, state.active_flow == "scheduling"

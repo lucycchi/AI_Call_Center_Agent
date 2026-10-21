@@ -142,6 +142,14 @@ def published_only(sentence: str, previous: str = "") -> bool:
     return not touches_money(rest) and all(w.lower() in _STATEMENT_WORDS for w in re.findall(r"[A-Za-z']+", rest))
 
 
+_WRONG_PRICE = re.compile(r"\bPlus\b[^.;,$]{0,30}\$(?:189|16\.99)\b|\bStandard\b[^.;,$]{0,30}\$269\b", re.I)
+
+
+def wrong_plan_price(sentence: str) -> bool:
+    """A plan named with another plan's price ("Comfort Club Plus is $189 per year"): a wrong fact, blocked in code."""
+    return bool(_WRONG_PRICE.search(sentence))
+
+
 class MoneyCheck:
     """Called with (sentence, previous sentence); True means the sentence may be released."""
 
@@ -149,7 +157,7 @@ class MoneyCheck:
         self._client = client
 
     def __call__(self, sentence: str, previous: str) -> bool:
-        if FAVOUR.search(sentence):
+        if FAVOUR.search(sentence) or wrong_plan_price(sentence):
             return False
         if published_only(sentence, previous):
             return True

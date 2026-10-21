@@ -82,3 +82,17 @@ def test_a_sentence_about_it_is_released_in_code_only_when_the_sentence_before_n
 def test_published_terms_applied_to_this_caller_still_go_to_the_model(sentence):
     from app.replies.money_check import published_only
     assert not published_only(sentence, "")
+
+
+@pytest.mark.parametrize("sentence", ["Comfort Club Plus is $189 per year per system.", "Plus costs $16.99 per month.",
+                                      "Standard is $269 per year per system."])
+def test_a_wrong_plan_price_is_blocked_in_code(sentence):
+    # The paid money-check run released "Comfort Club Plus is $189 per year per system."; a wrong plan price fails closed.
+    client = NoModel()
+    assert MoneyCheck(client)(sentence, "") is False and client.calls == 0  # blocked before any model call
+
+
+def test_the_right_plan_prices_are_not_taken_for_wrong_ones():
+    from app.replies.money_check import wrong_plan_price
+    assert not wrong_plan_price("Standard is $189 per year per system or $16.99 per month, and Comfort Club Plus is $269 per year.")
+    assert not wrong_plan_price("Plus members get everything in Standard, which is $189 per year.")

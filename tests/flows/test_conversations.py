@@ -1453,3 +1453,27 @@ def test_a_marker_against_the_knowledge_part_of_a_mixed_turn_still_hands_off(cha
     reply, done = chat["say"](MIXED)
     assert "$129 for non-members" in reply and "08:00-12:00" in reply and "NOT IN" not in reply
     assert chat["store"].tickets()[-1]["reason_tag"] == "not enough evidence" and done.outcome == "handed_off"
+
+
+def test_a_slot_pick_after_a_can_you_hear_me_question_still_books(chat):
+    # Quick run (T9e29febc retry): "Can you hear me okay? I'd like the first one, Monday 8:00 AM to 12:00 PM." at an
+    # offer went to the router and was lost; the filler question does not stop the pick.
+    chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
+    chat["routes_add"]("hear me okay", {"clear": True, "requests": [request("Can you hear me okay?", "redirect", "wrong number")]})
+    reply, _ = chat["say"]("Can you hear me okay? I'd like the first one, Monday 8:00 AM to 12:00 PM.")
+    assert "wrong number" not in reply.lower() and "08:00-12:00" in reply
+
+
+def test_the_second_part_of_a_mixed_reply_sees_what_the_first_part_said(chat):
+    # The booking part of a mixed turn said it had no benefit details right after the knowledge part listed them.
+    seen = []
+    chat["writer_says"](lambda facts: facts)
+    original = chat["engine"]._pipeline.writer
+    def writer(reply_type, facts, history):
+        seen.append([m["content"] for m in history])
+        return original(reply_type, facts, history)
+    chat["engine"]._pipeline.writer = writer
+    chat["routes_add"]("tune-up and book", clear(request("how much is a tune-up", "knowledge"),
+                                                   request("book a tune-up", "scheduling", "book", "hvac_tune_up")))
+    chat["say"]("I'm Linda Foster, MHC-10001. How much is a tune-up and book a tune-up and book")
+    assert len(seen) == 2 and any("$129" in m for m in seen[1])
