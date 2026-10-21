@@ -12,6 +12,7 @@ import shutil
 import threading
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -24,6 +25,7 @@ from app.core.model_log import SINK
 from app.core.state import ConversationState, NotYourConversation
 from app.core.types import DoneEvent, SentenceEvent, Turn
 from app.handoff.flow import ERROR_MESSAGE
+from app.web.health import health_routes
 from app.web.limits import LIMIT_MESSAGE, Limits
 from app.web.reviewer import reviewer_routes
 from app.web.staff import staff_routes
@@ -81,11 +83,14 @@ def behind_fly() -> bool:
 
 def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits | None = None, workers: int = 4,
                stream_timeout_s: float = 40.0, trust_fly_header: bool = False, spend=None,
-               reviewer_token: str | None = None, staff_password_hash: str | None = None) -> FastAPI:
+               reviewer_token: str | None = None, staff_password_hash: str | None = None, gate=None, alerts=None,
+               scheduling_db: Path | None = None) -> FastAPI:
     """trust_fly_header: trust the Fly-Client-IP header for the address limit; anywhere else a client could forge it.
     spend: an app.ops.spend.Spend that each turn's model calls are recorded against (the engine's pipeline asks it
     for a refusal after its safety check). reviewer_token: the secret behind the reviewer link (R85).
-    staff_password_hash: the shared staff password's hash (R72); None turns staff sign-in off."""
+    staff_password_hash: the shared staff password's hash (R72); None turns staff sign-in off.
+    gate: the reset gate (app/ops/gate.py), held shared for each reply. alerts: checked for an error burst after each
+    reply. scheduling_db: the live scheduling file that GET /health opens (R76)."""
     app = FastAPI(title="Meridian Home Comfort chat", docs_url=None, redoc_url=None, openapi_url=None)
     cookies = VisitorCookie(cookie_secret)
     limits = limits or Limits(clock)
@@ -99,6 +104,8 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
         "<!-- staff panel -->", (HERE / "templates" / "staff_panel.html").read_text())
     app.include_router(reviewer_routes(store, reviewer_token))
     app.include_router(staff_routes(store, cookie_secret, staff_password_hash, clock, trust_fly_header))
+    if scheduling_db is not None:
+        app.include_router(health_routes(store, scheduling_db))
 
     @app.get("/", response_class=HTMLResponse)
     def chat():
@@ -163,16 +170,19 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
             # reused thread never keeps it. The pipeline passes each call on to this sink as it records it.
             sink = SINK.set(spend.recorder(turn.visitor_id) if spend else None)
             try:
-                for event in engine.handle(turn):
-                    if isinstance(event, SentenceEvent):
-                        reply.sentences.append(event.text)
-                    elif isinstance(event, DoneEvent):
-                        done = event
-                        break
+                with gate.shared() if gate else nullcontext():  # waits while the nightly reset runs (R74)
+                    for event in engine.handle(turn):
+                        if isinstance(event, SentenceEvent):
+                            reply.sentences.append(event.text)
+                        elif isinstance(event, DoneEvent):
+                            done = event
+                            break
             except Exception as error:  # the engine ends every turn itself; this is the last resort
                 log.exception("reply failed for conversation %s: %s", turn.conversation_id, error)
             finally:
                 SINK.reset(sink)
+            if alerts:
+                alerts.check_errors()
             if done is None:
                 reply.sentences.append(ERROR_MESSAGE)
                 done = DoneEvent(route="unknown", ticket=None, outcome="error")
@@ -260,7 +270,7 @@ def build_app() -> FastAPI:
 
     Run with one worker: uvicorn app.web.main:build_app --factory --workers 1 (needs ANTHROPIC_API_KEY,
     VOYAGE_API_KEY and VISITOR_COOKIE_SECRET in the environment; REVIEWER_TOKEN turns on the reviewer link and
-    STAFF_PASSWORD_HASH the staff sign-in)."""
+    STAFF_PASSWORD_HASH the staff sign-in; ALERT_WEBHOOK_URL sends alerts)."""
     import anthropic
 
     from app.config import SETTINGS
@@ -270,6 +280,9 @@ def build_app() -> FastAPI:
     from app.knowledge.embedder import VoyageEmbedder
     from app.knowledge.index import load_index
     from app.knowledge.search import Searcher
+    from app.ops.alerts import Alerts
+    from app.ops.gate import ResetGate
+    from app.ops.jobs import Scheduler
     from app.ops.spend import Spend
     from app.ops.store import OpsStore
     from app.replies.money_check import MoneyCheck
@@ -285,7 +298,11 @@ def build_app() -> FastAPI:
     if not SETTINGS.scheduling_db_path.exists():  # the first start: the live copy begins as the seed
         shutil.copy(SETTINGS.seed_db_path, SETTINGS.scheduling_db_path)
     store = OpsStore(SETTINGS.ops_db_path)
-    spend = Spend(store)
+    alerts = Alerts.from_environment(store)
+    alerts.watch(store)
+    spend = Spend(store, notify=lambda detail: alerts.send("spend", detail))
+    gate = ResetGate()
+    Scheduler(SETTINGS.scheduling_db_path, SETTINGS.seed_db_path, store, gate, alerts).start()  # resets if missed
     client = RecordingClient(anthropic.Anthropic(timeout=SETTINGS.anthropic_timeout_s, max_retries=1),
                              sdk_version=f"anthropic {anthropic.__version__}")
     chunks, embeddings = load_index(Path(__file__).resolve().parents[2] / "data" / "index")
@@ -297,4 +314,5 @@ def build_app() -> FastAPI:
                              guard=spend.refusal)  # asked after the safety check, so emergencies always get through
     return create_app(Engine(pipeline), store, cookie_secret=secret, trust_fly_header=behind_fly(), spend=spend,
                       reviewer_token=token_from_environment(),
-                      staff_password_hash=password_hash_from_environment())
+                      staff_password_hash=password_hash_from_environment(), gate=gate, alerts=alerts,
+                      scheduling_db=SETTINGS.scheduling_db_path)

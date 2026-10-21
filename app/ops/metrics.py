@@ -13,6 +13,7 @@ from app.config import AUSTIN
 MIN_CONVERSATIONS = 10
 UPPER_BOUND = "upper bound"
 NOT_ENOUGH = "not enough conversations yet"
+RESET_FAILED = "nightly reset failed"
 
 
 def austin_day(stamp: str | None) -> date | None:
@@ -44,6 +45,7 @@ def live_numbers(store, today: date) -> dict:
         "from conversations c where c.status in ('closed', 'abandoned')"), "closed_at", today)
     contained = [c for c in ended if c["status"] == "closed" and not (c["handed_off"] or c["errored"] or c["flagged"])]
     enough = len(ended) >= MIN_CONVERSATIONS
+    resets = store.read("select result from job_runs where job = 'nightly reset' order by run_id desc limit 1")
     return {
         "day": today.isoformat(),
         "conversations": len(conversations),
@@ -54,4 +56,5 @@ def live_numbers(store, today: date) -> dict:
         "contained_conversations": len(contained) if enough else None,
         "live_containment": round(len(contained) / len(ended), 3) if enough else None,
         "live_containment_label": UPPER_BOUND if enough else NOT_ENOUGH,
+        "nightly_reset": RESET_FAILED if resets and resets[0]["result"] == "failed" else None,
     }
