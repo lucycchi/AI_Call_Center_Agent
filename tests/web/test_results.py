@@ -104,8 +104,18 @@ def test_a_long_value_wraps_so_the_definitions_stay_on_screen(store, tmp_path):
     assert "setting 39" in frozen and "{" not in frozen  # each setting is its own row, not a JSON blob
     assert re.search(r'<tr data-field="containment">.*?<td>62\.0%</td>', frozen, re.S)  # short values stay unwrapped
     page = results_page(store, tmp_path, summary)
-    assert re.search(r"table\.numbers td\.long\s*\{[^}]*white-space:\s*normal", page)
+    assert re.search(r"td:nth-child\(2\)\.long\s*\{[^}]*white-space:\s*normal", page)
     assert re.search(r"table\.numbers\s*\{[^}]*table-layout:\s*fixed", page)  # a long value cannot widen its column
+
+
+def test_the_wrap_rules_win_over_the_one_line_value_rule(store, tmp_path):
+    # Seen live: "table.numbers td.long" lost to the more specific nowrap rule, so long values ran over the
+    # definitions; and at phone width a measure name such as "Containment" ran into its value.
+    page = results_page(store, tmp_path, summary_fixture())
+    nowrap = re.search(r"table\.numbers > tbody > tr > td:nth-child\(2\)\s*\{[^}]*white-space:\s*nowrap", page)
+    wrap = re.search(r"table\.numbers > tbody > tr > td:nth-child\(2\)\.long\s*\{[^}]*white-space:\s*normal", page)
+    assert nowrap and wrap and wrap.start() > nowrap.start()  # same selector plus a class, and later
+    assert re.search(r"table\.numbers th, table\.numbers td\s*\{[^}]*overflow-wrap:\s*anywhere", page)
 
 
 def test_without_a_final_summary_it_says_final_results_not_yet_run(store, tmp_path):

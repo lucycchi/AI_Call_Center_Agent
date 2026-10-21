@@ -22,12 +22,18 @@
   .note { margin: 0 0 12px; font-size: .9rem; color: var(--muted); }
   .table-wrap { overflow-x: auto; }
   table.numbers { width: 100%; border-collapse: collapse; font-size: .9rem; }
-  table.numbers th, table.numbers td { text-align: left; vertical-align: top; padding: 6px 8px; border-top: 1px solid var(--line); }
+  table.numbers th, table.numbers td { text-align: left; vertical-align: top; padding: 6px 8px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
   table.numbers > tbody > tr > td:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
   table.numbers { table-layout: fixed; }  /* widths from the heading row, so a long value cannot widen its column */
   table.numbers > thead th:nth-child(1) { width: 24%; }
   table.numbers > thead th:nth-child(2) { width: 26%; }
-  table.numbers td.long { white-space: normal; overflow-wrap: anywhere; font-weight: normal; font-size: .8rem; }
+  table.numbers > tbody > tr > td:nth-child(2).long { white-space: normal;  /* as specific as the nowrap rule, so it wins */
+    overflow-wrap: anywhere; font-weight: normal; font-size: .8rem; }
+  @media (max-width: 600px) {  /* a phone: wider names, and values wrap rather than run into the definitions */
+    table.numbers > thead th:nth-child(1) { width: 40%; }
+    table.numbers > thead th:nth-child(2) { width: 22%; }
+    table.numbers > tbody > tr > td:nth-child(2) { white-space: normal; }
+  }
   table.numbers > tbody > tr > td:nth-child(3), .definition, table.modes td.what, table.modes caption { color: var(--muted); font-weight: normal; }
   .section-head th { padding-top: 14px; }
   .sub-head th { padding-top: 10px; font-weight: 600; }
