@@ -88,8 +88,12 @@ next nightly reset in any case.
 
 ### Practice record
 
-The release rollback is practised once before submission (R83). Practised: not yet (record the date, the release
-rolled back to, and how long it took).
+The release rollback is practised once before submission (R83). Practised on 2026-10-21 (04:49 UTC): from release
+v2 (the reviewer-only note and the design fixes) back to v1's image with `scripts/fly deploy --image
+registry.fly.io/ai-call-center-agent-bvgy9q:deployment-01M5EB2PGFD4CCCSM30R5XPWJ6 --ha=false`, which took 20 seconds;
+`/health` answered `{"ok":true}` and the page showed v1 (no reviewer-only note). Then forward again to v2's image in
+16 seconds (now release v4), with the note back. The volume and its databases were untouched throughout. The volume
+snapshot restore has not been practised.
 
 ## Who can chat (D50)
 
