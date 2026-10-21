@@ -264,8 +264,12 @@ def test_over_the_limit_only_a_few_emergencies_a_day_open_tickets_and_the_rest_s
     assert count(app_store, "conversations") <= 3  # the advice past the allowance writes nothing
 
 
-def test_the_safety_allowance_is_per_visitor_and_address_and_site_wide():
-    limits = Limits(Clock(), per_10_min=1, per_day=100, site_per_minute=60, safety_per_day=1, safety_site_per_day=2)
+def test_the_safety_allowance_is_per_visitor_and_address_with_no_site_wide_stop():
+    # Security review: a site-wide emergency cap would let a flood from many addresses use it up, so a real caller
+    # (put over the limits by the same flood) would get no ticket; only the caller's own keys are limited.
+    limits = Limits(Clock(), per_10_min=1, per_day=100, site_per_minute=60, safety_per_day=1)
     assert limits.allow_safety("v1", "10.0.0.1") and not limits.allow_safety("v1", "10.0.0.2")  # same visitor
     assert not limits.allow_safety("v2", "10.0.0.1")  # same address
-    assert limits.allow_safety("v3", "10.0.0.3") and not limits.allow_safety("v4", "10.0.0.4")  # site-wide
+    for n in range(100):  # a flood from many visitors and addresses
+        limits.allow_safety(f"flood{n}", f"10.9.0.{n}")
+    assert limits.allow_safety("real-caller", "10.0.0.99")  # still has its own allowance

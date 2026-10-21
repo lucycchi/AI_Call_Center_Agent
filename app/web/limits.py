@@ -24,29 +24,28 @@ TEN_MINUTES, ONE_MINUTE = timedelta(minutes=10), timedelta(minutes=1)
 class Limits:
     def __init__(self, clock: Callable[[], datetime] = real_now, per_10_min: int = SETTINGS.visitor_messages_per_10_min,
                  per_day: int = SETTINGS.visitor_messages_per_day,
-                 site_per_minute: int = SETTINGS.site_messages_per_minute, safety_per_day: int = 3,
-                 safety_site_per_day: int = 30):
+                 site_per_minute: int = SETTINGS.site_messages_per_minute, safety_per_day: int = 3):
         self.clock, self.per_10_min, self.per_day, self.site_per_minute = clock, per_10_min, per_day, site_per_minute
-        # Over the limits, an emergency still reaches the agent (safety first), but only a few a day open a ticket,
-        # so an over-limit visitor cannot flood staff with priority tickets (security review).
-        self.safety_per_day, self.safety_site_per_day = safety_per_day, safety_site_per_day
-        self._safety_day, self._safety, self._safety_site = None, {}, 0
+        # Over the limits, an emergency still reaches the agent (safety first), but only a few a day per visitor and
+        # per address open a ticket, so an over-limit visitor cannot flood staff with priority tickets. There is no
+        # site-wide stop: a flood could use one up and leave a real caller without a ticket (security review).
+        self.safety_per_day = safety_per_day
+        self._safety_day, self._safety = None, {}
         self._lock = threading.Lock()
         self._recent: dict[str, deque] = {}  # key -> message times in the last 10 minutes
         self._day, self._today = None, {}  # key -> messages today
         self._site: deque = deque()
 
     def allow_safety(self, visitor_id: str, address: str | None) -> bool:
-        """An over-limit emergency may reach the agent and open a ticket: a few a day per visitor and address, and a
-        site-wide total. Counts it when allowed."""
+        """An over-limit emergency may reach the agent and open a ticket: a few a day per visitor and per address.
+        Counts it when allowed."""
         now = self.clock()
         keys = [f"visitor:{visitor_id}"] + ([f"address:{address}"] if address else [])
         with self._lock:
             if self._safety_day != now.date():
-                self._safety_day, self._safety, self._safety_site = now.date(), {}, 0
-            if self._safety_site >= self.safety_site_per_day or any(self._safety.get(k, 0) >= self.safety_per_day for k in keys):
+                self._safety_day, self._safety = now.date(), {}
+            if any(self._safety.get(k, 0) >= self.safety_per_day for k in keys):
                 return False
-            self._safety_site += 1
             for key in keys:
                 self._safety[key] = self._safety.get(key, 0) + 1
             return True
