@@ -8,10 +8,10 @@
  "checker": "Claude Fable 5.1, standing in for the author (D44)",
  "graded": 30,
  "disagreements": [
-  "case-T9e29febc|keyword",
-  "case-Tc36da844|keyword",
-  "stale_trap-7|combined",
-  "case-Tf7d382d9|keyword",
-  "case-T7d8fb3e5|whole_kb"
+  "case-T7d8fb3e5|whole_kb",
+  "case-Tc36da844|combined",
+  "case-T7d8fb3e5|keyword",
+  "unanswerable-3|keyword",
+  "case-Tc36da844|whole_kb"
  ]
 }
