@@ -24,6 +24,10 @@
   table.numbers { width: 100%; border-collapse: collapse; font-size: .9rem; }
   table.numbers th, table.numbers td { text-align: left; vertical-align: top; padding: 6px 8px; border-top: 1px solid var(--line); }
   table.numbers td:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+  table.numbers { table-layout: fixed; }  /* widths from the heading row, so a long value cannot widen its column */
+  table.numbers thead th:nth-child(1) { width: 24%; }
+  table.numbers thead th:nth-child(2) { width: 26%; }
+  table.numbers td.long { white-space: normal; overflow-wrap: anywhere; font-weight: normal; font-size: .8rem; }
   table.numbers td:nth-child(3), .definition { color: var(--muted); font-weight: normal; }
   .section-head th { padding-top: 14px; }
   .not-run { font-weight: 600; }

@@ -92,6 +92,20 @@ def test_every_summary_field_is_shown_with_a_one_line_definition(store, tmp_path
     assert "48.0% to 76.0%" in frozen or ("48.0%" in frozen and "76.0%" in frozen)
 
 
+def test_a_long_value_wraps_so_the_definitions_stay_on_screen(store, tmp_path):
+    # Value cells never wrap, so one long value (the run settings in "Other notes") pushed "What it means" off the page.
+    settings = {f"setting_{i}": "x" * 20 for i in range(40)}
+    summary = summary_fixture() | {"extra": {"settings": settings},
+                                   "retrieval": {"keyword": {"misses": [f"case-T{i:08x}" for i in range(12)]}}}
+    frozen = section(results_page(store, tmp_path, summary), "frozen-results")
+    long_cells = re.findall(r'<td class="long">([^<]*)</td>', frozen)
+    assert any("setting_39" in cell for cell in long_cells) and any("case-T0000000b" in cell for cell in long_cells)
+    assert re.search(r'<tr data-field="containment">.*?<td>62\.0%</td>', frozen, re.S)  # short values stay unwrapped
+    page = results_page(store, tmp_path, summary)
+    assert re.search(r"table\.numbers td\.long\s*\{[^}]*white-space:\s*normal", page)
+    assert re.search(r"table\.numbers\s*\{[^}]*table-layout:\s*fixed", page)  # a long value cannot widen its column
+
+
 def test_without_a_final_summary_it_says_final_results_not_yet_run(store, tmp_path):
     page = results_page(store, tmp_path, None)
     frozen = section(page, "frozen-results")

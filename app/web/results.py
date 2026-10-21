@@ -171,12 +171,17 @@ def _section_value(key: str, value) -> str:
 
 
 e = html.escape
+LONG_VALUE = 40  # characters; a longer value wraps, or its unwrapped width pushes the definitions off the page
+
+
+def _value_cell(text: str) -> str:
+    return f'<td class="long">{e(text)}</td>' if len(text) > LONG_VALUE else f"<td>{e(text)}</td>"
 
 
 def frozen_html(summary: dict | None) -> str:
     if summary is None:
         return f'<p class="not-run">{NOT_YET_RUN}. The held-out test set runs once, on the frozen agent.</p>'
-    rows = [f'<tr data-field="{name}"><th scope="row">{e(label)}</th><td>{e(_value(kind, summary.get(name)))}</td>'
+    rows = [f'<tr data-field="{name}"><th scope="row">{e(label)}</th>{_value_cell(_value(kind, summary.get(name)))}'
             f'<td>{e(definition)}</td></tr>' for name, (label, kind, definition) in FIELDS.items()]
     out = ['<table class="numbers"><thead><tr><th>Measure</th><th>Value</th><th>What it means</th></tr></thead>',
            "<tbody>", *rows, "</tbody>"]
@@ -187,7 +192,7 @@ def frozen_html(summary: dict | None) -> str:
         if not isinstance(data, dict) or not data:
             out.append('<tr><td colspan="3">not measured</td></tr>')
         else:
-            out += [f'<tr><th scope="row">{e(key.replace("_", " "))}</th><td>{e(_section_value(key, value))}</td>'
+            out += [f'<tr><th scope="row">{e(key.replace("_", " "))}</th>{_value_cell(_section_value(key, value))}'
                     "<td></td></tr>" for key, value in data.items()]
         out.append("</tbody>")
     out.append("</table>")
