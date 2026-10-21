@@ -37,6 +37,9 @@
   .expected { color: var(--muted); }
   .callout { border-left: 4px solid var(--brand); padding-left: 10px; }
   .callout strong { display: block; }
+  @media (max-width: 819px) {  /* touch targets at least 44px tall on phones */
+    .tabs a, a.try { display: inline-flex; align-items: center; min-height: 44px; }
+  }
 </style>
 </head>
 <body>

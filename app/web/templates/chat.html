@@ -42,6 +42,10 @@
   .customer { font-size: .9rem; }
   .customer .account { color: var(--muted); }
   .fact { display: block; }
+  @media (max-width: 819px) {  /* touch targets at least 44px tall on phones */
+    .tabs a { display: inline-flex; align-items: center; min-height: 44px; }
+    .suggestion, #staff-button, .staff-panel button, .staff-panel input, button[type=submit] { min-height: 44px; }
+  }
 </style>
 </head>
 <body>
