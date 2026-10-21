@@ -373,3 +373,14 @@ def test_a_zero_public_budget_refuses_every_public_message_but_not_a_reviewer(st
     assert not zero.allow("a-public-visitor")
     store.make_reviewer("a-reviewer")
     assert zero.allow("a-reviewer")
+
+
+REVIEWER_ONLY_NOTE = "Chat on this demo is open to project reviewers"
+
+
+def test_in_reviewer_only_mode_the_chat_page_says_chat_is_for_reviewers(store):
+    # The pipeline's limit message speaks of a usage limit; the page says why public visitors cannot chat (D50).
+    with client_for(reviewer_app(store, spend=Spend(store, per_visitor_usd=0.0))) as client:
+        assert REVIEWER_ONLY_NOTE in client.get("/").text
+    with client_for(reviewer_app(store, spend=Spend(store))) as client:
+        assert REVIEWER_ONLY_NOTE not in client.get("/").text

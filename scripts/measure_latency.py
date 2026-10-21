@@ -7,6 +7,7 @@ what is measured. The site also limits each client address to 20 messages per 10
 conversation turn on the live site (a few cents each); a reply cut short by a limit counts as a failure, not a time.
 
 Run: .venv/bin/python scripts/measure_latency.py https://<app>.fly.dev [--messages 50] [--warmup 3] [--pace 31]
+     [--reviewer]   (on a reviewer-only site, D50: REVIEWER_TOKEN in the environment)
 Targets: median first sentence under 2.5 seconds, full reply under 4.0 seconds."""
 
 import argparse
@@ -94,7 +95,8 @@ def one_message(client: httpx.Client, text: str, clock: Callable[[], float],
 def measure(base_url: str, messages: int = MIN_MESSAGES, warmup: int = 3, pace_s: float = 31.0,
             client_factory: Callable[[], httpx.Client] | None = None, clock: Callable[[], float] = time.perf_counter,
             sleep: Callable[[float], None] = time.sleep, on_event: Callable[[str, dict], None] | None = None,
-            log: Callable[[str], None] = print) -> Report:
+            log: Callable[[str], None] = print, reviewer_token: str | None = None) -> Report:
+    """reviewer_token: on a reviewer-only site (D50) each fresh visitor opens the reviewer link before its message."""
     if messages < MIN_MESSAGES:
         raise ValueError(f"send at least {MIN_MESSAGES} messages after warm-up, not {messages}")
     factory = client_factory or (lambda: httpx.Client(base_url=base_url, timeout=60.0))
@@ -105,6 +107,8 @@ def measure(base_url: str, messages: int = MIN_MESSAGES, warmup: int = 3, pace_s
         text = QUESTIONS[n % len(QUESTIONS)]
         with factory() as client:  # a fresh visitor each time
             try:
+                if reviewer_token:
+                    client.post("/api/reviewer", json={"token": reviewer_token}).raise_for_status()
                 first, full, outcome = one_message(client, text, clock, on_event)
             except httpx.HTTPError as error:
                 first, full, outcome = None, None, f"{type(error).__name__}"
@@ -133,12 +137,21 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--messages", type=int, default=MIN_MESSAGES, help="measured messages (at least 50)")
     parser.add_argument("--warmup", type=int, default=3, help="messages sent first and not measured")
     parser.add_argument("--pace", type=float, default=31.0, help="seconds between messages (the address limit)")
+    parser.add_argument("--reviewer", action="store_true",
+                        help="sign each visitor in with the reviewer link; the token is read from REVIEWER_TOKEN")
     return parser.parse_args(argv)
+
+
+def reviewer_token(args: argparse.Namespace) -> str | None:
+    """From the environment, never the command line, so it stays out of shell history and process lists."""
+    import os
+    return os.environ.get("REVIEWER_TOKEN") if args.reviewer else None
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    report = measure(args.base_url.rstrip("/"), messages=args.messages, warmup=args.warmup, pace_s=args.pace)
+    report = measure(args.base_url.rstrip("/"), messages=args.messages, warmup=args.warmup, pace_s=args.pace,
+                     reviewer_token=reviewer_token(args))
     first, full = report.median_first_sentence_s, report.median_full_reply_s
     print(f"\nmeasured {report.count} replies ({report.failures} failed)")
     print(f"median first sentence: {_s(first)} (target under {FIRST_SENTENCE_TARGET_S} s)")

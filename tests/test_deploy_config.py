@@ -380,3 +380,34 @@ def test_measure_latency_command_line_parses_the_base_url():
 def test_the_deployed_site_is_reviewer_only(fly):
     # Reviewer-only mode (D50): a $0 public budget refuses every public message before any model call.
     assert float(fly["env"]["PER_VISITOR_DAILY_USD"]) == 0.0
+
+
+def test_on_a_reviewer_only_site_each_visitor_opens_the_reviewer_link_first():
+    # D50: public messages are refused, so the measurement signs each fresh visitor in with the reviewer link.
+    import measure_latency
+
+    clock, reviewer_posts = Clock(), []
+    site = FakeSite(clock)
+
+    def handler(request):
+        if request.method == "POST" and request.url.path == "/api/reviewer":
+            reviewer_posts.append(json.loads(request.content)["token"])
+            return httpx.Response(200, json={"reviewer": True})
+        return site(request)
+
+    def factory():
+        return httpx.Client(transport=httpx.MockTransport(handler), base_url="https://meridian.example")
+
+    report = measure_latency.measure("https://meridian.example", messages=50, warmup=3, pace_s=0, client_factory=factory,
+                                     clock=clock, sleep=lambda s: None, log=lambda line: None,
+                                     reviewer_token="rv-token-0123456789abcdef")
+    assert reviewer_posts == ["rv-token-0123456789abcdef"] * 53 and report.count == 50
+
+
+def test_the_reviewer_token_comes_from_the_environment_not_the_command_line(monkeypatch):
+    import measure_latency
+
+    monkeypatch.setenv("REVIEWER_TOKEN", "rv-token-0123456789abcdef")
+    assert measure_latency.reviewer_token(measure_latency.parse_args(["https://x.example", "--reviewer"])) == \
+        "rv-token-0123456789abcdef"
+    assert measure_latency.reviewer_token(measure_latency.parse_args(["https://x.example"])) is None

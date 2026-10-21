@@ -82,6 +82,10 @@ def behind_fly() -> bool:
     return bool(os.environ.get("FLY_APP_NAME"))
 
 
+REVIEWER_ONLY_NOTE = ("Chat on this demo is open to project reviewers with a reviewer link. You can still look around: "
+                      "the test customers, the suggested questions and the Results tab.")
+
+
 def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits | None = None, workers: int = 4,
                stream_timeout_s: float = 40.0, trust_fly_header: bool = False, spend=None,
                reviewer_token: str | None = None, staff_password_hash: str | None = None,
@@ -105,6 +109,8 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
     chat_page = (HERE / "templates" / "chat.html").read_text().replace(
         "<!-- staff panel -->", (HERE / "templates" / "staff_panel.html").read_text())
+    if spend is not None and spend.per_visitor <= 0:  # reviewer-only (D50): say why a public message is refused
+        chat_page = chat_page.replace('<p class="greeting">', '<p class="notice">' + REVIEWER_ONLY_NOTE + '</p>\n    <p class="greeting">', 1)
     app.include_router(reviewer_routes(store, reviewer_token))
     app.include_router(staff_routes(store, cookie_secret, staff_password_hash, clock, trust_fly_header))
     app.include_router(results_routes(store, clock, results_summary_path))
