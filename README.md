@@ -1,0 +1,92 @@
+# Meridian Home Comfort chat agent
+
+A chat agent for Meridian Home Comfort's customer calls: it answers knowledge questions from document search, looks
+up accounts, books, reschedules and cancels appointments, and hands off to staff with a ticket. It runs on one
+always-on Fly.io machine. The full README (setup, results, how it works) comes with the final deliverables.
+
+## Rollback runbook
+
+One page for running, rolling back and restoring the live site (R83). Every Fly.io command goes through
+`scripts/fly`, which finds the Fly.io command line tool even when it is not on PATH (or set `FLYCTL` to its path).
+
+### What lives where
+
+| Part | Where | Rolled back by |
+| --- | --- | --- |
+| Code, prompts, search index (`data/index/`), seed scheduling database, `docs/FINDINGS.md`, `data/results/final/` | The release image | Deploying an earlier release's image |
+| Live scheduling database `/data/scheduling.sqlite`, operations database `/data/operations.sqlite` (conversations, tickets, costs, flags) | The volume `meridian_data` mounted at `/data` | Restoring the volume from a snapshot |
+| Keys and passwords | Fly.io secrets | Not rolled back; set again by hand |
+
+The machine count is always one: one worker holds the reset gate, the nightly scheduler and the message limits.
+
+### Secrets
+
+Set each once with `scripts/fly secrets set NAME=value`. Values never go in the repository, `fly.toml`, the
+Dockerfile or this README. To keep a value out of shell history, read it first: `read -rs v && scripts/fly secrets
+set NAME="$v"; unset v`. `scripts/fly secrets list` shows the names (never the values).
+
+| Name | What it is |
+| --- | --- |
+| `ANTHROPIC_API_KEY` | The live Anthropic key (not the test-run key, which stays only in the local `.env`) |
+| `VOYAGE_API_KEY` | The Voyage AI key for search embeddings |
+| `VISITOR_COOKIE_SECRET` | Signs the visitor cookie; at least 16 random characters (the plan calls it `SESSION_SECRET`; the code reads `VISITOR_COOKIE_SECRET`). Changing it signs every visitor and staff member out |
+| `REVIEWER_TOKEN` | The secret behind the reviewer link `https://<app>.fly.dev/#r=<token>`; at least 16 characters. The link works once |
+| `STAFF_PASSWORD_HASH` | The staff password's hash, made with `.venv/bin/python -m app.web.staff`; never the password itself |
+| `ALERT_WEBHOOK_URL` | Where alerts are posted (error bursts, failed writes, a failed nightly reset, spend passing $5) |
+
+`DATABASE_PATH` and `OPS_DATABASE_PATH` are ordinary settings in `fly.toml` (both on `/data`), not secrets.
+
+### First setup (once)
+
+1. `scripts/fly apps create <app>` and put the name in `fly.toml` (`app = ...`).
+2. `scripts/fly volumes create meridian_data --region dfw --size 1 --snapshot-retention 7 --yes` (daily snapshots,
+   kept 7 days).
+3. Set the six secrets above.
+4. `scripts/deploy.sh` (below). On the first start the machine copies the seed scheduling database to the empty
+   volume; it never overwrites an existing one.
+5. Open `https://<app>.fly.dev/health`; it answers `{"ok": true}`. Point the free outside uptime monitor at it.
+
+### Deploy
+
+`scripts/deploy.sh` runs the quick test run (`python -m eval.quick_run`, paid, test key) and stops if it fails; then
+`scripts/fly deploy`, `scripts/fly scale count 1 --yes`, and `scripts/fly status --json`, failing unless exactly one
+machine runs. `--skip-quick-run` skips the quick run, only if it has been cut. Fly.io's health check on `/health`
+restarts the machine if it stops answering.
+
+### Roll back a release (bad code, prompt or index)
+
+1. `scripts/fly releases --image` lists the releases, newest first, with each one's image
+   (`registry.fly.io/<app>:deployment-...`). Pick the last good one.
+2. `scripts/fly deploy --image registry.fly.io/<app>:deployment-<id>` releases that image again. Code, prompts and
+   the search index go back together; the volume and the secrets are untouched. (It uses the `fly.toml` in the
+   current folder, so check out the matching commit if `fly.toml` itself changed.)
+3. `scripts/fly scale count 1 --yes`, then `scripts/fly status` shows one machine, and `/health` answers
+   `{"ok": true}`.
+4. Send one knowledge question in the chat and check the reply.
+
+### Restore the volume from a snapshot (damaged data)
+
+Only the scheduling database damaged: the nightly reset (03:00 Austin time) rebuilds it from the seed anyway. To do
+it at once, `scripts/fly ssh console -C "rm /data/scheduling.sqlite"` then `scripts/fly machine restart <machine-id>`;
+the start copies the seed again. The operations database is not touched.
+
+The operations database damaged, or both:
+
+1. `scripts/fly volumes list` gives the volume id (`vol_...`) and `scripts/fly status` the machine id.
+2. `scripts/fly volumes snapshots list <volume-id>` lists the daily snapshots; pick the last one before the damage.
+3. `scripts/fly volumes create meridian_data --snapshot-id <snapshot-id> --region dfw --size 1 --yes` makes a new
+   volume from it (note its new id).
+4. `scripts/fly machine clone <machine-id> --attach-volume <new-volume-id>:/data` starts a machine on the restored
+   volume; then `scripts/fly machine destroy <old-machine-id> --force`.
+5. `scripts/fly status` shows exactly one machine, and `/health` answers `{"ok": true}`. Check that the staff view
+   shows the tickets expected up to the snapshot's time.
+6. Once checked, `scripts/fly volumes destroy <old-volume-id>`, so a later deploy can never attach the damaged
+   volume.
+
+Anything written after the snapshot (bookings, conversations, tickets) is lost; bookings return to the seed at the
+next nightly reset in any case.
+
+### Practice record
+
+The release rollback is practised once before submission (R83). Practised: not yet (record the date, the release
+rolled back to, and how long it took).

@@ -1,0 +1,21 @@
+# The image holds only what the running app reads (R77). Everything is left out first, then each needed path is let
+# back in. Never let in .env (keys, including the test-run key), data/testset, data/split.json (the held-out split),
+# the test-run results (only data/results/final, which the Results tab reads) or the live databases.
+*
+
+!requirements.txt
+!scripts/entrypoint.sh
+!app
+!data/index
+!data/kb_text
+!data/document_list.csv
+!data/results/final
+!call_data/knowledge_base
+!call_data/scheduling_db/meridian_scheduling.sqlite
+!docs/FINDINGS.md
+
+# Left out even inside the folders let in above.
+**/__pycache__
+**/*.pyc
+**/.env
+**/*:Zone.Identifier
