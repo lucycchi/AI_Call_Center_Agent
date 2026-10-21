@@ -28,14 +28,23 @@ class OpsStore:
         self._db.execute("pragma foreign_keys = on")
         self._db.executescript(SCHEMA)
         self._pending = Path(path).with_suffix(".pending.jsonl")  # staff tickets kept while the database failed
+        self.on_write_failure: Callable[[Exception], None] | None = None  # set by Alerts.watch (R76)
         self.retry_pending()
 
     def _now(self) -> str:
         return self._clock().isoformat(timespec="seconds")
 
+    def _failed(self, error: Exception) -> None:
+        if self.on_write_failure:
+            self.on_write_failure(error)
+
     def _write(self, sql: str, params: tuple = ()) -> int:
-        with self._lock:
-            return self._db.execute(sql, params).lastrowid
+        try:
+            with self._lock:
+                return self._db.execute(sql, params).lastrowid
+        except Exception as error:
+            self._failed(error)
+            raise
 
     def _rows(self, sql: str, params: tuple = ()) -> list[dict]:
         return [dict(row) for row in self._db.execute(sql, params).fetchall()]
@@ -85,18 +94,22 @@ class OpsStore:
 
     def log_message(self, conversation_id: str, role: str, text: str, request_id: str | None = None) -> int:
         now = self._now()
-        with self._lock:  # the message and the conversation's last-message time are written together
-            self._db.execute("begin immediate")
-            try:
-                message_id = self._db.execute("insert into messages (conversation_id, role, text_masked, created_at, "
-                                              "request_id) values (?, ?, ?, ?, ?)",
-                                              (conversation_id, role, mask(text), now, request_id)).lastrowid
-                self._db.execute("update conversations set last_message_at = ? where conversation_id = ?",
-                                 (now, conversation_id))
-                self._db.execute("commit")
-            except BaseException:
-                self._db.execute("rollback")
-                raise
+        try:  # the failure alert is sent after the lock is released: recording it takes the lock again
+            with self._lock:  # the message and the conversation's last-message time are written together
+                self._db.execute("begin immediate")
+                try:
+                    message_id = self._db.execute("insert into messages (conversation_id, role, text_masked, "
+                                                  "created_at, request_id) values (?, ?, ?, ?, ?)",
+                                                  (conversation_id, role, mask(text), now, request_id)).lastrowid
+                    self._db.execute("update conversations set last_message_at = ? where conversation_id = ?",
+                                     (now, conversation_id))
+                    self._db.execute("commit")
+                except BaseException:
+                    self._db.execute("rollback")
+                    raise
+        except Exception as error:
+            self._failed(error)
+            raise
         return message_id
 
     def message_text(self, message_id: int) -> str:
@@ -292,3 +305,42 @@ class OpsStore:
     def conversation_messages(self, conversation_id: str) -> list[dict]:
         return self._rows("select message_id, role, text_masked, created_at from messages where conversation_id = ? "
                           "order by message_id", (conversation_id,))
+
+    # -- background jobs: the nightly reset and the log purge (R74, D31) ----------------------------------------
+    def start_job(self, job: str) -> int:
+        return self._write("insert into job_runs (job, started_at) values (?, ?)", (job, self._now()))
+
+    def finish_job(self, run_id: int, result: str) -> None:
+        """finished_at stays empty for a failed run."""
+        self._write("update job_runs set finished_at = ?, result = ? where run_id = ?",
+                    (None if result == "failed" else self._now(), result, run_id))
+
+    def job_runs(self, job: str) -> list[dict]:
+        return self._rows("select * from job_runs where job = ? order by run_id", (job,))
+
+    def purge_before(self, cutoff: str) -> int:
+        """Delete conversations whose last message is before the cutoff, with their messages, sentences, receipts,
+        model calls and events; flagged conversations are kept, and their tickets stay for staff, detached."""
+        old = ("select conversation_id from conversations where last_message_at < ? and not exists (select 1 from "
+               "flags f join messages m using (message_id) where m.conversation_id = conversations.conversation_id)")
+        mine = f"select message_id from messages where conversation_id in ({old})"
+        try:  # as in log_message, the failure alert waits until the lock is released
+            with self._lock:
+                self._db.execute("begin immediate")
+                try:
+                    n = len(self._db.execute(old, (cutoff,)).fetchall())
+                    for table in ("sentences", "receipts", "model_calls", "ticket_messages"):
+                        self._db.execute(f"delete from {table} where message_id in ({mine})", (cutoff,))
+                    self._db.execute(f"update tickets set conversation_id = null where conversation_id in ({old})",
+                                     (cutoff,))
+                    self._db.execute(f"delete from events where conversation_id in ({old})", (cutoff,))
+                    self._db.execute(f"delete from messages where conversation_id in ({old})", (cutoff,))
+                    self._db.execute(f"delete from conversations where conversation_id in ({old})", (cutoff,))
+                    self._db.execute("commit")
+                except BaseException:
+                    self._db.execute("rollback")
+                    raise
+        except Exception as error:
+            self._failed(error)
+            raise
+        return n

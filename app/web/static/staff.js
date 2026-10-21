@@ -91,7 +91,8 @@
       : Math.round(n.live_containment * 100) + "% (" + n.live_containment_label + ")";
     [["Conversations", n.conversations], ["Handoffs", n.handoffs], ["Errors", n.errors],
      ["Median reply", n.median_reply_ms === null ? "none yet" : (n.median_reply_ms / 1000).toFixed(1) + " s"],
-     ["Live containment", containment]].forEach(function (pair) {
+     ["Live containment", containment]].concat(n.nightly_reset ? [["Nightly reset", n.nightly_reset]] : [])
+    .forEach(function (pair) {
       var box = el("div"); box.appendChild(el("dt", null, pair[0])); box.appendChild(el("dd", null, String(pair[1])));
       numbers.appendChild(box);
     });
