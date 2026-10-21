@@ -510,7 +510,7 @@ The author can open the public site, chat, open the Staff view beside it, see th
 - [x] Task 22: spending budgets, reviewer link and instruction resistance. Requirements: R61, R63, R85
 - [x] Task 23: Staff view, staff password, receipts and flagging. Requirements: R70, R71, R72, R75
 - [x] Task 24: Results tab. Requirements: R67, R68, R69
-- [ ] Task 25: nightly reset gate, log purge, alerts, health and uptime monitor. Requirements: R74, R76, R86
+- [x] Task 25: nightly reset gate, log purge, alerts, health and uptime monitor. Requirements: R74, R76, R86
 - [ ] Task 26: deploy to Fly.io with the rollback runbook. Requirements: R77, R83
 
 ### Task 21: Chat page, message requests, sentence stream and visitor cookie
@@ -600,16 +600,16 @@ The author can open the public site, chat, open the Staff view beside it, see th
 **Interfaces:**
 - Produces: `ResetGate` (shared for messages, exclusive for the reset); `nightly_reset(sched_db, seed_db, store) -> str`; `next_reset_time(real_now) -> datetime`; `purge(store, older_than_days=30)`; `Alerts.send(kind, detail)` posting to `ALERT_WEBHOOK_URL` with a 5-second timeout; `GET /health`.
 
-- [ ] **Step 1: Write the failing tests.** Each group is its own cycle:
+- [x] **Step 1: Write the failing tests.** Each group is its own cycle:
   - **Reset:** after a booking on a copy, `nightly_reset` restores every slot and appointment to the seed, empties `agent_confirmations`, records a job run `ok`, and leaves the operations database untouched; a second call while one is running returns `"already running"`; `next_reset_time` for 2026-10-20 22:00 Austin is 2026-10-21 03:00 Austin.
   - **Gate:** a message that starts while the reset holds the gate waits and then sees the restored data; startup runs a reset if the last success is before the most recent 03:00; a reset failing twice records `failed`, sends one alert and shows "nightly reset failed" in the live numbers.
   - **Alerts:** three errors in 10 minutes send an error alert, two do not; 3 errors in 12 messages over 10 minutes also send one; a failed database write sends a write-failure alert.
   - **Purge:** a 31-day-old conversation is deleted with its messages, receipts and model calls; a flagged one is kept.
   - **Health:** `GET /health` returns 200 `{"ok": true}` when both databases open, and 503 when the scheduling file is missing.
-- [ ] **Step 2: Run** `python -m pytest tests/ops/test_jobs.py -v`. Expected: FAIL.
-- [ ] **Step 3: Implement.** After deployment, set up the outside uptime monitor: UptimeRobot's free plan, an HTTP check of `/health` every 5 minutes, alerts to the author's email; record the setup in the README; verify once by stopping the machine and confirming the alert arrives.
-- [ ] **Step 4: Run** the tests. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: reset gate, nightly reset, purge, alerts and health`.
+- [x] **Step 2: Run** `python -m pytest tests/ops/test_jobs.py -v`. Expected: FAIL.
+- [x] **Step 3: Implement.** (Code done; the uptime monitor below waits for the Task 26 deploy.) After deployment, set up the outside uptime monitor: UptimeRobot's free plan, an HTTP check of `/health` every 5 minutes, alerts to the author's email; record the setup in the README; verify once by stopping the machine and confirming the alert arrives.
+- [x] **Step 4: Run** the tests. Expected: PASS.
+- [x] **Step 5: Commit** `feat: reset gate, nightly reset, purge, alerts and health`.
 
 ### Task 26: Deploy to Fly.io with the rollback runbook
 
