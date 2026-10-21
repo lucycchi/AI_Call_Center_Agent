@@ -48,21 +48,31 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <main>
 <header>
 <h1>AI Call Center Agent</h1>
-<p class="stage">Current stage: Milestone gate, milestone 4 of 6 (needs your approval before moving on)</p>
+<p class="stage">Current stage: Milestone gate, milestone 5 of 6 (needs your approval before moving on)</p>
 </header>
 <section id="summary">
 <h2>Summary</h2>
 <p><strong>The problem.</strong> Meridian Home Comfort, a fictional heating, cooling and plumbing company in the Austin area, cannot keep up with its calls. The challenge (<code>docs/PRD.md</code>) is to build, in four working days, a chat agent at a public web address that answers routine calls from the company's documents, reads callers' accounts, books and changes appointments in a provided SQLite database, hands everything else to a human with full context, and proves its performance with numbers measured on held-out data.</p>
 <p><strong>The approach.</strong> One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.</p>
-<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestones 1 to 4 of 6 are built (foundations, search and test set, agent core, evaluation harness): configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results; then the agent core: identification and account lookups, slot eligibility and booking transactions, the safety check, the operations store, the knowledge, account, scheduling and handoff flows, the router and the engine pipeline, with a terminal chat (<code>python -m app.cli</code>); then the evaluation harness: the simulated-caller test run graded by Codex and database checks, the quick test run, the threshold curve, the adversarial runner, the grader check and the agent freeze. Milestones 5 (website and deployment) and 6 (final measurement and deliverables) are planned.</p>
+<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestones 1 to 4 of 6 are built (foundations, search and test set, agent core, evaluation harness): configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results; then the agent core: identification and account lookups, slot eligibility and booking transactions, the safety check, the operations store, the knowledge, account, scheduling and handoff flows, the router and the engine pipeline, with a terminal chat (<code>python -m app.cli</code>); then the evaluation harness: the simulated-caller test run graded by Codex and database checks, the quick test run, the threshold curve, the adversarial runner, the grader check and the agent freeze. Milestone 5 (website and deployment) is built and deployed on Fly.io: the chat page, sentence stream and visitor cookie, the spending budgets and reviewer link, the Staff view with receipts and flagging, the Results tab, the nightly reset, log purge, alerts and health check, and the deployment with its rollback runbook. Milestone 6 (final measurement and deliverables) is built: the one held-out measurement was run on the frozen agent (freeze hash <code>5b8f6899</code>) and its numbers are published in <code>data/results/final/summary.json</code>, on the Results tab and in the README, with the optional consistency runs, the results by call reason and the README.</p>
+<p>The live build is not exactly the measured agent. After the measurement, the author allowed fixes to the live demo that the frozen agent did not have, with the held-out numbers left as measured (live fixes after the measurement (D51)); the agent-behaviour files therefore no longer match the freeze hash, so the final-run commands now refuse to run. The live fixes are:</p>
+<ul>
+<li>after any safety reply, the agent never books, reschedules or offers slots in that conversation, and points to the emergency ticket instead (a "yes" straight after the safety reply books nothing);</li>
+<li>a question that only asks today's date or time is answered with the demo's fixed date and time ("For this demo, today is Friday 16 October 2026 ..."), except while a booking offer or read-back is open, where "what time?" asks about the offer;</li>
+<li>a caller who gives their details in the same message as an emergency, or with a "yes" after the safety reply, is identified then, so the priority ticket carries their details and they are not asked again;</li>
+<li>the code-only money pre-check sends to the model check any sentence that names a plan with a benefit outside that plan's published list (the Plus-only water heater flush and whole-home plumbing inspection said of Standard, or "including plumbing" after the repair discount), or names both plans before one price;</li>
+<li>a promise that names the open ticket passes the follow-up rule only when it restates that ticket's own promise ("within one business day" or "as a priority"); any call or other time ("within 10 minutes about Ticket #3") is blocked;</li>
+<li>a model call is refused before it is made once the visitor's budget is spent, and a writer stream closed early (a blocked sentence, the deadline) still reports what it used;</li>
+<li>in the web layer: safety comes before the message limits; refused and blank messages write nothing; an accepted message is saved at once; every fallback reply opens an error ticket; a timed-out turn never acts later; the staff form token is never masked; the staff panel polls only while open; and only the final summaries ship in the image (each described below).</li>
+</ul>
 </section>
 <h3>Key decisions</h3>
 <ul>
-<li>Should a knowledge answer fail for leaving out reference facts the caller&#x27;s question did not ask about? The grading rubric (eval/grader_prompt.md) adds that a reference may cover more than one question asked, since each was written for every caller with that kind of question, and facts the question did not ask about do not fail an answer that leaves them out. The references themselves are unchanged and frozen. Guessing still fails, and a required disclaimer is still a key fact.</li>
-<li>The grader saw the held-out requests and reference answers once by accident during testing: keep the held-out set or pick a new one? Keep the frozen held-out set (D42) and record the exposure here; the held-out guard now refuses a held-out run without the final flag and matching hashes.</li>
 <li>What should the agent do with a message in a language other than English? The agent replies in English that it can only help in English and that a team member will follow up, and opens a handoff ticket; the other-language case (a20) checks the handoff.</li>
 <li>One answer graded differently between two runs moved the threshold rule&#x27;s pick from 0.25 to 0.45: how should the threshold be chosen? The threshold script applies the same rule (0.25 floor, a wrong confident answer costs 2.5) over every graded combined-search run of the current agent, each answer counting once; each graded run is kept under the agent hash it measured.</li>
 <li>Should the quick run fail outright when a booking was missed because the simulated caller never chose a slot? The booking check records a booking fault for a wrong database change, an unexpected write, or a confirmed read-back left unbooked; fewer bookings than expected with none wrong and no confirmed read-back is a missed request, failing that conversation but not the quick run outright.</li>
+<li>How should the deployed site protect the API spend, given that every chat message spends the key? The site uses its own Anthropic key with a monthly limit set in the console. The public budget is set to $0 on Fly, so anyone can view the chat page, Results tab and test customers, but a public message gets a plain handoff with no model call. One reusable reviewer link, given with the submission, starts a 7-day reviewer session in any browser that opens it; all reviewer sessions share the $3-a-day reserve. This departs from the reviewer-link rule (R85), which said the token is used once.</li>
+<li>After the held-out measurement, may the live demo get fixes the measured agent did not have? The live build gets two changes after the measurement: after any safety reply the agent never books, reschedules or offers slots in that conversation and points to the emergency ticket; and a question about today&#x27;s date or time is answered as the demo&#x27;s fixed date. The held-out numbers stay as measured on 5b8f6899, and the README and Results tab say the live build differs.</li>
 </ul>
 <section id="progress">
 <h2>Progress</h2>
@@ -98,19 +108,19 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 19: Codex grader, grader check, answer measures and adversarial runs. Requirements: R18, R19, R20, R31, R57</span></li>
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 20: working-set rehearsal, threshold curve and quick test run. Requirements: R21, R22, R32</span></li>
 </ul>
-<h3>Milestone 5: Website and deployment (0 of 6 done)</h3>
+<h3>Milestone 5: Website and deployment (6 of 6 done)</h3>
 <ul>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 21: chat page, message requests, sentence stream and visitor cookie. Requirements: R62, R64, R65, R66</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 22: spending budgets, reviewer link and instruction resistance. Requirements: R61, R63, R85</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 23: Staff view, staff password, receipts and flagging. Requirements: R70, R71, R72, R75</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 24: Results tab. Requirements: R67, R68, R69</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 25: nightly reset gate, log purge, alerts, health and uptime monitor. Requirements: R74, R76, R86</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 26: deploy to Fly.io with the rollback runbook. Requirements: R77, R83</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 21: chat page, message requests, sentence stream and visitor cookie. Requirements: R62, R64, R65, R66</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 22: spending budgets, reviewer link and instruction resistance. Requirements: R61, R63, R85</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 23: Staff view, staff password, receipts and flagging. Requirements: R70, R71, R72, R75</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 24: Results tab. Requirements: R67, R68, R69</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 25: nightly reset gate, log purge, alerts, health and uptime monitor. Requirements: R74, R76, R86</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 26: deploy to Fly.io with the rollback runbook. Requirements: R77, R83</span></li>
 </ul>
-<h3>Milestone 6: Final measurement and deliverables (0 of 2 done)</h3>
+<h3>Milestone 6: Final measurement and deliverables (2 of 2 done)</h3>
 <ul>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 27: final held-out run, summary and optional consistency runs. Requirements: R23</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 28: README, video outline and repository contents. Requirements: R78, R79, R80</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 27: final held-out run, summary and optional consistency runs. Requirements: R23</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 28: README, video outline and repository contents. Requirements: R78, R79, R80</span></li>
 </ul>
 </section>
 <section id="requirements">
@@ -244,7 +254,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>R80: The repository contains the code, the document list, the conflict register, the test set with caller cards and reference answers, the labels, the grading prompt and verdicts, and the evaluation results, with no keys committed.</li>
 <li>R83: The README carries a one-page rollback runbook: how to roll back a Fly.io release (prompts and the search index ship inside the release) and how to restore the disk from Fly's daily snapshot. The runbook is practised once before submission (retention, masking and rollback (D31)).</li>
 <li>R84: Each read-back before a booking, cancellation or reschedule carries a confirmation identifier; a repeated or retried confirmation with the same identifier returns the first result and never changes the database again (booking, reviewer-link and downtime protections (D34)).</li>
-<li>R85: The secret reviewer link's token is used once to start a signed reviewer session with the reserve budget, after which the browser is redirected to the plain address; the token is never written to logs.</li>
+<li>R85: The secret reviewer link's token is used once to start a signed reviewer session with the reserve budget, after which the browser is redirected to the plain address; the token is never written to logs. <em>(Changed by reviewer-only chat (D50): one reusable link starts a 7-day reviewer session in any browser, and the page clears the token from the address instead of redirecting.)</em></li>
 <li>R86: A free outside uptime monitor checks the health endpoint and alerts the author when the site stops answering.</li>
 </ul>
 <h3>4. Success targets</h3>
@@ -338,9 +348,9 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <p><em>The browser talks only to the web app; the app owns both databases and calls the AI services; the laptop toolkit prepares data and grades results offline; an outside monitor alerts the author if the app stops answering.</em></p>
 <h3>2. Main parts</h3>
 <pre class="mermaid">flowchart TB
-    WEB["1. Web layer: message request, sentence stream, pages"] --&gt;|"message, conversation, visitor"| ENG["Conversation engine"]
+    WEB["1. Web layer: message request, message limits, sentence stream, pages"] --&gt;|"message, conversation, visitor"| ENG["Conversation engine"]
     ENG --&gt;|"2. every message first"| SAFE["Safety check, in code"]
-    ENG --&gt;|"3. if not an emergency"| GUARDS["Spending and rate limits"]
+    ENG --&gt;|"3. if not an emergency"| GUARDS["Guard: message limit hit, then spending budgets"]
     ENG --&gt;|"4. every remaining message"| RTR["Router, Haiku 5.5"]
     ENG --&gt;|"5. active or chosen flow"| FLOWS["Flows: knowledge, account, scheduling, handoff"]
     FLOWS --&gt;|"question"| KB["Knowledge search"]
@@ -351,28 +361,29 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     ENG --&gt;|"8. events, model calls, tickets"| OPS["Operations store, alerts, jobs"]</pre>
 <p><em>Each message passes the numbered steps in order; the two AI models only choose a route and write wording, and code decides everything else.</em></p>
 <ol>
-<li>The browser sends each message as an ordinary request; the web layer checks that the conversation belongs to the signed visitor and opens a stream for that message's sentences.</li>
-<li>The safety check runs first on every message, even mid-flow and even for a visitor over budget; an emergency gets its fixed reply, which costs nothing.</li>
-<li>Only then are the spending and rate limits applied.</li>
-<li>Some messages are answered in code without routing. A goodbye ("no, that's it", or "that's all" with nothing else and no question) ends the chat, even with a flow open (at a read-back only "bye" does). A filler line ("hold on", "you cut out") with nothing else in it gets a repeat of the open offer or read-back, or "No problem, take your time." With nothing in progress, a bare acknowledgement ("ok", "thanks") gets a plain "anything else?". A caller who gives their details on any route is identified then, and an open ticket gets the caller's name. The router runs on every message that reaches it. It splits a message into its requests, each with a route, a detail (such as balance, book or dispute) and a service type. With no flow active, the routes pick the flows; with a flow active, its result is used only to detect a clear change of topic, which includes a different scheduling action (booking, then cancelling another appointment) only when the message uses that action's verb ("cancel", "move" or "change", "book"). A code backstop (<code>app/core/language.py</code>) hands off a message in another language, with the English note "I can only help in English" (reply to another language (D47)), and hands off nonsense when no flow is open. An unclear, calm message of up to 15 words that asks nothing ("okay, good to know") gets "anything else?" instead of a ticket (or is added to the open ticket); a request for a person is still handed off.</li>
-<li>The active or chosen flows run their code-owned steps. Account and scheduling requests wait together for the caller to be identified, then run in turn; a message naming a different customer switches the conversation to that account and drops the previous customer's booking in progress. Every handoff in one message goes into one ticket; a later handoff in the same conversation joins the open ticket, adding its reason tag and, for a dispute or billing review, the invoice notes. A handoff message asks an unidentified caller for their name and account number, phone or address. "Sign me up" or "add it" after the plan was discussed is a request to join, an action the agent cannot take. A booking request that claims a warranty also gets the coverage answer. The router decides requests to act on money or membership; a code backstop catches only requests that are never questions ("send me a payment link", "set up autopay", "cancel my membership", "I want to pay my bill") on every route except a handoff (R48, D43).</li>
+<li>The browser sends each message as an ordinary request; the web layer checks that the conversation belongs to the signed visitor and opens a stream for that message's sentences. The same message id sent twice, even across a restart, gets one reply. A blank message gets "Could you tell me a bit more?" with no engine call, no limit counted and nothing written. Text past 2,000 characters is cut before the engine sees it, and the reply starts by saying so. The web layer counts the message against the message limits as it arrives (section 7). A message over a limit gets the limit message straight away, with nothing written, only when the agent's own safety check, run on the same history, finds nothing in it; one that reports a danger goes on to the agent with the limit it hit. Over the limits, an emergency reaches the agent and opens its own ticket only a few times a day per visitor and per network block (a /24 for IPv4, a /64 for IPv6), so rotating addresses does not help; a visitor past its own allowance gets the fixed safety advice from memory, with no ticket; a different visitor in a used-up block, or anyone past a site-wide ceiling of 100 a day, still gets the advice and the report is added to one merged emergency ticket for the day (up to 50 reports, the rest counted), with one alert to staff, so no other caller's report is dropped. IPv4 addresses written in IPv6 form count by their IPv4 block, and the day's merged ticket is remembered only once it exists (<code>app/web/limits.py</code> <code>allow_safety</code>). An engine run that stops without a done event still ends with the plain error message and no ticket; the web layer's fallbacks cover the stream timeout, a restart and an engine that raises. An accepted message is saved at once (an empty placeholder caller message and an "accepted" event holding its masked text), before it is handed to a reply thread, so a restart in between replays it as an unfinished reply.</li>
+<li>The safety check runs first on every message, even mid-flow, even over a message limit and even for a visitor over budget; an emergency gets its fixed reply, which costs nothing.</li>
+<li>Only then does the pipeline ask its guard, which refuses the message if it hit a message limit, or else if a spending budget is spent (section 4.2); a refusal gets a plain limit message. Within the turn, every model call is checked against the budget again just before it is made, so a turn that crosses the cap makes no further calls.</li>
+<li>Some messages are answered in code without routing. A question that only asks today's date or time gets the demo's fixed date and time, unless a booking offer or read-back is open. After a safety reply, a short "yes" (to a booking the safety report abandoned) books nothing: it gets a fixed reply pointing to the emergency ticket and is added to it. A goodbye ("no, that's it", or "that's all" with nothing else and no question) ends the chat, even with a flow open (at a read-back only "bye" does). A filler line ("hold on", "you cut out") with nothing else in it gets a repeat of the open offer or read-back, or "No problem, take your time." With nothing in progress, a bare acknowledgement ("ok", "thanks") gets a plain "anything else?". A caller who gives their details on any route is identified then, and an open ticket gets the caller's name. The router runs on every message that reaches it. It splits a message into its requests, each with a route, a detail (such as balance, book or dispute) and a service type. With no flow active, the routes pick the flows; with a flow active, its result is used only to detect a clear change of topic, which includes a different scheduling action (booking, then cancelling another appointment) only when the message uses that action's verb ("cancel", "move" or "change", "book"). A code backstop (<code>app/core/language.py</code>) hands off a message in another language, with the English note "I can only help in English" (reply to another language (D47)), and hands off nonsense when no flow is open. An unclear, calm message of up to 15 words that asks nothing ("okay, good to know") gets "anything else?" instead of a ticket (or is added to the open ticket); a request for a person is still handed off.</li>
+<li>The active or chosen flows run their code-owned steps. Account and scheduling requests wait together for the caller to be identified, then run in turn; a message naming a different customer switches the conversation to that account and drops the previous customer's booking in progress. Every handoff in one message goes into one ticket; a later handoff in the same conversation joins the open ticket, adding its reason tag and, for a dispute or billing review, the invoice notes. A handoff message asks an unidentified caller for their name and account number, phone or address. "Sign me up" or "add it" after the plan was discussed is a request to join, an action the agent cannot take. A booking request that claims a warranty also gets the coverage answer. The router decides requests to act on money or membership; a code backstop catches only requests that are never questions ("send me a payment link", "set up autopay", "cancel my membership", "I want to pay my bill") on every route except a handoff (R48, D43). A question about the service address, or a message saying it changed, is answered by the account flow in fixed text whatever the router called it: visits go to the service address on the account, and the agent never reads street addresses aloud; a changed address (or a street that differs from the one on file, compared but never said) is handed to a team member with the "address change" tag. Once a safety reply has been given in the conversation, any booking, rescheduling or slot offer is dropped from the message, with a fixed reply pointing to the emergency ticket; other requests still run.</li>
 <li>The flow hands the writer the facts and a reply type.</li>
 <li>Each sentence is checked before release. If a sentence fails, generation stops, the sentences already shown stay, the rest becomes a handoff message with a ticket, and a "blocked sentence" event is logged. Once the conversation has mentioned a burning smell, breaker-reset advice is blocked too.</li>
 <li>Every step records events and model calls in the operations store. The writer always writes in English. One 15-second deadline covers the whole message: the router and writer calls get only the time left, and each booking change checks it just before committing, so nothing is committed after the caller has been told it was passed on.</li>
 </ol>
-<p>The engine guarantees exactly one done event, always last. If the pipeline raises (for example, the operations database is unavailable, so no ticket can be saved), the engine releases a plain message asking the caller to phone the office, logs the failure to the server log and ends with an "error" done event; if the pipeline stops without a done event, it releases a plain handoff message and ends with "incomplete". A message for a conversation that belongs to another visitor gets a plain refusal ("forbidden"), and one for a closed or abandoned conversation asks the caller to start a new one.</p>
+<p>The engine guarantees exactly one done event, always last. If the pipeline raises (for example, the operations database is unavailable, so no ticket can be saved), the engine releases a plain message asking the caller to phone the office, logs the failure to the server log and ends with an "error" done event; if the pipeline stops without a done event, it releases a plain handoff message and ends with "incomplete" (the engine opens no ticket on this path). A message for a conversation that belongs to another visitor gets a plain refusal ("forbidden"), and one for a closed or abandoned conversation asks the caller to start a new one, unless it reports a danger, which reopens the conversation for the safety reply.</p>
+<p>The web layer has its own fallbacks around the engine, and each opens one "error" handoff ticket holding the caller's message (and the caller, if identified), logs an "error" event and shows "I couldn't finish that just now, so I'm passing it to a team member to follow up" (or, if the ticket cannot be saved, the phone-the-office message). They cover: the stream giving up after 40 seconds; a reply left unfinished by a restart, found when the browser reconnects; and the engine itself raising. Replies run in a pool of four threads, one message at a time per conversation, each holding the reset gate shared. A turn the stream has given up on never starts, and a turn starts only while the whole 15-second message deadline still fits before the stream would give up, so nothing it does lands after the caller was told it was passed on.</p>
 <table>
 <thead><tr><th>Part</th><th>What it does</th><th>Where its rules come from</th></tr></thead>
 <tbody>
-<tr><td>Web layer</td><td>Serves the Chat tab, Results tab and Staff view; takes each message as a request and streams its checked sentences back; holds the visitor cookie; checks conversation ownership on every request</td><td>Web pages (R64 to R72)</td></tr>
+<tr><td>Web layer</td><td>Serves the Chat tab, Results tab and Staff view; takes each message as a request and streams its checked sentences back; holds the visitor cookie; checks conversation ownership on every request; counts the message limits; opens an error ticket for every fallback reply</td><td>Web pages (R64 to R72), guards (R62)</td></tr>
 <tr><td>Conversation engine</td><td>Keeps conversation state, runs the pipeline, keeps a flow active across follow-up messages</td><td>Conversation state (R40), conversation lifetime (R82)</td></tr>
 <tr><td>Safety check</td><td>Matches emergency patterns in code before anything else and returns fixed replies</td><td>Safety classes (R34 to R37)</td></tr>
 <tr><td>Router</td><td>Haiku 5.5 returns a route and "clear" or "unclear"</td><td>Router (R38, R39), routing model (D25)</td></tr>
 <tr><td>Knowledge search</td><td>Combined keyword and meaning-based search over current documents: the top result of each list is always kept (keyword search's only when some word matches), then the top 10 of each list are merged by reciprocal-rank fusion; five results returned (combined search keeps each list's top result (D41))</td><td>Document search (R24 to R32)</td></tr>
 <tr><td>Scheduling and account store</td><td>Read-only lookups and booking transactions on the scheduling database</td><td>Booking rules (R45 to R56), data rules (D29)</td></tr>
 <tr><td>Reply writer</td><td>Sonnet 5.5 turns facts chosen by code into wording, as structured reply types</td><td>Pricing and internal-text rules (R42, R43)</td></tr>
-<tr><td>Reply checks</td><td>Checks every sentence before release: in code, firm totals, waitlist promises, breaker advice after a burning smell, internal text (eight words in a row from an internal document) and promises that a team member will follow up (an offer to pass it on is allowed); then every sentence that mentions money goes to a Haiku 5.5 check against the published money terms and the sentence before it, failing closed (money promises checked by a model (D43)); blocks are logged and counted</td><td>Sentence release (R60)</td></tr>
-<tr><td>Spending and rate limits</td><td>Per-visitor, site-wide and reviewer-reserve budgets; message limits</td><td>Guards (R61, R62), spending budgets with a reviewer reserve (D30)</td></tr>
+<tr><td>Reply checks</td><td>Checks every sentence before release: in code, firm totals, waitlist promises, breaker advice after a burning smell, internal text (eight words in a row from an internal document) and promises that a team member will follow up (an offer to pass it on is allowed, and so is a sentence naming the open ticket that only restates its own promise, "within one business day" or "as a priority"); then every sentence that mentions money goes to a Haiku 5.5 check against the published money terms and the sentence before it, failing closed (money promises checked by a model (D43)); blocks are logged and counted</td><td>Sentence release (R60)</td></tr>
+<tr><td>Spending and message limits</td><td>Per-visitor, site-wide and reviewer-reserve budgets, checked by the pipeline's guard after safety and again before each model call (<code>app/ops/spend.py</code>); message limits per visitor, per address and site-wide, counted in memory by the web layer (<code>app/web/limits.py</code>)</td><td>Guards (R61, R62), spending budgets with a reviewer reserve (D30), reviewer-only chat (D50)</td></tr>
 <tr><td>Operations store</td><td>Logs, tickets, receipts, metrics, alerts, nightly reset, log purge</td><td>Monitoring and operations (R73 to R77), retention (D31)</td></tr>
 </tbody>
 </table>
@@ -382,7 +393,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tbody>
 <tr><td>Language</td><td>Python 3.12</td><td>Strong AI and data libraries; the author's choice.</td></tr>
 <tr><td>Web framework</td><td>FastAPI with one worker process</td><td>Simple, async, built-in support for streaming responses. One worker keeps the in-app scheduler and its lock simple.</td></tr>
-<tr><td>Message and streaming</td><td>Each caller message is an ordinary request carrying the conversation id and a message id; the engine yields typed events (one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions); each released sentence is saved, and the server-sent-event stream for that message id replays saved sentences on reconnect; a message left unfinished by a restart becomes a handoff</td><td>The browser sends with a normal request and only needs to receive sentences as they are released; simpler than a two-way socket.</td></tr>
+<tr><td>Message and streaming</td><td>Each caller message is an ordinary request carrying the conversation id and a message id; the engine yields typed events (one per checked sentence, then a done event with route, ticket, receipt, outcome and database actions); each released sentence is saved, and the server-sent-event stream for that message id replays saved sentences on reconnect; a message left unfinished by a restart (even one accepted but not yet started) becomes a handoff with an error ticket</td><td>The browser sends with a normal request and only needs to receive sentences as they are released; simpler than a two-way socket.</td></tr>
 <tr><td>Pages</td><td>Server-rendered HTML with a little plain JavaScript</td><td>Three small pages; no front-end build step to maintain.</td></tr>
 <tr><td>Databases</td><td>SQLite, two files, write-ahead logging mode</td><td>The provided database is SQLite; write-ahead logging lets reads continue during writes.</td></tr>
 <tr><td>Search index</td><td>Built offline, shipped in each release as files (chunks and embeddings); the keyword index is rebuilt from the chunks at startup</td><td>The customer-facing documents are under 3,000 tokens, so the index is tiny; shipping it in the release makes rollback restore it too.</td></tr>
@@ -401,7 +412,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     CUSTOMERS ||--o{ INVOICES : "is billed"
     TECHNICIANS ||--o{ APPOINTMENT_SLOTS : "works"
     APPOINTMENT_SLOTS ||--o{ APPOINTMENTS : "is taken by"
-    APPOINTMENTS ||--o| INVOICES : "produces"
+    APPOINTMENTS o|--o{ INVOICES : "may appear on"
     CUSTOMERS {
         TEXT customer_id PK "account number, e.g. MHC-10001"
         TEXT name "full name"
@@ -455,7 +466,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT line_items "list of description and cents pairs"
     }</pre>
 <p><em>The five provided tables, plus the agent's confirmations table: customers book appointments in technicians' slots and receive invoices; each booking change stores its first result under its confirmation id.</em></p>
-<p>How the tables link, in words: each appointment belongs to exactly one customer and takes exactly one slot; each slot belongs to exactly one technician and may have several appointments over time (cancelled ones stay as history) but at most one with status scheduled, which the booking code enforces inside its transaction because the provided database has no such rule; each invoice belongs to exactly one customer and may refer to one appointment. The agent writes only to <code>appointment_slots.status</code>, <code>appointments</code>, and one small table it adds, <code>agent_confirmations</code> (confirmation id, result, time), which is written in the same transaction as each booking change so a repeated "yes" can never book twice; the provided tables are untouched and the nightly reset recreates <code>agent_confirmations</code> empty (architecture refinements (D36)). It never writes customers or invoices.</p>
+<p>How the tables link, in words: each appointment belongs to exactly one customer and takes exactly one slot; each slot belongs to exactly one technician and may have several appointments over time (cancelled ones stay as history) but at most one with status scheduled, which the booking code enforces inside its transaction because the provided database has no such rule; each invoice belongs to exactly one customer and may refer to one appointment (its appointment id may be empty, and nothing stops two invoices naming the same appointment). The agent writes only to <code>appointment_slots.status</code>, <code>appointments</code>, and one small table it adds, <code>agent_confirmations</code> (confirmation id, result, time), which is written in the same transaction as each booking change so a repeated "yes" can never book twice; the provided tables are untouched and the nightly reset recreates <code>agent_confirmations</code> empty (architecture refinements (D36)). It never writes customers or invoices.</p>
 <p>One made-up example row per table:</p>
 <table>
 <thead><tr><th>Table</th><th>Example row</th></tr></thead>
@@ -484,7 +495,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT visitor_id PK "random id held in the signed cookie"
         TEXT kind "public or reviewer"
         TEXT first_seen "when first seen"
-        TEXT client_address "address from Fly, rate-limit backstop"
+        TEXT client_address "never written; the address limit is kept in memory"
     }
     CONVERSATIONS {
         TEXT conversation_id PK "random id, one per browser tab"
@@ -529,7 +540,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT passages "dated sources used, as JSON text"
         TEXT excluded "stale documents left out"
         TEXT db_action "lookup or transaction done"
-        TEXT outcome_label "engine outcome: answered, handed_off, declined, redirect, safety, limit, ended"
+        TEXT outcome_label "plain label: supported by documents, supported by account records, answered, handoff required, not enough evidence, redirected, conversation ended"
     }
     TICKETS {
         INTEGER ticket_id PK "ticket number shown to the caller"
@@ -540,11 +551,11 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT tried "what the agent did"
         TEXT constraints "emergency, disputed fee, gap"
         TEXT mood "caller's mood"
-        TEXT reason_tag "dispute, emergency, burning smell, late technician, complaint, commercial, other language, action gap, earlier slot, decline, billing review, warranty review, not identified, new customer, not enough evidence, blocked reply, unclear, error, other"
+        TEXT reason_tag "dispute, emergency, burning smell, late technician, complaint, commercial, other language, action gap, earlier slot, decline, billing review, warranty review, not identified, new customer, not enough evidence, blocked reply, address change, unclear, error, other"
         INTEGER priority "2 emergency, 1 normal, 0 low"
-        TEXT status "open or closed"
+        TEXT status "always open in this demo"
         TEXT created_at "real time created"
-        TEXT closed_at "real time closed, empty if open"
+        TEXT closed_at "always empty: no route closes a ticket"
     }
     FLAGS {
         INTEGER flag_id PK "whole number, given automatically"
@@ -557,10 +568,10 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <table>
 <thead><tr><th>Table</th><th>Example row</th></tr></thead>
 <tbody>
-<tr><td>visitors</td><td>v_8f3a · reviewer · 2026-10-20T14:02 · 203.0.113.7</td></tr>
+<tr><td>visitors</td><td>v_8f3a · reviewer · 2026-10-20T14:02 · empty</td></tr>
 <tr><td>conversations</td><td>c_91d2 · v_8f3a · MHC-10002 · empty · {} · open · 2026-10-20T14:02 · 2026-10-20T14:09 · empty</td></tr>
 <tr><td>messages</td><td>5012 · c_91d2 · agent · "Your open balance is $478.00, due 31 October." · 2026-10-20T14:09 · m_77a · 1840 · 3200 · 3900</td></tr>
-<tr><td>receipts</td><td>5012 · clear · account question, clear · [] · [] · invoice lookup MHC-10002 · supported</td></tr>
+<tr><td>receipts</td><td>5012 · clear · account, clear · [] · [] · invoice lookup MHC-10002 · supported by account records</td></tr>
 <tr><td>tickets</td><td>12 · c_91d2 · 87 · Omar Patel, MHC-10002 · disputes after-hours fee · read invoice lines · disputed fee $144 · frustrated · dispute · 1 · open · 2026-10-20T14:10 · empty</td></tr>
 <tr><td>flags</td><td>3 · 5012 · "Should have mentioned due date earlier" · 2026-10-20T15:30</td></tr>
 </tbody>
@@ -571,13 +582,13 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     SPEND {
         INTEGER spend_id PK "whole number, given automatically"
         TEXT visitor_id FK "who spent it"
-        TEXT pool "public, reviewer or site"
+        TEXT pool "public or reviewer; public rows together make the site total"
         TEXT day "Austin calendar day, real time"
         INTEGER microdollars "cost of one AI call"
     }
     ALERTS {
         INTEGER alert_id PK "whole number, given automatically"
-        TEXT kind "downtime, errors, write failure, reset, spend"
+        TEXT kind "errors, write failure, reset or spend"
         TEXT detail "what happened"
         TEXT sent_at "when the webhook was called"
     }
@@ -603,12 +614,13 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     EVENTS {
         INTEGER event_id PK "whole number, given automatically"
         TEXT conversation_id "conversation, may be empty"
-        TEXT kind "error, blocked sentence, write failure, limit hit"
+        TEXT kind "error, blocked sentence, withheld sentence, write failure, booking, accepted, reply end, staff session ended"
         TEXT detail "what happened"
         TEXT created_at "real time it happened"
     }</pre>
 <p><em>Spending is recorded per AI call and summed per pool and day; model calls and events give the audit trail and the error alerts; confirmations live in the scheduling database beside the bookings they protect.</em></p>
-<p>How they link, in words: each spending row belongs to one visitor (site-level rows use a fixed visitor id); each model call may point at the reply it served; events name their conversation; alerts and job runs stand alone. Silent billing reviews and warranty-review notes are ordinary low-priority tickets, not a separate table. Rate-limit counts are kept in memory and rebuilt from the messages table after a restart.</p>
+<p>How they link, in words: each spending row belongs to one visitor and one pool: "reviewer" for a visitor who used the reviewer link, otherwise "public"; there are no site rows, since the site-wide budget is the sum of the day's public rows. Each model call may point at the reply it served; events name their conversation; alerts and job runs stand alone. Silent billing reviews and warranty-review notes are ordinary low-priority tickets, not a separate table. The message-limit counts and the staff sign-in attempts are not in this database: they are kept in memory by the one worker process and start again from zero whenever the app restarts or is deployed (a known limit of the demo, not rebuilt from stored messages).</p>
+<p>The events table also carries the web layer's own records: an "accepted" event holds the masked text of a message accepted but not yet handled, a "reply end" event holds every sentence shown and the done event of a finished reply (so a reconnect after a restart replays it), and a "staff session ended" event records a staff logout so the copied cookie stays ended after a restart. Alerts of kind "errors" are error bursts; downtime is reported by the outside uptime monitor, not stored here.</p>
 <table>
 <thead><tr><th>Table</th><th>Example row</th></tr></thead>
 <tbody>
@@ -752,9 +764,9 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <p><em>How an emergency skips the router and the AI writer entirely.</em></p>
 <ol>
 <li>The caller reports a gas smell, even in the middle of a booking.</li>
-<li>The safety check runs before any spending or rate limit, so even a visitor over budget gets this reply; it normalises spelling and speech-to-text errors and matches the immediate-danger class.</li>
+<li>The safety check runs before any spending or message limit, so even a visitor over budget or over a message limit gets this reply (the web layer lets a message over a limit through to the agent only when it reports a danger); it normalises spelling and speech-to-text errors and matches the immediate-danger class.</li>
 <li>The fixed reply written in code tells them to leave the home and call 911 or the gas utility from outside, and not to flip switches or restart equipment. No AI model is involved.</li>
-<li>A priority ticket is created; emergencies are never booked.</li>
+<li>If the caller gave their name and account details in the same message, they are identified after the advice, so the ticket carries them and they are not asked again. A priority ticket is created; emergencies are never booked, and for the rest of the conversation the agent never books, reschedules or offers slots, pointing to the emergency ticket instead (live fixes after the measurement (D51)).</li>
 <li>The caller sees the ticket number, and the Staff view badge shows a new priority ticket.</li>
 </ol>
 <h4>5.6 Staff view and flagging</h4>
@@ -774,11 +786,11 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <ol>
 <li>The visitor opens the Staff view panel.</li>
 <li>The web layer reads only tickets and receipts whose conversation belongs to the signed visitor, plus today's live numbers.</li>
-<li>The panel opens beside the chat, which stays visible.</li>
+<li>The panel opens beside the chat, which stays visible. It refreshes every 8 seconds while it is open and the tab is visible; while it is closed it refreshes once a minute, only to keep the new-ticket badge current.</li>
 <li>To see every visitor's queue or flag replies, the user enters the shared password.</li>
 <li>A 12-hour staff session starts (see the login flow below).</li>
 <li>The staff user flags a reply as wrong with a correction note.</li>
-<li>The flag is saved and can be exported as a candidate test case.</li>
+<li>The flag is saved and can be exported as a candidate test case: <code>python -m pipeline.export_flags</code> writes one file per flagged conversation to <code>data/candidates/</code> (never to <code>data/testset/</code>), with the caller's messages, the flagged reply and the staff note, leaving the expected outcome and reference for the author to fill in.</li>
 </ol>
 <h4>5.7 An offline test run</h4>
 <pre class="mermaid">sequenceDiagram
@@ -808,7 +820,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ol>
 <h3>6. User flow</h3>
 <pre class="mermaid">flowchart TD
-    A["Open the site link"] --&gt;|"lands on"| B["Chat tab"]
+    A["Open the reusable reviewer link"] --&gt;|"lands on, reviewer session started"| B["Chat tab"]
     B --&gt;|"clicks a suggested question or types"| C["Agent replies, sentence by sentence"]
     B --&gt;|"opens"| R["Results tab"]
     R --&gt;|"clicks a try-this scenario"| C
@@ -821,14 +833,37 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <h3>7. Login and permissions</h3>
 <pre class="mermaid">flowchart TD
     A["Request arrives"] --&gt;|"no cookie"| B["New public visitor, signed cookie set"]
-    A --&gt;|"secret reviewer link, used once"| C["Reviewer session set, redirect to clean address"]
     A --&gt;|"valid cookie"| D["Known visitor"]
-    D --&gt;|"chat and own Staff view"| E["Own conversations, tickets, receipts"]
+    D --&gt;|"opens the reusable secret reviewer link"| C["Reviewer session on the reserve; token cleared from the address"]
+    D --&gt;|"views pages and own Staff view"| E["Own conversations, tickets, receipts"]
+    D --&gt;|"public visitor sends a message"| P["Safety reply if an emergency, else a plain limit message ($0 public budget)"]
+    C --&gt;|"chat"| E
     D --&gt;|"correct shared password"| F["Staff session, 12 hours"]
     F --&gt;|"may see"| G["All visitors' queue and flagging"]
-    D --&gt;|"5 wrong passwords in 15 minutes"| H["Sign-in locked for 15 minutes"]</pre>
-<p><em>Three levels of access: any visitor sees only their own session, the reviewer link adds a protected budget, and the shared password unlocks the full queue.</em></p>
-<p>The visitor cookie is signed, HttpOnly, Secure, SameSite=Lax and lasts 7 days. The reviewer link carries its token after a # (the fragment, which browsers never send to servers, so it never reaches Fly's or the app's request logs); the page sends it once in a request body, it is checked once, turned into a signed reviewer session with the reserve budget, and the browser is redirected to the plain address so the token never stays in the address bar, history or logs. The reviewer token and the hashed staff password are Fly.io secrets, never in the repository. The flag form carries a token against forged requests. Phone numbers, emails and street addresses are masked at every level.</p>
+    F --&gt;|"logs out"| D
+    D --&gt;|"5 wrong passwords in 15 minutes from one address"| H["Sign-in refused for that address until the oldest is 15 minutes old"]</pre>
+<p><em>Three levels of access: any visitor sees only their own session, the reviewer link adds the only budget that can chat on the live site, and the shared password unlocks the full queue.</em></p>
+<p>The visitor cookie is signed, HttpOnly, Secure, SameSite=Lax and lasts 7 days; its signing secret is the <code>VISITOR_COOKIE_SECRET</code> Fly.io secret, and the app does not start without it.</p>
+<p><strong>Reviewer-only chat (reviewer-only chat with a $0 public budget (D50)).</strong> On the live site <code>fly.toml</code> sets the public budget to $0 (<code>PER_VISITOR_DAILY_USD = "0"</code>). Anyone can open the chat page, the Results tab and the Staff view of their own session, and the chat page then shows a note that chat is open to reviewers with a reviewer link. A public visitor's message still gets the safety check first, so an emergency gets its fixed advice and priority ticket; anything else is refused by the spending guard before any model call, with the plain limit message. The site uses its own Anthropic key with a monthly limit set in the console, a hard stop behind the app's own caps.</p>
+<p><strong>The reviewer link</strong> is <code>https://&lt;app&gt;/#r=&lt;token&gt;</code> and is reusable, a departure from the one-time token of the reviewer-link rule (R85), chosen by the author in the reviewer-only chat decision (D50). The token sits after the # (the fragment, which browsers never send to servers, so it never reaches Fly's or the app's request logs). On each page load that carries it, <code>reviewer.js</code> clears it from the address bar at once (replacing the history entry, so it stays out of history and screenshots; there is no redirect) and posts it once in a request body to <code>POST /api/reviewer</code>. The server compares it in constant time with <code>REVIEWER_TOKEN</code> (several tokens separated by commas are accepted; each must be at least 16 characters) and marks the signed visitor as a reviewer, so the reviewer session lasts as long as the 7-day visitor cookie. Every browser that opens the link gets its own reviewer session, and all of them share the $3-a-day reviewer reserve. The token is never stored or logged; a wrong, malformed or unconfigured token gets a plain 404.</p>
+<p><strong>Staff sign-in.</strong> The shared password is stored only as a PBKDF2 hash in the <code>STAFF_PASSWORD_HASH</code> Fly.io secret. A correct password starts a 12-hour staff session in its own signed cookie, separate from the visitor cookie: HttpOnly, Secure and SameSite=Strict, holding a random session id. <code>POST /api/staff/logout</code> ends the session on the server too (a "staff session ended" event), so a copied cookie stops working; changing the password ends every session. Sign-in attempts are counted per client address (the <code>Fly-Client-IP</code> header, trusted only behind Fly's proxy): after 5 wrong passwords in 15 minutes from one address, every attempt from it is refused until the oldest of them is 15 minutes old. The counts are kept in memory, so a restart clears them. The flag form carries a token against forged requests (an HMAC of the staff session id), which is passed through unmasked; every other string in a Staff view response is masked again. Phone numbers, emails and street addresses are masked at every level.</p>
+<p><strong>Message limits.</strong> Each visitor may send 20 messages in 10 minutes and 100 a day, counted both by the visitor cookie and by the client address (so clearing the cookie does not reset them), and the site takes 60 messages a minute. The counts are kept in memory by the one worker process and start again from zero after a restart or deploy.</p>
+<p><strong>Web routes</strong>, all served by the one app:</p>
+<table>
+<thead><tr><th>Route</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>GET /</code></td><td>The chat page, with the Staff view panel</td></tr>
+<tr><td><code>POST /api/message</code></td><td>Accepts one caller message (202) and starts its reply</td></tr>
+<tr><td><code>GET /api/stream/{message_id}</code></td><td>The server-sent-event stream of that message's checked sentences, then its done event; replays a saved reply after a reconnect</td></tr>
+<tr><td><code>GET /api/conversation/{conversation_id}</code></td><td>A reloaded tab's last 200 messages, each reply as the sentences it was shown as with its proof receipt, and the booking step in progress; only for the owning visitor</td></tr>
+<tr><td><code>POST /api/reviewer</code></td><td>Turns the reviewer link's token into a reviewer session</td></tr>
+<tr><td><code>POST /api/staff/login</code>, <code>POST /api/staff/logout</code></td><td>Start and end a staff session</td></tr>
+<tr><td><code>GET /api/staff/panel</code></td><td>The visitor's own tickets and reply receipts and today's numbers (any conversation's receipts with a staff session)</td></tr>
+<tr><td><code>GET /api/staff/queue</code>, <code>POST /api/staff/flag</code></td><td>The full queue and flagging, staff session only</td></tr>
+<tr><td><code>GET /results</code></td><td>The Results tab</td></tr>
+<tr><td><code>GET</code> or <code>HEAD /health</code></td><td>200 when both databases open, 503 otherwise; HEAD is for the uptime monitor</td></tr>
+</tbody>
+</table>
 <h3>8. States</h3>
 <h4>8.1 Appointment slot status</h4>
 <pre class="mermaid">stateDiagram-v2
@@ -852,15 +887,15 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     handed_off --&gt; handed_off: more messages added to ticket
     open --&gt; closed: 30 minutes idle or caller ends
     in_flow --&gt; abandoned: 30 minutes idle mid-flow
-    handed_off --&gt; closed: 30 minutes idle</pre>
-<p><em>Conversations stay open across follow-ups, keep adding to their ticket after a handoff, and close after 30 idle minutes; a conversation idle in the middle of a flow counts as abandoned for live containment.</em></p>
+    handed_off --&gt; closed: 30 minutes idle
+    closed --&gt; open: a danger reported after closing
+    abandoned --&gt; open: a danger reported after abandoning</pre>
+<p><em>Conversations stay open across follow-ups, keep adding to their ticket after a handoff, and close after 30 idle minutes; a conversation idle in the middle of a flow counts as abandoned for live containment; a danger reported in a closed or abandoned conversation reopens it for the safety reply.</em></p>
 <h4>8.3 Ticket</h4>
 <pre class="mermaid">stateDiagram-v2
-    [*] --&gt; open: handoff, emergency or clean decline
-    open --&gt; open: later messages appended
-    open --&gt; closed: staff close it
-    closed --&gt; [*]</pre>
-<p><em>Tickets open on any handoff, gather later messages, and are closed by staff.</em></p>
+    [*] --&gt; open: handoff, emergency, clean decline or error fallback
+    open --&gt; open: later messages and reasons added</pre>
+<p><em>Tickets open on any handoff, gather later messages and reasons, and stay open in this demo: the tickets table has a status and a closing time, but no route or job closes a ticket.</em></p>
 <h3>9. Data sent to outside services</h3>
 <pre class="mermaid">flowchart LR
     CALLER["Caller's message"] --&gt;|"raw text"| MASK["Masking in code"]
@@ -877,12 +912,12 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <h3>10. Background jobs and alerts</h3>
 <pre class="mermaid">flowchart TD
     CLK["Real-time clock, Austin"] --&gt;|"03:00 nightly"| RST["Nightly reset of scheduling tables"]
-    CLK --&gt;|"daily"| PRG["Purge logs older than 30 days"]
+    CLK --&gt;|"03:00 nightly, after the reset"| PRG["Purge conversations idle over 30 days"]
     START["App startup"] --&gt;|"was a reset missed?"| RST
     RST --&gt;|"takes the gate exclusively, one transaction from seed"| SDB[("Scheduling database")]
     RST --&gt;|"result ok, retried or failed"| JR[("Job runs")]
     PRG --&gt;|"deletes old, unflagged conversations"| ODB[("Operations database")]
-    MON["Error, write and spend counters"] --&gt;|"threshold crossed"| AL["Alert webhook to the author"]
+    MON["Error burst, failed write and spend checks"] --&gt;|"threshold crossed"| AL["Alert row and webhook to the author"]
     RST --&gt;|"failed after one retry"| AL
     FLY["Fly.io health check"] --&gt;|"no answer"| AL2["Fly restarts the machine"]
     UPM["Outside uptime monitor"] --&gt;|"no answer"| AL3["Downtime alert to the author"]</pre>
@@ -891,22 +926,36 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>At 03:00 Austin time the reset takes the app-wide gate exclusively (every message handler holds it shared, so messages arriving meanwhile wait, and the reset waits for messages in progress to finish), replaces the scheduling tables from the seed copy in one transaction, records the run, and releases the gate.</li>
 <li>If the app starts and the last successful reset is older than the most recent 03:00, the reset runs immediately.</li>
 <li>A failed reset is retried once, then the author is alerted and the dashboard shows it.</li>
-<li>The daily purge deletes conversations older than 30 days with their messages, receipts and model calls, except conversations with a flag, which are kept until exported.</li>
-<li>Alerts fire on 3 or more errors in 10 minutes (or over 20 percent of at least 10 messages), any failed database write, a failed reset, and daily spend passing $5; Fly.io's health check restarts the machine if the health endpoint stops answering, and a free outside uptime monitor alerts the author about downtime, which the app cannot report while it is down.</li>
+<li>Right after each nightly reset, the purge deletes, in one transaction, every conversation whose last message is more than 30 days old, with its messages, their sentences, receipts, model calls and ticket-message links, and its events. Conversations with a flag are kept (exporting the flags does not remove them). Tickets are kept for staff, detached from the deleted conversation (their conversation id is emptied). Each purge is recorded in the job runs; a missed purge is not run at startup, only at the next 03:00.</li>
+<li>Each alert is a row in the alerts table plus one post to the <code>ALERT_WEBHOOK_URL</code> secret (5-second timeout; with no URL set, only the row is written). They fire on an error burst (kind "errors": 3 or more error events in 10 minutes, or over 20 percent of at least 10 caller messages, checked after each reply and sent at most once per 10 minutes), any failed operations write ("write failure"), a reset that failed twice or a failure of the nightly jobs ("reset"), and live spend passing $5 in a day ("spend", once a day); Fly.io's health check restarts the machine if the health endpoint stops answering, and a free outside uptime monitor alerts the author about downtime, which the app cannot report while it is down.</li>
 </ol>
 <h3>11. Deployment</h3>
 <pre class="mermaid">flowchart LR
     DEV["Author's laptop"] --&gt;|"quick test run, then deploy"| BUILD["Fly.io builds the image"]
-    BUILD --&gt;|"code, search index, seed copy"| M["One always-on machine, one worker"]
-    SEC["Fly.io secrets"] --&gt;|"API keys, reviewer token, password hash"| M
+    BUILD --&gt;|"code, search index, documents, seed copy, final summaries"| M["One always-on machine, one worker"]
+    SEC["Fly.io secrets"] --&gt;|"API keys, cookie secret, reviewer token, staff password hash, alert webhook"| M
+    TOML["fly.toml settings"] --&gt;|"database paths, $0 public budget"| M
     VOL[("Attached disk")] --&gt;|"scheduling and operations databases"| M
     SNAP["Daily disk snapshot"] --&gt;|"restore if needed"| VOL
     INET["Public internet"] --&gt;|"HTTPS requests"| M</pre>
 <p><em>One machine with one disk: each release carries the code, search index and seed copy, so rolling back a release rolls back prompts and index together.</em></p>
+<p>The image holds only what the running app reads: the code, the search index, the converted documents and document list, the knowledge-base documents (the reply checks compare against the internal ones), the seed scheduling database, <code>docs/FINDINGS.md</code>, and of the final results only the summaries the Results tab reads (<code>data/results/final/summary.json</code>, <code>run_summary.json</code>, <code>per_driver.json</code> and <code>consistency/summary.json</code>). The held-out conversations, verdicts, ungraded files and per-attempt databases, the test set, the held-out split, other test-run results, <code>.env</code> and the live databases never go in. <code>fly.toml</code> sets the two database paths on the attached disk at <code>/data</code> and the $0 public budget (<code>PER_VISITOR_DAILY_USD = "0"</code>, reviewer-only chat (D50)); it holds no secrets.</p>
+<p>The Fly.io secrets are:</p>
+<table>
+<thead><tr><th>Secret</th><th>What it is</th></tr></thead>
+<tbody>
+<tr><td><code>ANTHROPIC_API_KEY</code></td><td>A key made only for this site, with a monthly limit in the Anthropic console; not the test-run key</td></tr>
+<tr><td><code>VOYAGE_API_KEY</code></td><td>The Voyage AI key for search embeddings</td></tr>
+<tr><td><code>VISITOR_COOKIE_SECRET</code></td><td>Signs the visitor cookie and the staff session cookie; the app refuses to start without one of at least 16 characters</td></tr>
+<tr><td><code>REVIEWER_TOKEN</code></td><td>The token behind the reusable reviewer link</td></tr>
+<tr><td><code>STAFF_PASSWORD_HASH</code></td><td>The hash of the shared staff password, never the password</td></tr>
+<tr><td><code>ALERT_WEBHOOK_URL</code></td><td>Where alerts are posted</td></tr>
+</tbody>
+</table>
 <p>Rollback runbook (in the README, practised once): roll back to the previous Fly.io release; if data is damaged, restore the disk from the latest daily snapshot; the nightly reset rebuilds the scheduling data from the seed in any case.</p>
 <h3>12. Code structure</h3>
 <pre class="mermaid">flowchart TB
-    WEB["web: routes, pages, stream, staff auth"] --&gt;|"calls"| CORE["core: conversation engine"]
+    WEB["web: routes, pages, stream, message limits, reviewer link, staff auth, results"] --&gt;|"calls"| CORE["core: conversation engine"]
     CORE --&gt;|"calls"| FLOWS["flows: identify, account, knowledge, scheduling"]
     FLOWS --&gt;|"call"| KNOW
     FLOWS --&gt;|"call"| ACCT
@@ -918,7 +967,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     CORE --&gt;|"calls"| SCHED["scheduling"]
     CORE --&gt;|"calls"| HAND["handoff"]
     CORE --&gt;|"calls"| REPLY["replies: writer and checks"]
-    CORE --&gt;|"records to"| OPS["ops: logs, limits, alerts, jobs"]
+    CORE --&gt;|"records to"| OPS["ops: logs, spending, alerts, jobs"]
+    WEB --&gt;|"reads and records to"| OPS
     EVAL["eval: harness, simulator, grader"] --&gt;|"drives"| CORE
     PIPE["pipeline: templates, labels, index, findings"] --&gt;|"produces data for"| KNOW
     PIPE --&gt;|"uses the zone map and settings"| SCHED</pre>
@@ -926,8 +976,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <table>
 <thead><tr><th>Folder</th><th>Contents</th></tr></thead>
 <tbody>
-<tr><td><code>app/web/</code></td><td>Page routes, the chat stream, the Staff view, cookie and staff-password handling</td></tr>
-<tr><td><code>app/core/</code></td><td>Conversation engine, conversation state, the pipeline order, the per-message deadline, the model-call recorder (<code>model_log.py</code>) and the other-language and nonsense backstop (<code>language.py</code>)</td></tr>
+<tr><td><code>app/web/</code></td><td>Page routes and the message request, the chat stream and its fallbacks (<code>main.py</code>), the visitor cookie (<code>visitor.py</code>), the message limits and the pipeline's guard (<code>limits.py</code>), the reviewer link (<code>reviewer.py</code>), the Staff view, staff password and flagging (<code>staff.py</code>), the Results tab (<code>results.py</code>), the health check (<code>health.py</code>), and the page scripts in <code>static/</code> (<code>chat.js</code>, <code>reviewer.js</code>, <code>staff.js</code>)</td></tr>
+<tr><td><code>app/core/</code></td><td>Conversation engine, conversation state, the pipeline order, the per-message deadline, the model-call recorder with its pre-call budget check and early-close usage reporting (<code>model_log.py</code>) and the other-language and nonsense backstop (<code>language.py</code>)</td></tr>
 <tr><td><code>app/flows/</code></td><td>Shared flow protocol and the identify, account, knowledge and scheduling flows the engine calls</td></tr>
 <tr><td><code>app/safety/</code></td><td>Emergency patterns, normalisation, fixed safety replies</td></tr>
 <tr><td><code>app/routing/</code></td><td>Haiku router call and its structured result</td></tr>
@@ -936,11 +986,12 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>app/scheduling/</code></td><td>Slot eligibility, alternatives, booking, reschedule and cancel transactions, seed lookups</td></tr>
 <tr><td><code>app/handoff/</code></td><td>Tickets, reason tags, appending later messages</td></tr>
 <tr><td><code>app/replies/</code></td><td>Sonnet writer, reply types, sentence checks, internal-text match</td></tr>
-<tr><td><code>app/ops/</code></td><td>Operations database, logging and masking, spending and rate limits, alerts, nightly reset, purge</td></tr>
+<tr><td><code>app/ops/</code></td><td>Operations database (<code>store.py</code>, <code>schema.sql</code>), masking, spending budgets (<code>spend.py</code>), live numbers (<code>metrics.py</code>), alerts, the reset gate, nightly reset and purge (<code>jobs.py</code>)</td></tr>
 <tr><td><code>app/config.py</code></td><td>Pinned model IDs, fixed "now", thresholds and limits</td></tr>
 <tr><td><code>app/cli.py</code></td><td>A terminal chat on fresh database copies</td></tr>
-<tr><td><code>pipeline/</code></td><td>Transcript loading and template grouping (with families), Haiku, Codex and Fable labeling and the blind-third sheet, label agreement, staff policy-error checks, zone capacity counts, the document list, conflict register and format conversion, index build, and the findings document <code>docs/FINDINGS.md</code>; it uses the app's zone map (<code>app/scheduling/zones.py</code>) and settings</td></tr>
-<tr><td><code>eval/</code></td><td>Test-set builder (caller cards, fixtures), simulator, harness and test run, conversation and retrieval grading through Codex, scoring, quick run, threshold curve, adversarial runner and cases, grader check and agent freeze</td></tr>
+<tr><td><code>pipeline/</code></td><td>Transcript loading and template grouping (with families), Haiku, Codex and Fable labeling and the blind-third sheet, label agreement, staff policy-error checks, zone capacity counts, the document list, conflict register and format conversion, index build, and the findings document <code>docs/FINDINGS.md</code>, plus the flag export (<code>export_flags.py</code>) that turns staff flags into candidate test cases; it uses the app's zone map (<code>app/scheduling/zones.py</code>) and settings</td></tr>
+<tr><td><code>eval/</code></td><td>Test-set builder (caller cards, fixtures), simulator, harness and test run (with <code>resume_graded</code>, which grades saved attempts without running them again), conversation and retrieval grading through Codex, scoring, quick run, threshold curve, adversarial runner and cases, money-check evaluation, grader check, agent freeze, the final held-out run (<code>final.py</code>) and the results by call reason (<code>per_driver.py</code>)</td></tr>
+<tr><td><code>scripts/</code></td><td><code>deploy.sh</code> (quick run, deploy, then exactly one machine), <code>fly</code> (finds <code>flyctl</code>), <code>entrypoint.sh</code> (on the first start, copies the seed to the live scheduling database on the disk) and <code>measure_latency.py</code> (reply times on the live site)</td></tr>
 <tr><td><code>data/</code></td><td>Document list, conflict register, converted documents (<code>data/kb_text/</code>), the hand transcription of the holiday-hours image, templates, labels, built index, test set, results</td></tr>
 <tr><td><code>tests/</code></td><td>Unit and flow tests run by <code>python -m pytest</code></td></tr>
 </tbody>
@@ -969,11 +1020,17 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td><code>data/results/&lt;run&gt;/attempts.jsonl</code></td><td>One line per attempt, appended as each finishes and rewritten with grades: case, attempt number, first-run flag, conversation, done events, tickets, database checks, each purpose's model ids, SDK version and settings, the run settings, any error, grader verdict and grader model</td></tr>
 <tr><td><code>data/results/&lt;run&gt;/verdicts.jsonl</code>, <code>ungraded-first.jsonl</code></td><td>Codex's verdicts for the run, and each first-run attempt as it finished before grading (<code>ungraded-retry.jsonl</code> for retries)</td></tr>
 <tr><td><code>data/results/&lt;run&gt;/summary.json</code></td><td>The computed numbers and their intervals for that run, written even when the run stops early or fails; wrong confident answers are a count with their case ids</td></tr>
+<tr><td><code>data/results/final/attempts.jsonl</code>, <code>verdicts.jsonl</code>, <code>ungraded-first.jsonl</code>, <code>ungraded-retry.jsonl</code></td><td>The one held-out measurement's attempts, Codex verdicts and ungraded saves, as for any run; kept in the repository, never in the image</td></tr>
+<tr><td><code>data/results/final/databases/</code></td><td>Each held-out attempt's scheduling and operations database copies (<code>&lt;case&gt;-&lt;attempt&gt;.sqlite</code>, <code>&lt;case&gt;-&lt;attempt&gt;-ops.sqlite</code>), for the database checks</td></tr>
+<tr><td><code>data/results/final/run_summary.json</code></td><td>The final run's own computed numbers, before the sections are added</td></tr>
+<tr><td><code>data/results/final/summary.json</code></td><td>What the Results tab shows: every summary field, the held-out and agent hashes, the human baselines, and the retrieval, answers, adversarial, grader-check and label-agreement sections; written only when all of them exist</td></tr>
+<tr><td><code>data/results/final/per_driver.json</code></td><td>Results by call reason from the first held-out attempts, weighted by calls: accuracy on the reasons the agent handles, and the escalation rate and its correctness on the rest</td></tr>
+<tr><td><code>data/results/final/consistency/run1/</code> to <code>run3/</code>, <code>consistency/summary.json</code></td><td>The optional consistency runs (the held-out cases, up to 30, three more runs, seed 3) and the share correct in all three runs and in each</td></tr>
 <tr><td><code>data/grader_check.csv</code></td><td>The pre-chosen sample, with blind-grade columns for the author, Claude Fable 5.1 (which stands in for the author: Fable grades the grader check (D44)) and a second model; rewriting it keeps grades already given and refuses to drop any</td></tr>
 <tr><td><code>data/results/grader_check_sample.json</code>, <code>grader_check.json</code></td><td>Codex's verdicts for the sample, kept apart from the sheet; and the agree and disagree table</td></tr>
 </tbody>
 </table>
-<p>The held-out hash is recorded in git before any tuning. <code>eval/run.py</code> refuses held-out cases without <code>--final</code>, and with it refuses unless the held-out files still match that hash and the agent still matches a second hash recorded at the day-3 freeze (<code>eval/freeze.py</code>). That hash covers the agent-behaviour code (core, flows, routing, knowledge, accounts, scheduling, safety, replies, handoff, and <code>app/config.py</code> with its thresholds and models), the search index, and the data files the agent reads (<code>data/document_list.csv</code>, <code>data/kb_text/</code> and the internal documents), so web, operations and deployment code may still change. Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation (enforced during calls: the simulated caller and the agent's message deadline get only the time left), one retry, a separate test key, and an $8 stop per run that raises as soon as recorded spend crosses it; the cap also covers adversarial runs and the API grader fallback.</p>
+<p>The held-out hash is recorded in git before any tuning. <code>eval/run.py</code> refuses held-out cases without <code>--final</code>, and with it refuses unless the held-out files still match that hash and the agent still matches a second hash recorded at the day-3 freeze (<code>eval/freeze.py</code>). The final measurement is run by <code>python -m eval.final run --confirm-held-out</code>, which makes the same checks, runs and grades every held-out case once and writes <code>data/results/final/</code>; <code>resume --confirm-held-out</code> finishes a final run whose grading stopped, grading the saved first attempts without running any again and then running the one retry of each failed case; <code>summary</code> rebuilds <code>summary.json</code> once a missing section exists; <code>consistency</code> and <code>consistency-resume</code> run the optional consistency runs. A failed run's partial summary is moved to <code>run_summary.json</code>, so the Results tab never reads it. <code>python -m eval.per_driver</code> writes the results by call reason from the saved attempts, with no model calls. Since the live fixes after the measurement (D51) changed agent-behaviour files, the agent no longer matches its freeze record, and every held-out command now refuses. That hash covers the agent-behaviour code (core, flows, routing, knowledge, accounts, scheduling, safety, replies, handoff, and <code>app/config.py</code> with its thresholds and models), the search index, and the data files the agent reads (<code>data/document_list.csv</code>, <code>data/kb_text/</code> and the internal documents), so web, operations and deployment code may still change. Paid test runs are capped at 12 caller turns per conversation, fixed output-token limits, 60 seconds per conversation (enforced during calls: the simulated caller and the agent's message deadline get only the time left), one retry, a separate test key, and an $8 stop per run that raises as soon as recorded spend crosses it; the cap also covers adversarial runs and the API grader fallback.</p>
 <p>How the scores are computed (<code>eval/scoring.py</code>): containment and both ceilings count redirects as contained; action-gap calls stay in the scope ceiling and leave only the adjusted ceiling. The quick run (<code>eval/quick_run.py</code>, 20 working-set cases) passes when two of up to three runs pass; a safety or booking failure in any run, a run with no attempts, a missing case, or a run stopped at the budget or on an error fails it outright, and it exits nonzero on a failure. The adversarial runner plays hand-written caller lines on fresh database copies and checks replies with its own checks, independent of the agent's: fixed money and waitlist promise phrasings, any six words in a row or terms found only in internal documents, and database checks (no booking, no members-only booking, moved, no cancellation).</p>
 <h3>14. Diagrams added or skipped</h3>
 <ul>
@@ -984,7 +1041,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>Background jobs: added, for the nightly reset, log purge and alerts.</li>
 <li>Deployment: added, for the Fly.io machine, disk, secrets and snapshots.</li>
 <li>Code structure: added, because there are more than five packages.</li>
-<li>API map: skipped, because no separate front end or outside system calls the app; the pages and the chat stream are served by the same app.</li>
+<li>API map: skipped as a diagram, because no separate front end or outside system calls the app; the pages and the chat stream are served by the same app, and section 7 lists the routes in a table.</li>
 <li>Business process: skipped as a separate diagram; the handoff to staff is shown in the Staff view flow and the ticket states.</li>
 </ul>
 <h3>15. Trade-offs and what to revisit</h3>
@@ -994,6 +1051,9 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Index shipped in the release.</strong> Rebuilding the index means a new release, which is fine for 17 documents and makes rollback complete; a large, often-edited knowledge base would need a separate index service.</li>
 <li><strong>Sentence-by-sentence release.</strong> Safer than word-by-word streaming, at the cost of about a second before the first words appear.</li>
 <li><strong>Fixed patterns for safety.</strong> Predictable and testable, but they need the adversarial set to cover paraphrases and speech-to-text errors.</li>
+<li><strong>Limits kept in memory.</strong> The message-limit counts and staff sign-in attempts live in the one worker process, so a restart or deploy clears them; a real deployment would keep them in a shared store.</li>
+<li><strong>A reusable reviewer link (reviewer-only chat (D50)).</strong> Every grader and device can get in with one link; a leaked link can spend only the shared $3-a-day reserve, behind the key's monthly console limit.</li>
+<li><strong>Tickets never close.</strong> The demo has no route to close a ticket, so the queue only grows; a real deployment would add closing and assignment.</li>
 </ul>
 <h3>Glossary</h3>
 <ul>
@@ -1791,6 +1851,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul></li>
 <li><strong>Choice:</strong> Every reply sentence that mentions money (a fee, charge, cost, price, $, free, refund, credit, discount, waive, owe, bill or payment) is checked by Claude Haiku 5.5 against the published money terms and the sentence before it, after the fixed code rules (firm totals, waitlists, breaker advice, internal text, and promises worded as a personal favour). A refusal, error, timeout or unreadable answer blocks the sentence; a pipeline with no money check configured blocks every money sentence. The router decides money and membership action requests; a code backstop catches only requests that are never questions (payment links, autopay, cancelling the membership or auto-renew, refunds, fee waivers, paying a bill, signing up for the plan), on every route except a handoff. The labelled sets are kept in data/eval/ (money_sentences.jsonl, action_requests.jsonl) and measured in the evaluation milestone on fresh sentences and through the router.</li>
 <li><strong>Reason:</strong> Promise and request wording is open-ended; a model reads paraphrase that patterns cannot, and failing closed keeps errors on the safe side. Only sentences about money pay the extra time (about half a second each, a fraction of a cent), so most replies keep their speed. The spec's reply-check rule (R42) still holds: code decides and acts on every check.</li>
+<li><strong>Revision (2026-10-21):</strong> Quick runs showed the check blocking the company's own published member benefits (the Standard and Plus benefit lists and plan prices). The published terms given to the model now cover the whole Comfort Club overview and the 2026 fee schedule, and a code pre-check releases, without the model, a sentence whose every money mention is a published benefit or plan-price phrase, that names a plan and has no first- or second-person, favour, refund, late-fee, holiday or non-member wording; every other money sentence still goes to the model and fails closed. The blocked sentences were added to data/eval/money_sentences.jsonl as rows to release, with nearby promises that must still be blocked.</li>
 </ul>
 <h3>D44: Who grades the grader-check sample blind in place of the author (R19)?</h3>
 <ul>
@@ -1892,6 +1953,41 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul></li>
 <li><strong>Choice:</strong> The booking check records a booking fault for a wrong database change, an unexpected write, or a confirmed read-back left unbooked; fewer bookings than expected with none wrong and no confirmed read-back is a missed request, failing that conversation but not the quick run outright.</li>
 <li><strong>Reason:</strong> The author's choice. The quick run's hard stop exists to catch the agent changing the database wrongly; a caller who never chooses a slot is a conversation the agent could not finish, which already counts against containment.</li>
+</ul>
+<h3>D50: How should the deployed site protect the API spend, given that every chat message spends the key?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5), chosen by the author on 2026-10-20</li>
+<li><strong>Options:</strong>
+<ul>
+<li>A separate site-only key capped in the Anthropic console, and reviewer-only chat: the public budget is $0 and one reusable reviewer link</li>
+<li>Public chat with the built-in caps only</li>
+<li>A password to send chat messages</li>
+<li>A password on the whole site</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="app/ops/spend.py">app/ops/spend.py</a>: The spend check refuses a visitor whose day's spend has reached the cap, so a $0 public cap refuses every public message before the router or writer is called; the safety check runs first in code and costs nothing; reviewer sessions draw on the $3-a-day reserve (R61, R85).</li>
+</ul></li>
+<li><strong>Choice:</strong> The site uses its own Anthropic key with a monthly limit set in the console. The public budget is set to $0 on Fly, so anyone can view the chat page, Results tab and test customers, but a public message gets a plain handoff with no model call. One reusable reviewer link, given with the submission, starts a 7-day reviewer session in any browser that opens it; all reviewer sessions share the $3-a-day reserve. This departs from the reviewer-link rule (R85), which said the token is used once.</li>
+<li><strong>Reason:</strong> The author's choice. The provider's limit is a hard stop even if the site's own caps failed, the site stays at a public address as the spec asks, and only people with the link can spend. Measured on the quick run, the agent costs about $0.01 a conversation, so the reserve covers about 300 conversations a day and a week at the full reserve is about $21; a reusable link lets every grader and device in, and a leaked link is capped by the reserve and the console limit.</li>
+</ul>
+<h3>D51: After the held-out measurement, may the live demo get fixes the measured agent did not have?</h3>
+<ul>
+<li><strong>Status:</strong> settled</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5), chosen by the author on 2026-10-21</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Yes, for safety and demo clarity only, documented, with the held-out numbers left as measured</li>
+<li>No, the live demo stays exactly the measured agent</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="data/results/final/summary.json">data/results/final/summary.json</a>: In both burning-smell held-out cases the frozen agent (5b8f6899) gave the safety reply and a priority ticket, then booked an ordinary visit after the caller said yes, which breaks the rule that an emergency is never booked; callers asking the date also had no clear answer that the demo's date is fixed.</li>
+</ul></li>
+<li><strong>Choice:</strong> The live build gets two changes after the measurement: after any safety reply the agent never books, reschedules or offers slots in that conversation and points to the emergency ticket; and a question about today's date or time is answered as the demo's fixed date. The held-out numbers stay as measured on 5b8f6899, and the README and Results tab say the live build differs.</li>
+<li><strong>Reason:</strong> The author's choice. The held-out rule (R10) forbids re-measuring after seeing held-out results, not fixing a live safety bug; reporting the measured agent's numbers while the demo runs a documented later build keeps both honest.</li>
+<li><strong>Revised 2026-10-21:</strong> a third live-only change, chosen by the author: a caller who identifies in the same message as an emergency is identified then, so the priority ticket carries their details and they are not asked again.</li>
 </ul>
 <h3>Glossary</h3>
 <ul>
@@ -2530,6 +2626,107 @@ tests/test_engine_interface.py ....                                      [100%]
 <li>The converted price-book chunk in the search index still holds the sentence the conversion added ("Typical prices. The technician confirms the final price on site.").</li>
 <li>Accepted minor items from the last review: a booking after a mid-read-back question can be flagged as not read back, and a marker on a mixed booking and knowledge turn can open a not-enough-evidence ticket.</li>
 </ul></li>
+</ul>
+<h3>Milestone 5 gate</h3>
+<p>Reviews of this milestone compare against <code>tortoise/milestone-4</code>, the last approval.</p>
+<h4>Tests</h4>
+<p><strong>Passed:</strong> <code>python -m pytest</code> finished with exit code 0.</p>
+<pre><code>tests/knowledge/test_search.py ..............                            [ 53%]
+tests/ops/test_jobs.py ....................                              [ 54%]
+tests/ops/test_live_spend_fixes.py ......                                [ 55%]
+tests/ops/test_spend.py ...............................                  [ 57%]
+tests/ops/test_store.py ............                                     [ 58%]
+tests/pipeline/test_documents.py ..........                              [ 58%]
+tests/pipeline/test_findings.py .....................                    [ 60%]
+tests/pipeline/test_labels.py ..............                             [ 61%]
+tests/pipeline/test_templates.py .........                               [ 61%]
+tests/replies/test_checks.py ........................................... [ 64%]
+......................                                                   [ 66%]
+tests/replies/test_money_published.py .................................. [ 68%]
+........................................................................ [ 73%]
+..........................................                               [ 76%]
+tests/safety/test_safety.py ............................................ [ 79%]
+......                                                                   [ 80%]
+tests/scheduling/test_eligibility.py ................................... [ 82%]
+...........                                                              [ 83%]
+tests/scheduling/test_transactions.py .................                  [ 84%]
+tests/test_config.py ..........                                          [ 85%]
+tests/test_deploy_config.py ............................................ [ 88%]
+.......................                                                  [ 89%]
+tests/test_engine_interface.py ....                                      [ 90%]
+tests/test_repository.py ...................................             [ 92%]
+tests/web/test_chat.py ....................................              [ 95%]
+tests/web/test_live_fixes.py ....................                        [ 96%]
+tests/web/test_results.py ................                               [ 97%]
+tests/web/test_staff.py .................................                [100%]
+
+======================= 1433 passed in 61.34s (0:01:01) ========================</code></pre>
+<h4>Requirement coverage</h4>
+<p>Every requirement in SPEC.md is named by a task in PLAN.md.</p>
+<h4>Tasks</h4>
+<p>Every task in milestone 5 is ticked (6 of 6).</p>
+<h4>Architecture check</h4>
+<p>Run by Codex (gpt-5.6-sol) and by a fresh Claude agent, both using <code>prompts/architecture-check.md</code>, against <code>tortoise/milestone-4</code>. Claude ran all 1,368 tests (passed); the live build's agent hash differs from the frozen 5b8f6899, as expected after the live-only fixes (D51).</p>
+<p><strong>Both found:</strong></p>
+<ul>
+<li>The web layer applies the message rate limits before the engine runs, so a rate-limited caller reporting gas gets the limit message instead of the safety advice; the document says safety comes first.</li>
+<li>The reviewer link is reusable (D50) but the document still calls it one-time; the used-tokens table is unused.</li>
+<li>Spending pools and rate-limit counts are described wrongly (counts are kept in memory and reset on restart, not rebuilt from stored messages).</li>
+<li>The project status is stale; closing a ticket is documented but there is no staff route for it; the cookie secret and alert webhook are missing from the secrets list.</li>
+</ul>
+<p><strong>Only the Claude agent found:</strong> event, alert and receipt label lists out of date; the live-only fixes (D51), the address answer and "address change" tag, the reload, logout and HEAD routes, the purge details, the final-run, resume, per-driver and flag-export tools, the <code>data/results/final/</code> files and the $0 public budget are undocumented.</p>
+<p><strong>Only Codex found:</strong> the invoice-to-appointment relation in the database diagram is drawn as required and unique.</p>
+<h4>Reviews</h4>
+<p>Code reviews of <code>git diff tortoise/milestone-4..HEAD</code> by Codex (gpt-5.6-sol) and a fresh Claude agent, both using <code>prompts/code-review.md</code>. Claude ran the 240 web, operations, resume, final-run and deploy tests (passed) and probed offline; Codex could not start the suite (no writable temporary folder). No paid calls, no held-out data. Both found the cookies, reviewer token handling, staff sessions and form token, cross-visitor scoping, the Fly-Client-IP trust rule, the $0 refusal before any model call and the text escaping sound.</p>
+<table>
+<thead><tr><th>Finding</th><th>Codex</th><th>Claude</th></tr></thead>
+<tbody>
+<tr><td>Rate limits run before the safety check, so a rate-limited emergency gets no safety advice or priority ticket</td><td>yes (top)</td><td>yes (architecture)</td></tr>
+<tr><td>The code-only money pre-check releases false terms: "15% off all repairs, including plumbing", a Plus-only plumbing inspection said of Standard, "$89 waived ... including water heater flush", "Standard and Plus are $269 per year"</td><td>yes (top)</td><td>yes (top)</td></tr>
+<tr><td>A yes-word with details after a safety reply ("Sure, Linda Foster, MHC-10001") skips identification, leaving the emergency ticket without the caller</td><td></td><td>yes (top)</td></tr>
+<tr><td>"What time?" or "what day?" at an open slot offer gets the demo clock instead of the slot</td><td></td><td>yes (top)</td></tr>
+<tr><td>The stream-timeout, restart-replay and engine-crash fallbacks promise a team follow-up but open no ticket</td><td></td><td>yes (top)</td></tr>
+<tr><td>A timed-out stream leaves its turn running; after a long wait (for example the reset gate) it can still book after the caller was told it was handed off</td><td>yes (top)</td><td></td></tr>
+<tr><td>An accepted message exists only in memory until its worker starts, so a restart in that window loses it</td><td>yes (top)</td><td></td></tr>
+<tr><td>The spending caps are check-then-spend; writer calls cut short (a blocked sentence, the deadline) are never counted, and concurrent or multi-call turns can pass the cap</td><td>yes (top)</td><td>yes (top)</td></tr>
+<tr><td>Message-limit counts reset on every restart or deploy</td><td>yes</td><td>yes (architecture)</td></tr>
+<tr><td>The staff form token is masked as a phone number about once in 300 sessions, breaking flagging</td><td></td><td>yes</td></tr>
+<tr><td>Conversation rows and reply-end events are written before the limit check, and blank messages skip the limits</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>A promise that names the open ticket passes even with a new timed commitment ("within 10 minutes about Ticket #3")</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>Every open tab polls the staff panel every 8 seconds, and each poll and each Results view scans whole operations tables</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>The held-out conversations and databases ship in the image (nothing serves them)</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>A reused message id in another conversation is silently dropped; a failed reply-end save replays as a restart; a lookup failure in the safety path could lose the ticket; the staff sign-in limit is per exact address (IPv6 rotation)</td><td></td><td>yes (unclear)</td></tr>
+<tr><td>The reviewer link's reusability against the one-time reviewer-token requirement (R85); intended by D50</td><td>yes (unclear)</td><td></td></tr>
+<tr><td>Tests too weak to catch the above</td><td>yes</td><td>yes</td></tr>
+</tbody>
+</table>
+<h4>Author's choices</h4>
+<p>The author chose "All recommended" (2026-10-21); every agent change goes to the live build only, as live fixes after the measurement (D51), with the held-out numbers unchanged:</p>
+<ul>
+<li>the message rate limits apply after the safety check;</li>
+<li>the money pre-check sends to the model any sentence naming a plan with a service outside that plan's published list, or several plans with one price;</li>
+<li>details given with a yes after a safety reply identify the caller first;</li>
+<li>the date answer only when no booking offer or read-back is open;</li>
+<li>the timeout, restart and crash fallbacks open an error ticket;</li>
+<li>a timed-out turn is marked finished and cannot commit later;</li>
+<li>an accepted message is saved at once, so a restart hands it off rather than losing it;</li>
+<li>writer calls cut short are counted and the budget is checked before each model call in a turn;</li>
+<li>the staff form token is not masked;</li>
+<li>limits are checked before any row is written, and blank messages write nothing;</li>
+<li>only a restatement of the open ticket's own promise passes the follow-up rule;</li>
+<li>restart-cleared limit counts documented; the staff panel polls only while open; only the summary files ship in the image;</li>
+<li>accepted as they are: a reused message id across conversations, the per-address staff sign-in limit, a failed reply-end save, a lookup failure in the safety path, and the resume refusal after a partial run;</li>
+<li>the architecture document corrected for every point from both architecture checks, and the unused used-tokens table removed.</li>
+</ul>
+<h4>Fixes</h4>
+<p>All the chosen findings fixed test-first (commits c093092 to 173723a); 1,433 tests, all passing. Every agent change is a live fix after the measurement (D51); the freeze record still holds the measured agent 5b8f6899.</p>
+<ul>
+<li><strong>Agent core:</strong> the money pre-check no longer releases a benefit said of the wrong plan or one price said of both plans (the four review sentences are now labelled promises that must be blocked); details given with a yes after a safety reply identify the caller and fill the emergency ticket; the date answer only with no booking offer or read-back open; the follow-up rule allows only a restatement of the open ticket's promise.</li>
+<li><strong>Web and operations:</strong> safety comes before the message limits; the timeout, restart and crash fallbacks open an error ticket; a timed-out turn never acts later; an accepted message is saved at once; writer calls cut short are counted and the budget is checked before each model call; the staff form token is never masked; refused and blank messages write nothing; the staff panel polls only while open; only the summary files ship in the image; the unused one-time token table is removed.</li>
+<li><strong>From automated security reviews of these fixes:</strong> over the message limits, an emergency always gets the fixed advice; it opens its own ticket a few times a day per visitor and per network block (/24 or /64, IPv4-mapped addresses by their IPv4 block); another visitor in a used-up block, or anyone past a site-wide ceiling of 100 a day, joins one merged emergency ticket for the day (up to 50 reports, the rest counted) with one alert, so no other caller's report is dropped.</li>
+<li><strong>Documents:</strong> the architecture document corrected for every point from both architecture checks and the emergency allowance; <code>.env.example</code>, the reviewer-link rule (R85) note and the spending docstring updated.</li>
+<li><strong>Accepted as they are:</strong> a reused message id across conversations, the per-address staff sign-in limit, a failed reply-end save, a lookup failure in the safety path, the resume refusal after a partial run, and an engine run that stops without a done event (plain error message, no ticket).</li>
+<li><strong>Live:</strong> deployed after a passing quick run; checked health, the pages, a public message (free handoff), and through the reviewer link an emergency (advice and priority ticket) followed by details with a yes (no booking, pointed to the emergency ticket).</li>
 </ul>
 </section>
 <section id="final-checks">

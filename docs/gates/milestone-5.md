@@ -7,36 +7,36 @@ Reviews of this milestone compare against `tortoise/milestone-4`, the last appro
 **Passed:** `python -m pytest` finished with exit code 0.
 
 ```
-tests/flows/test_knowledge.py ..................................         [ 53%]
-tests/handoff/test_handoff.py ..........                                 [ 54%]
-tests/knowledge/test_search.py ..............                            [ 55%]
-tests/ops/test_jobs.py ....................                              [ 56%]
-tests/ops/test_spend.py ...............................                  [ 59%]
-tests/ops/test_store.py ............                                     [ 60%]
-tests/pipeline/test_documents.py ..........                              [ 60%]
-tests/pipeline/test_findings.py .....................                    [ 62%]
-tests/pipeline/test_labels.py ..............                             [ 63%]
-tests/pipeline/test_templates.py .........                               [ 63%]
-tests/replies/test_checks.py ........................................... [ 67%]
-..............                                                           [ 68%]
-tests/replies/test_money_published.py .................................. [ 70%]
-........................................................................ [ 75%]
-............................                                             [ 77%]
-tests/safety/test_safety.py ............................................ [ 81%]
-......                                                                   [ 81%]
-tests/scheduling/test_eligibility.py ................................... [ 84%]
-...........                                                              [ 84%]
-tests/scheduling/test_transactions.py .................                  [ 86%]
-tests/test_config.py ..........                                          [ 86%]
-tests/test_deploy_config.py ............................................ [ 90%]
-.............                                                            [ 91%]
-tests/test_engine_interface.py ....                                      [ 91%]
-tests/test_repository.py ...................................             [ 93%]
-tests/web/test_chat.py ....................................              [ 96%]
+tests/knowledge/test_search.py ..............                            [ 53%]
+tests/ops/test_jobs.py ....................                              [ 54%]
+tests/ops/test_live_spend_fixes.py ......                                [ 55%]
+tests/ops/test_spend.py ...............................                  [ 57%]
+tests/ops/test_store.py ............                                     [ 58%]
+tests/pipeline/test_documents.py ..........                              [ 58%]
+tests/pipeline/test_findings.py .....................                    [ 60%]
+tests/pipeline/test_labels.py ..............                             [ 61%]
+tests/pipeline/test_templates.py .........                               [ 61%]
+tests/replies/test_checks.py ........................................... [ 64%]
+......................                                                   [ 66%]
+tests/replies/test_money_published.py .................................. [ 68%]
+........................................................................ [ 73%]
+..........................................                               [ 76%]
+tests/safety/test_safety.py ............................................ [ 79%]
+......                                                                   [ 80%]
+tests/scheduling/test_eligibility.py ................................... [ 82%]
+...........                                                              [ 83%]
+tests/scheduling/test_transactions.py .................                  [ 84%]
+tests/test_config.py ..........                                          [ 85%]
+tests/test_deploy_config.py ............................................ [ 88%]
+.......................                                                  [ 89%]
+tests/test_engine_interface.py ....                                      [ 90%]
+tests/test_repository.py ...................................             [ 92%]
+tests/web/test_chat.py ....................................              [ 95%]
+tests/web/test_live_fixes.py ....................                        [ 96%]
 tests/web/test_results.py ................                               [ 97%]
-tests/web/test_staff.py ...............................                  [100%]
+tests/web/test_staff.py .................................                [100%]
 
-======================= 1368 passed in 70.90s (0:01:10) ========================
+======================= 1433 passed in 61.34s (0:01:01) ========================
 ```
 
 ## Requirement coverage
@@ -102,3 +102,14 @@ The author chose "All recommended" (2026-10-21); every agent change goes to the 
 - restart-cleared limit counts documented; the staff panel polls only while open; only the summary files ship in the image;
 - accepted as they are: a reused message id across conversations, the per-address staff sign-in limit, a failed reply-end save, a lookup failure in the safety path, and the resume refusal after a partial run;
 - the architecture document corrected for every point from both architecture checks, and the unused used-tokens table removed.
+
+## Fixes
+
+All the chosen findings fixed test-first (commits c093092 to 173723a); 1,433 tests, all passing. Every agent change is a live fix after the measurement (D51); the freeze record still holds the measured agent 5b8f6899.
+
+- **Agent core:** the money pre-check no longer releases a benefit said of the wrong plan or one price said of both plans (the four review sentences are now labelled promises that must be blocked); details given with a yes after a safety reply identify the caller and fill the emergency ticket; the date answer only with no booking offer or read-back open; the follow-up rule allows only a restatement of the open ticket's promise.
+- **Web and operations:** safety comes before the message limits; the timeout, restart and crash fallbacks open an error ticket; a timed-out turn never acts later; an accepted message is saved at once; writer calls cut short are counted and the budget is checked before each model call; the staff form token is never masked; refused and blank messages write nothing; the staff panel polls only while open; only the summary files ship in the image; the unused one-time token table is removed.
+- **From automated security reviews of these fixes:** over the message limits, an emergency always gets the fixed advice; it opens its own ticket a few times a day per visitor and per network block (/24 or /64, IPv4-mapped addresses by their IPv4 block); another visitor in a used-up block, or anyone past a site-wide ceiling of 100 a day, joins one merged emergency ticket for the day (up to 50 reports, the rest counted) with one alert, so no other caller's report is dropped.
+- **Documents:** the architecture document corrected for every point from both architecture checks and the emergency allowance; `.env.example`, the reviewer-link rule (R85) note and the spending docstring updated.
+- **Accepted as they are:** a reused message id across conversations, the per-address staff sign-in limit, a failed reply-end save, a lookup failure in the safety path, the resume refusal after a partial run, and an engine run that stops without a done event (plain error message, no ticket).
+- **Live:** deployed after a passing quick run; checked health, the pages, a public message (free handoff), and through the reviewer link an emergency (advice and priority ticket) followed by details with a yes (no booking, pointed to the emergency ticket).
