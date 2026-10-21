@@ -100,6 +100,20 @@ def test_without_a_final_summary_it_says_final_results_not_yet_run(store, tmp_pa
     assert "Live containment" in section(page, "live-traffic")
 
 
+@pytest.mark.parametrize("partial", ["run", "section", "field"])
+def test_a_summary_without_the_validated_sections_is_not_shown_as_the_final_results(store, tmp_path, partial):
+    """A run's own summary (for example the partial one a crashed grading run leaves) is never the final summary."""
+    summary = summary_fixture()
+    if partial == "run":
+        summary = {k: v for k, v in summary.items() if k not in SECTIONS} | {"extra": {"failed": "x", "partial": True}}
+    elif partial == "section":
+        summary["adversarial"] = None
+    else:
+        del summary["containment"]
+    frozen = section(results_page(store, tmp_path, summary), "frozen-results")
+    assert "Final results not yet run" in frozen and "data-field" not in frozen
+
+
 # -- Try these ----------------------------------------------------------------------------------------------------
 
 SCENARIO_WORDS = [("linda foster", "plumb"), ("omar patel", "balance"), ("smell gas", "furnace"),

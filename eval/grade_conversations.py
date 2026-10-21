@@ -220,11 +220,11 @@ def database_checks(case: dict, attempt) -> dict:
         if wants_booking:
             expected = _expected_services(case)
             scheduled = [row for row in new if row[6] == "scheduled"]
+            missed_only = False  # set below only when bookings were expected; read after the branch either way
             if not expected:
                 problems += [f"appointment {row[0]} was booked" for row in scheduled]
             else:
                 booked = sorted(_slot_of(db, row[2])[2] for row in scheduled)
-                missed_only = False
                 if booked != expected:
                     problems.append(f"booked {booked or 'nothing'}, expected {expected}")
                     # Fewer bookings than expected, none of them wrong, no confirmed read-back left unbooked and no

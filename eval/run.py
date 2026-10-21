@@ -129,10 +129,110 @@ def run_graded(cases: list[dict], name: str, cap_usd: float | None = None, *, ou
     """First runs of every case, graded by Codex and the database together; one retry of each failed case, graded the
     same way; then the summary. Returns the attempts and the summary.
 
-    Nothing finished is lost: each attempt is appended to attempts.jsonl (ungraded) the moment it ends, and the file is
-    rewritten with grades after each grading batch; Codex's verdicts go to verdicts.jsonl. A conversation that crashes
-    is recorded as errored and the run goes on; a grading failure still writes a partial summary before it is raised.
-    A results folder that already holds attempts is refused unless overwrite is set."""
+    Nothing finished is lost: each attempt is appended to attempts.jsonl (ungraded) and to ungraded-first.jsonl or
+    ungraded-retry.jsonl the moment it ends, and attempts.jsonl is rewritten with grades after each grading batch;
+    Codex's verdicts go to verdicts.jsonl. A conversation that crashes is recorded as errored and the run goes on; a
+    grading failure still writes a partial summary (its extra names the failure) before it is raised, and
+    resume_graded can finish the grading later. A results folder that already holds attempts is refused unless
+    overwrite is set."""
+    out = out or ROOT / "data" / "results" / name
+    check_results_folder(out, overwrite, final=False)
+    out.mkdir(parents=True, exist_ok=True)
+    for stale in ("attempts.jsonl", "verdicts.jsonl", "ungraded-first.jsonl", "ungraded-retry.jsonl"):
+        (out / stale).unlink(missing_ok=True)
+    return _graded_run(cases, out, cap_usd, factory, simulator_factory, runner, model, settings, saved=None)
+
+
+def resume_graded(cases: list[dict], out: Path, cap_usd: float | None = None, *, factory=None, simulator_factory=None,
+                  runner=None, model: str | None = None, settings: dict | None = None):
+    """Finish a run whose conversations were saved but whose grading did not finish: the saved first attempts are
+    graded (never run again), each failed case gets its one retry (a retry already saved is graded, not run again),
+    and attempts.jsonl, verdicts.jsonl and summary.json are written as run_graded writes them. Grades already given
+    are kept, not asked for again. Refuses, before anything runs, when a case has no saved first attempt, when an
+    attempt was saved more than once, or when an attempt already has more than one verdict."""
+    saved = load_saved_attempts(cases, out)
+    if settings is None:
+        settings = saved.settings
+    return _graded_run(cases, out, cap_usd, factory, simulator_factory, runner, model, settings, saved=saved)
+
+
+class SavedAttempts:
+    """A results folder's saved attempts, as resume_graded needs them."""
+
+    def __init__(self, firsts, retries, graded, settings, spent_usd):
+        self.firsts, self.retries, self.graded = firsts, retries, graded  # graded: ids of attempts already graded
+        self.settings, self.spent_usd = settings, spent_usd
+
+
+def _attempt_from(line: dict):
+    from dataclasses import fields
+
+    from eval.harness import Attempt
+    names = {f.name for f in fields(Attempt)}
+    return Attempt(**{k: v for k, v in line.items() if k in names})
+
+
+def _read_lines(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.exists() else []
+
+
+def load_saved_attempts(cases: list[dict], out: Path) -> SavedAttempts:
+    """The attempts saved in out, rebuilt exactly as they were saved. An attempt attempts.jsonl marks graded comes back
+    with its grades; any other comes from ungraded-first.jsonl or ungraded-retry.jsonl, written the moment the
+    conversation ended and before any grading touched it (attempts.jsonl's ungraded lines are the fallback)."""
+    ids = [c["case_id"] for c in cases]
+    listed = _read_lines(out / "attempts.jsonl")
+    ungraded = {1: _read_lines(out / "ungraded-first.jsonl"), 2: _read_lines(out / "ungraded-retry.jsonl")}
+    twice = sorted(k for k, n in _counts(f"{a['case_id']}|{a['attempt']}" for a in listed).items() if n > 1)
+    for number, lines in ungraded.items():
+        twice += sorted(k for k, n in _counts(f"{a['case_id']}|{number}" for a in lines).items() if n > 1)
+    if twice:
+        raise SystemExit(f"refusing to resume: in {out}, attempts were saved more than once: {sorted(set(twice))}")
+    verdicts = _counts(v.get("id") for v in _read_lines(out / "verdicts.jsonl"))
+    regraded = sorted(k for k, n in verdicts.items() if n > 1)
+    if regraded:
+        raise SystemExit(f"refusing to resume: {out}/verdicts.jsonl shows attempts already graded twice: {regraded}")
+    by_key = {(a["case_id"], number): a for number, lines in ungraded.items() for a in lines}
+    graded_keys = set()
+    for line in listed:
+        key = (line["case_id"], line["attempt"])
+        if line.get("graded"):
+            by_key[key] = line
+            graded_keys.add(key)
+        elif key not in by_key:
+            by_key[key] = {**line, "grades": {}, "all_correct": None}
+    unknown = sorted(f"{cid}|{n}" for cid, n in by_key if cid not in ids)
+    if unknown:
+        raise SystemExit(f"refusing to resume: {out} holds attempts {unknown} of cases not in this run")
+    missing = [cid for cid in ids if (cid, 1) not in by_key]
+    if missing:
+        raise SystemExit(f"refusing to resume: no saved first attempt for {missing} in {out}; resuming never runs a "
+                         "first attempt again")
+    ungraded_verdict = sorted(f"{cid}|{n}" for cid, n in by_key if f"{cid}|{n}" in verdicts and (cid, n) not in graded_keys)
+    if ungraded_verdict:
+        raise SystemExit(f"refusing to resume: attempts {ungraded_verdict} have a verdict but are not marked graded; "
+                         "grading them again would grade them twice")
+    attempts = {key: _attempt_from(line) for key, line in by_key.items()}
+    firsts = [attempts[(cid, 1)] for cid in ids]
+    retries = [attempts[(cid, 2)] for cid in ids if (cid, 2) in attempts]
+    for retry in retries:
+        first = attempts[(retry.case_id, 1)]
+        if (retry.case_id, 1) not in graded_keys or first.all_correct is not False or first.stopped == "error":
+            raise SystemExit(f"refusing to resume: {retry.case_id} has a saved retry but its first attempt is not a "
+                             "graded failure")
+    settings = next((line.get("settings") for line in listed if line.get("settings")), None)
+    return SavedAttempts(firsts, retries, {id(a) for key, a in attempts.items() if key in graded_keys}, settings,
+                         sum(a.cost_usd for a in attempts.values()))
+
+
+def _counts(values) -> dict:
+    from collections import Counter
+    return Counter(values)
+
+
+def _graded_run(cases, out, cap_usd, factory, simulator_factory, runner, model, settings, saved: SavedAttempts | None):
+    """The shared body of run_graded and resume_graded: first attempts (run, or saved), graded; one retry of each
+    failed case, graded; the summary."""
     from dataclasses import asdict
 
     from app.config import SETTINGS
@@ -142,8 +242,6 @@ def run_graded(cases: list[dict], name: str, cap_usd: float | None = None, *, ou
     from eval.harness import attempt_line, run_case
     from eval.scoring import score
 
-    out = out or ROOT / "data" / "results" / name
-    check_results_folder(out, overwrite, final=False)
     if factory is None or simulator_factory is None:
         from eval.simulator import Simulator
         client, caller = build_client(), build_client(simulator=True)
@@ -152,9 +250,11 @@ def run_graded(cases: list[dict], name: str, cap_usd: float | None = None, *, ou
     runner, model = runner or runner_for(budget), model or grader_model()
     settings = settings if settings is not None else run_settings(model)
     out.mkdir(parents=True, exist_ok=True)
-    for stale in ("attempts.jsonl", "verdicts.jsonl", "ungraded-first.jsonl", "ungraded-retry.jsonl"):
-        (out / stale).unlink(missing_ok=True)
     done, graded, stopped, failure = [], set(), False, None
+    if saved is not None:  # the saved attempts' spend counts against the run's cap, as it did when they ran
+        budget.spent_usd = saved.spent_usd
+        done += saved.firsts + saved.retries
+        graded |= saved.graded
 
     def save():
         partial = out / "attempts.jsonl.partial"
@@ -203,10 +303,19 @@ def run_graded(cases: list[dict], name: str, cap_usd: float | None = None, *, ou
         return result + errored + cut
 
     try:
-        firsts = grade_batch(run_batch(cases, 1, "first"))
+        if saved is None:
+            firsts = grade_batch(run_batch(cases, 1, "first"))
+            retries_saved = {}
+        else:
+            stopped = any(a.stopped == "budget" for a in saved.firsts)
+            firsts = [a for a in saved.firsts if id(a) in graded]
+            firsts += grade_batch([a for a in saved.firsts if id(a) not in graded])
+            retries_saved = {a.case_id: a for a in saved.retries}
         again = [by_id[a.case_id] for a in firsts if a.all_correct is False and a.stopped != "error"]
         if not stopped:
-            grade_batch(run_batch(again, 2, "retry"))
+            waiting = [retries_saved[c["case_id"]] for c in again
+                       if c["case_id"] in retries_saved and id(retries_saved[c["case_id"]]) not in graded]
+            grade_batch(waiting + run_batch([c for c in again if c["case_id"] not in retries_saved], 2, "retry"))
     except Exception as error:
         failure = f"{type(error).__name__}: {error}"
         raise
@@ -217,8 +326,11 @@ def run_graded(cases: list[dict], name: str, cap_usd: float | None = None, *, ou
                               "ticket_actionable": _share([a.grades.get("ticket_actionable") for a in done if a.attempt == 1]),
                               "errored": [a.case_id for a in done if a.stopped == "error"],
                               "ungraded": [f"{a.case_id}|{a.attempt}" for a in done if id(a) not in graded]})
+        if saved is not None:
+            summary.extra["resumed"] = True
         if failure:
             summary.extra["failed"] = failure
+            summary.extra["partial"] = True  # not a finished run's summary; resume_graded replaces it
         (out / "summary.json").write_text(json.dumps(summary.to_json(), indent=1))
     return done, summary
 

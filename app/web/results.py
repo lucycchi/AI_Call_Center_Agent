@@ -221,13 +221,22 @@ def callouts_html(callouts: list[tuple[str, str]]) -> str:
 
 
 def load_summary(path: Path) -> dict | None:
+    """The final summary, only once it has been validated (eval/final.py writes summary.json with every field and
+    section); anything else there, such as a run's own partial summary, is not the final results."""
     try:
-        return json.loads(path.read_text())
+        summary = json.loads(path.read_text())
     except FileNotFoundError:
         return None
     except (OSError, ValueError) as error:
         log.error("final summary at %s could not be read: %s", path, error)
         return None
+    missing = [name for name in FIELDS if not isinstance(summary, dict) or name not in summary]
+    missing += [name for name in SECTIONS if not isinstance(summary, dict) or not isinstance(summary.get(name), dict)
+                or not summary[name]]
+    if missing:
+        log.warning("summary at %s is not a validated final summary (missing %s); not shown", path, ", ".join(missing))
+        return None
+    return summary
 
 
 def results_routes(store, clock: Callable[[], datetime], summary_path: Path | None = None,

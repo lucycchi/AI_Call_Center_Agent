@@ -245,3 +245,19 @@ def test_a_reason_added_to_an_open_ticket_counts_and_codex_sees_every_tag(tmp_pa
     [graded] = grade_attempts([attempt], {"c1": case}, runner)
     assert graded.grades["handoff_reason_correct"] is True
     assert '"tags": ["complaint", "dispute"]' in runner.prompts[0]
+
+
+# -- a booking-type case that expects no booking (the final run's grading crash) -----------------------------------
+
+def test_a_booking_case_expecting_no_booking_passes_when_nothing_is_booked(tmp_path):
+    from eval.grade_conversations import _expected_services
+    case = _case(outcome="handed_off", reason="safety")
+    assert _expected_services(case) == []
+    checks = _checks(case, _attempt(_db(tmp_path), action=None))
+    assert checks["booking_correct"] is True and checks["booking_fault"] is False
+
+
+def test_a_booking_case_expecting_no_booking_fails_when_something_is_booked(tmp_path):
+    checks = _checks(_case(outcome="handed_off", reason="safety"), _attempt(_db(tmp_path, sql=_book(56))))
+    assert checks["booking_correct"] is False and checks["booking_fault"] is True
+    assert any("was booked" in p for p in checks["booking_problems"])

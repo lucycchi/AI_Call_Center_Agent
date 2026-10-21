@@ -198,3 +198,162 @@ def test_consistency_has_the_same_freeze_checks(root):
     with pytest.raises(SystemExit, match="freeze record"):
         final.run_consistency(runner, root=root, confirmed=True)
     assert runner.calls == []
+
+
+# -- Resuming a run whose grading crashed --------------------------------------------------------------------------
+FINAL = Path("data/results/final")
+
+
+class FakeResumer:
+    """Stands in for eval.run.resume_graded: records what it was asked to resume and writes the run's summary.json."""
+
+    def __init__(self, correct=lambda case_id: True):
+        self.calls, self.correct = [], correct
+
+    def __call__(self, cases, out):
+        self.calls.append(([c["case_id"] for c in cases], out))
+        summary = fake_summary(scenarios=len(cases))
+        (out / "summary.json").write_text(json.dumps(summary.to_json()))
+        return [Attempt(c["case_id"], 1, self.correct(c["case_id"])) for c in cases], summary
+
+
+class Crashes(FakeRunner):
+    """A run whose grading crashed: its attempts were saved and run_graded wrote a partial summary, then raised."""
+
+    def __call__(self, cases, name, *, out):
+        super().__call__(cases, name, out=out)
+        (out / "ungraded-first.jsonl").write_text("{}\n")
+        (out / "summary.json").write_text(json.dumps(fake_summary(extra={"failed": "UnboundLocalError: x",
+                                                                         "partial": True}).to_json()))
+        raise UnboundLocalError("x")
+
+
+def crashed_final(root: Path) -> Path:
+    with pytest.raises(UnboundLocalError):
+        final.run_final(Crashes(), root=root, confirmed=True)
+    return root / FINAL
+
+
+def test_a_crashed_final_run_leaves_no_summary_the_results_tab_could_read(root):
+    out = crashed_final(with_sections(root))
+    assert not (out / "summary.json").exists()
+    assert json.loads((out / "run_summary.json").read_text())["extra"]["partial"] is True
+
+
+def test_resume_final_grades_the_saved_run_and_writes_the_validated_summary(root):
+    out = crashed_final(with_sections(root))
+    resumer = FakeResumer()
+    summary = final.resume_final(resumer, root=root, confirmed=True)
+    assert resumer.calls == [(HELD, out)]
+    saved = json.loads((out / "summary.json").read_text())
+    assert saved == summary and saved["adversarial"]["pass_rate"] == 1.0
+    assert saved["agent_hash"] == json.loads((root / "data" / "agent_freeze.json").read_text())["hash"]
+    run_summary = json.loads((out / "run_summary.json").read_text())
+    assert run_summary["scenarios"] == len(HELD) and "partial" not in run_summary["extra"]
+
+
+def test_resume_final_replaces_a_partial_summary_left_in_the_folder(root):
+    out = crashed_final(with_sections(root))
+    (out / "summary.json").write_text(json.dumps({"extra": {"partial": True}}))  # as an older run_graded left it
+    final.resume_final(FakeResumer(), root=root, confirmed=True)
+    final.validate(json.loads((out / "summary.json").read_text()))
+
+
+@pytest.mark.parametrize("change", ["agent", "held_out"])
+def test_resume_final_refuses_when_a_hash_does_not_match(root, change):
+    crashed_final(with_sections(root))
+    if change == "agent":
+        write(root, "app/core/engine.py", "AGENT = 2\n")
+    else:
+        write(root, "data/testset/H03.json", {"case_id": "H03", "calls_weight": 11})
+    resumer = FakeResumer()
+    with pytest.raises(SystemExit, match="freeze record" if change == "agent" else "held-out cases differ"):
+        final.resume_final(resumer, root=root, confirmed=True)
+    assert resumer.calls == []
+
+
+def test_resume_final_needs_confirmation_and_a_saved_run(root):
+    resumer = FakeResumer()
+    with pytest.raises(SystemExit, match="nothing to resume"):
+        final.resume_final(resumer, root=with_sections(root), confirmed=True)
+    crashed_final(root)
+    with pytest.raises(SystemExit, match="confirm"):
+        final.resume_final(resumer, root=root, confirmed=False)
+    assert resumer.calls == []
+
+
+def test_resume_final_refuses_a_finished_final_run(root):
+    final.run_final(FakeRunner(), root=with_sections(root), confirmed=True)
+    resumer = FakeResumer()
+    with pytest.raises(SystemExit, match="already finished"):
+        final.resume_final(resumer, root=root, confirmed=True)
+    assert resumer.calls == []
+
+
+def test_the_run_command_still_refuses_after_a_crashed_final_run(root):
+    crashed_final(with_sections(root))
+    runner = FakeRunner()
+    with pytest.raises(SystemExit, match="already holds attempts"):
+        final.run_final(runner, root=root, confirmed=True)
+    assert runner.calls == []
+
+
+def crashed_consistency(root: Path, crash_on: int) -> Path:
+    """Consistency runs that crashed while grading run crash_on (its conversations saved)."""
+    class CrashesOn(FakeRunner):
+        def __call__(self, cases, name, *, out):
+            attempts, summary = super().__call__(cases, name, out=out)
+            (out / "attempts.jsonl").write_text("".join(json.dumps({"case_id": a.case_id, "attempt": 1,
+                                                                    "all_correct": a.all_correct}) + "\n" for a in attempts))
+            if len(self.calls) == crash_on:
+                (out / "summary.json").write_text(json.dumps(fake_summary(extra={"failed": "x", "partial": True}).to_json()))
+                raise UnboundLocalError("x")
+            return attempts, summary
+    flaky = set(HELD[:6])
+    with pytest.raises(UnboundLocalError):
+        final.run_consistency(CrashesOn(correct=lambda cid, call: cid not in flaky), root=root, confirmed=True)
+    return root / FINAL / "consistency"
+
+
+def test_consistency_resume_grades_run1_then_runs_runs_2_and_3(root):
+    folder = crashed_consistency(root, crash_on=1)
+    runner, resumer = FakeRunner(), FakeResumer()
+    result = final.resume_consistency(runner, resumer, root=root, confirmed=True)
+    chosen = final.consistency_cases(HELD)
+    assert resumer.calls == [(chosen, folder / "run1")]
+    assert [(ids, out.name) for ids, out in runner.calls] == [(chosen, "run2"), (chosen, "run3")]
+    assert result["correct_all_three"] == 1.0
+    assert json.loads((folder / "summary.json").read_text()) == result
+
+
+def test_consistency_resume_reads_finished_runs_and_resumes_the_one_that_crashed(root):
+    folder = crashed_consistency(root, crash_on=2)
+    runner, resumer = FakeRunner(), FakeResumer()
+    result = final.resume_consistency(runner, resumer, root=root, confirmed=True)
+    assert [out.name for _, out in resumer.calls] == ["run2"] and [out.name for _, out in runner.calls] == ["run3"]
+    chosen = final.consistency_cases(HELD)
+    expected = sum(1 for cid in chosen if cid not in set(HELD[:6])) / 30  # run1's saved firsts are counted
+    assert result["correct_all_three"] == pytest.approx(expected)
+    assert json.loads((folder / "summary.json").read_text()) == result
+
+
+def test_consistency_resume_has_the_same_freeze_checks_and_needs_a_saved_run(root):
+    runner, resumer = FakeRunner(), FakeResumer()
+    with pytest.raises(SystemExit, match="nothing to resume"):
+        final.resume_consistency(runner, resumer, root=root, confirmed=True)
+    crashed_consistency(root, crash_on=1)
+    write(root, "app/core/engine.py", "AGENT = 2\n")
+    with pytest.raises(SystemExit, match="freeze record"):
+        final.resume_consistency(runner, resumer, root=root, confirmed=True)
+    assert runner.calls == [] and resumer.calls == []
+
+
+def test_resume_final_refuses_a_run_that_finished_but_lacks_a_section(root):
+    with_sections(root)
+    (root / SECTION_FILES["adversarial"][0]).unlink()
+    with pytest.raises(final.IncompleteSummary):
+        final.run_final(FakeRunner(), root=root, confirmed=True)
+    resumer = FakeResumer()
+    with pytest.raises(SystemExit, match="already finished"):
+        final.resume_final(resumer, root=root, confirmed=True)
+    assert resumer.calls == []
