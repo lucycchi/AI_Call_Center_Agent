@@ -222,3 +222,42 @@ class OpsStore:
     def tickets_for_visitor(self, visitor_id: str) -> list[dict]:
         return self._rows("select t.* from tickets t join conversations c using (conversation_id) "
                           "where c.visitor_id = ? order by t.ticket_id", (visitor_id,))
+
+    # -- spending, alerts and the reviewer link (R61, R85) -------------------------------------------------------
+    def add_spend(self, visitor_id: str, pool: str, day: str, microdollars: int) -> None:
+        self._write("insert into spend (visitor_id, pool, day, microdollars) values (?, ?, ?, ?)",
+                    (visitor_id, pool, day, microdollars))
+
+    def spend_microdollars(self, day: str, pool: str | None = None, visitor_id: str | None = None) -> int:
+        sql, params = "select coalesce(sum(microdollars), 0) from spend where day = ?", [day]
+        if pool:
+            sql, params = sql + " and pool = ?", params + [pool]
+        if visitor_id:
+            sql, params = sql + " and visitor_id = ?", params + [visitor_id]
+        return self._db.execute(sql, params).fetchone()[0]
+
+    def spend_rows(self) -> list[dict]:
+        return self._rows("select * from spend order by spend_id")
+
+    def log_alert(self, kind: str, detail: str) -> None:
+        self._write("insert into alerts (kind, detail, sent_at) values (?, ?, ?)", (kind, detail, self._now()))
+
+    def alerts(self, kind: str | None = None) -> list[dict]:
+        if kind:
+            return self._rows("select * from alerts where kind = ? order by alert_id", (kind,))
+        return self._rows("select * from alerts order by alert_id")
+
+    def visitor_kind(self, visitor_id: str | None) -> str | None:
+        rows = self._rows("select kind from visitors where visitor_id = ?", (visitor_id,))
+        return rows[0]["kind"] if rows else None
+
+    def make_reviewer(self, visitor_id: str) -> None:
+        self._write("insert into visitors (visitor_id, kind, first_seen) values (?, 'reviewer', ?) "
+                    "on conflict (visitor_id) do update set kind = 'reviewer'", (visitor_id, self._now()))
+
+    def use_token(self, token_hash: str) -> bool:
+        """Mark a one-time token (only its hash is ever stored) as used; False if it was used before."""
+        with self._lock:
+            cursor = self._db.execute("insert or ignore into used_tokens (token_hash, used_at) values (?, ?)",
+                                      (token_hash, self._now()))
+            return cursor.rowcount == 1

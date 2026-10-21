@@ -229,6 +229,10 @@ erDiagram
         INTEGER ticket_id FK "ticket"
         INTEGER message_id FK "a later caller message added to it"
     }
+    USED_TOKENS {
+        TEXT token_hash PK "hash of a reviewer-link token already exchanged, never the token"
+        TEXT used_at "real time it was used"
+    }
     RECEIPTS {
         INTEGER message_id PK "the agent reply explained"
         TEXT safety_result "clear, danger, burning or urgent"

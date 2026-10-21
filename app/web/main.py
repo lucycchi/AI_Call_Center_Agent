@@ -20,10 +20,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.config import real_now
+from app.core.model_log import SINK
 from app.core.state import ConversationState, NotYourConversation
 from app.core.types import DoneEvent, SentenceEvent, Turn
 from app.handoff.flow import ERROR_MESSAGE
 from app.web.limits import LIMIT_MESSAGE, Limits
+from app.web.reviewer import reviewer_routes
 from app.web.visitor import COOKIE, VisitorCookie
 
 log = logging.getLogger("meridian.web")
@@ -77,8 +79,11 @@ def behind_fly() -> bool:
 
 
 def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits | None = None, workers: int = 4,
-               stream_timeout_s: float = 40.0, trust_fly_header: bool = False) -> FastAPI:
-    """trust_fly_header: trust the Fly-Client-IP header for the address limit; anywhere else a client could forge it."""
+               stream_timeout_s: float = 40.0, trust_fly_header: bool = False, spend=None,
+               reviewer_token: str | None = None) -> FastAPI:
+    """trust_fly_header: trust the Fly-Client-IP header for the address limit; anywhere else a client could forge it.
+    spend: an app.ops.spend.Spend that each turn's model calls are recorded against (the engine's pipeline asks it
+    for a refusal after its safety check). reviewer_token: the secret behind the reviewer link (R85)."""
     app = FastAPI(title="Meridian Home Comfort chat", docs_url=None, redoc_url=None, openapi_url=None)
     cookies = VisitorCookie(cookie_secret)
     limits = limits or Limits(clock)
@@ -89,6 +94,7 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
     app.state.executor = executor
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
     chat_page = (HERE / "templates" / "chat.html").read_text()
+    app.include_router(reviewer_routes(store, reviewer_token))
 
     @app.get("/", response_class=HTMLResponse)
     def chat():
@@ -149,6 +155,9 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
             done = None
             if shortened:
                 reply.sentences.append(SHORTENED)
+            # This reply thread's model calls count against the visitor's budget (R61); reset after the turn, so a
+            # reused thread never keeps it. The pipeline passes each call on to this sink as it records it.
+            sink = SINK.set(spend.recorder(turn.visitor_id) if spend else None)
             try:
                 for event in engine.handle(turn):
                     if isinstance(event, SentenceEvent):
@@ -158,6 +167,8 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
                         break
             except Exception as error:  # the engine ends every turn itself; this is the last resort
                 log.exception("reply failed for conversation %s: %s", turn.conversation_id, error)
+            finally:
+                SINK.reset(sink)
             if done is None:
                 reply.sentences.append(ERROR_MESSAGE)
                 done = DoneEvent(route="unknown", ticket=None, outcome="error")
@@ -244,7 +255,7 @@ def build_app() -> FastAPI:
     """The real app, wired as the terminal chat and eval/run.py wire the agent; never used by the tests.
 
     Run with one worker: uvicorn app.web.main:build_app --factory --workers 1 (needs ANTHROPIC_API_KEY,
-    VOYAGE_API_KEY and VISITOR_COOKIE_SECRET in the environment)."""
+    VOYAGE_API_KEY and VISITOR_COOKIE_SECRET in the environment; REVIEWER_TOKEN turns on the reviewer link)."""
     import anthropic
 
     from app.config import SETTINGS
@@ -254,10 +265,12 @@ def build_app() -> FastAPI:
     from app.knowledge.embedder import VoyageEmbedder
     from app.knowledge.index import load_index
     from app.knowledge.search import Searcher
+    from app.ops.spend import Spend
     from app.ops.store import OpsStore
     from app.replies.money_check import MoneyCheck
     from app.replies.writer import write
     from app.routing.router import route
+    from app.web.reviewer import token_from_environment
     from app.web.visitor import secret_from_environment
 
     secret = secret_from_environment()
@@ -266,6 +279,7 @@ def build_app() -> FastAPI:
     if not SETTINGS.scheduling_db_path.exists():  # the first start: the live copy begins as the seed
         shutil.copy(SETTINGS.seed_db_path, SETTINGS.scheduling_db_path)
     store = OpsStore(SETTINGS.ops_db_path)
+    spend = Spend(store)
     client = RecordingClient(anthropic.Anthropic(timeout=SETTINGS.anthropic_timeout_s, max_retries=1),
                              sdk_version=f"anthropic {anthropic.__version__}")
     chunks, embeddings = load_index(Path(__file__).resolve().parents[2] / "data" / "index")
@@ -273,5 +287,7 @@ def build_app() -> FastAPI:
                              searcher=Searcher(chunks, VoyageEmbedder(input_type="query"), embeddings),
                              route_fn=lambda text, history: route(text, history, client),
                              writer=lambda reply_type, facts, history: write(reply_type, facts, history, client),
-                             threshold=SETTINGS.retrieval_threshold, money_check=MoneyCheck(client))
-    return create_app(Engine(pipeline), store, cookie_secret=secret, trust_fly_header=behind_fly())
+                             threshold=SETTINGS.retrieval_threshold, money_check=MoneyCheck(client),
+                             guard=spend.refusal)  # asked after the safety check, so emergencies always get through
+    return create_app(Engine(pipeline), store, cookie_secret=secret, trust_fly_header=behind_fly(), spend=spend,
+                      reviewer_token=token_from_environment())
