@@ -105,3 +105,11 @@ all reviewer sessions share the $3-a-day reserve (about 300 typical conversation
 key is a site-only key with a monthly limit in the Anthropic console, a hard stop behind the site's own caps (about $25 a month covers a week at the full reserve).
 To open chat to the public later, remove that line from `fly.toml` and redeploy.
 
+## Live reply times
+
+Measured on 2026-10-21 against the deployed site (release v4) with `scripts/measure_latency.py --reviewer`: 3 warm-up
+messages, then 50 measured, each a fresh reviewer-link visitor, 31 seconds apart. All 50 replied, none failed. Median
+time to the first sentence 2.55 seconds (target under 2.5) and to the full reply 4.60 seconds (target under 4.0), so
+both targets were narrowly missed; the slowest replies were handoffs and long knowledge answers. The run is saved in
+`data/results/latency/live-20261021.txt`.
+
