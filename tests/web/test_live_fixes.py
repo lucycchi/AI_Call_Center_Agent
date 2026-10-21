@@ -269,10 +269,10 @@ def test_the_safety_allowance_is_per_visitor_and_network_block_then_overflows_si
     # addresses in one /24 or /64 does not help), and past a site-wide ceiling reports are merged, never dropped.
     limits = Limits(Clock(), per_10_min=1, per_day=100, site_per_minute=60, safety_per_day=1, safety_site_per_day=3)
     assert limits.allow_safety("v1", "10.0.0.1") == "ticket"
-    assert limits.allow_safety("v1", "10.9.9.9") == "advice"  # same visitor
-    assert limits.allow_safety("v2", "10.0.0.77") == "advice"  # same /24
+    assert limits.allow_safety("v1", "10.9.9.9") == "advice"  # same visitor: its own allowance is used
+    assert limits.allow_safety("v2", "10.0.0.77") == "overflow"  # same /24, another visitor: merged, not silenced
     assert limits.allow_safety("v3", "2001:db8:1:1::5") == "ticket"
-    assert limits.allow_safety("v4", "2001:db8:1:1::abcd") == "advice"  # same /64
+    assert limits.allow_safety("v4", "2001:db8:1:1::abcd") == "overflow"  # same /64
     assert limits.allow_safety("v5", "172.16.0.1") == "ticket"
     assert limits.allow_safety("v6", "192.168.5.1") == "overflow"  # site-wide ceiling reached: merged, not dropped
 
@@ -301,3 +301,36 @@ def test_past_the_ceiling_emergencies_join_one_overflow_ticket_and_alert_once(wo
     assert len(overflow) == 1 and overflow[0]["priority"] == 2  # one merged emergency ticket for the rest
     assert sent.count("safety overflow") == 1
 
+
+
+def test_a_used_up_network_block_sends_a_fresh_visitors_emergency_to_the_overflow_ticket():
+    # Security review: a shared block must not silence a different caller in it; only the visitor's own key does.
+    limits = Limits(Clock(), per_10_min=1, per_day=100, site_per_minute=60, safety_per_day=1, safety_site_per_day=100)
+    assert limits.allow_safety("v1", "10.0.0.1") == "ticket"
+    assert limits.allow_safety("v2", "10.0.0.2") == "overflow"  # same /24, a different visitor: merged, not dropped
+    assert limits.allow_safety("v1", "10.0.0.3") == "advice"  # the same visitor again: the advice only
+
+
+def test_an_ipv4_mapped_address_is_counted_by_its_ipv4_block():
+    from app.web.limits import network_block
+    assert network_block("::ffff:10.0.0.9") == network_block("10.0.0.200") == "10.0.0.0/24"
+
+
+def test_a_failed_overflow_ticket_is_retried_and_reports_past_the_cap_are_only_counted(tmp_path):
+    from tests.web.test_chat import FakeEngine
+    store = OpsStore(tmp_path / "ops.sqlite")
+    real_create, calls = store.create_ticket, []
+
+    def flaky_create(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("database busy")
+        return real_create(*args, **kwargs)
+    store.create_ticket = flaky_create
+    limits = Limits(Clock(), per_10_min=1, per_day=100, site_per_minute=60, safety_per_day=100, safety_site_per_day=0)
+    app, _, client = make(store, FakeEngine(store), limits=limits, overflow_reports_per_day=3)
+    say(client, "c0", "hello")
+    dones = [say(client, f"g{n}", "I smell gas")[1] for n in range(6)]
+    assert dones[0]["ticket"] is None and dones[1]["ticket"]  # the first save failed; the next one created it
+    ticket = [t for t in store.tickets() if t["reason_tag"] == "emergency"]
+    assert len(ticket) == 1 and ticket[0]["constraints"].count("I smell gas") <= 1  # repeats are not stored twice

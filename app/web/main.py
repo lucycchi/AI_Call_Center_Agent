@@ -119,7 +119,7 @@ REVIEWER_ONLY_NOTE = ("Chat on this demo is open to project reviewers with a rev
 def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits | None = None, workers: int = 4,
                stream_timeout_s: float = 40.0, trust_fly_header: bool = False, spend=None,
                reviewer_token: str | None = None, staff_password_hash: str | None = None,
-               results_summary_path: Path | None = None, gate=None, alerts=None,
+               results_summary_path: Path | None = None, gate=None, alerts=None, overflow_reports_per_day: int = 50,
                scheduling_db: Path | None = None, engine_deadline_s: float | None = None) -> FastAPI:
     """trust_fly_header: trust the Fly-Client-IP header for the address limit; anywhere else a client could forge it.
     spend: an app.ops.spend.Spend that each turn's model calls are recorded against and checked before (the engine's
@@ -180,24 +180,26 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
         quietly(store.save_reply_end, reply.conversation_id, message_id, list(reply.sentences), payload)
         reply.done = payload  # last: the stream reads it before the sentences
 
-    overflow = {"day": None, "ticket": None}
+    overflow = {"day": None, "ticket": None, "added": 0}
     overflow_lock = threading.Lock()
 
     def overflow_ticket(text: str) -> int | None:
-        """The day's merged emergency ticket for reports past the site-wide ceiling, with one alert; each report is
-        added to it. Never raises: the caller already has the safety advice."""
+        """The day's merged emergency ticket for reports past an allowance, with one alert; up to
+        overflow_reports_per_day reports are added to it, the rest only counted. The day is remembered only once its
+        ticket exists, so a failed save is tried again on the next report. Never raises: the caller already has the
+        safety advice."""
         try:
             with overflow_lock:
                 today = clock().date()
                 if overflow["day"] != today:
-                    overflow["day"] = today
-                    overflow["ticket"] = store.create_ticket(None, "several callers", "emergency reports past the daily "
-                                                             "ceiling; see the constraints", "fixed safety advice given",
-                                                             "", "calm", "emergency")
+                    ticket = store.create_ticket(None, "several callers", "emergency reports past the daily allowance; "
+                                                 "see the constraints", "fixed safety advice given", "", "calm", "emergency")
+                    overflow.update(day=today, ticket=ticket, added=0)
                     if alerts:
-                        alerts.send("safety overflow", "emergency reports passed the daily ceiling; merged into "
-                                                       f"Ticket #{overflow['ticket']}")
-                store.add_reason(overflow["ticket"], "", text[:200])
+                        alerts.send("safety overflow", f"emergency reports passed the daily allowance; merged into Ticket #{ticket}")
+                overflow["added"] += 1
+                if overflow["added"] <= overflow_reports_per_day:
+                    store.add_reason(overflow["ticket"], "", text[:200])
                 return overflow["ticket"]
         except Exception as error:
             log.error("overflow emergency ticket not saved: %s", error)

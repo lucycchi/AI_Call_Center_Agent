@@ -1,7 +1,7 @@
 """Spending budgets (R61, D30): live AI spend, recorded per model call and summed per pool and Austin day.
 
-Pools: "public" (each ordinary visitor about $0.40 a day), "site" (all public traffic together, $10 a day) and
-"reviewer" (visitors who used the reviewer link, a $3-a-day reserve that public traffic cannot touch). Days roll
+Pools: "public" (each ordinary visitor about $0.40 a day; the site total is the sum of public rows, capped at $10 a
+day) and "reviewer" (visitors who used the reviewer link, a $3-a-day reserve that public traffic cannot touch). Days roll
 over at Austin midnight in real time (real_now), never the fixed customer-facing "now". Crossing $5.00 of live spend
 in a day records one spend alert for that day. Only the web layer reports to it (through the model-call sink), so
 the evaluation harness, which sets its own run-budget sink, never touches these pools.

@@ -138,7 +138,7 @@ Each requirement is numbered for tracking. Numbers are labels only, not prioriti
 - R80: The repository contains the code, the document list, the conflict register, the test set with caller cards and reference answers, the labels, the grading prompt and verdicts, and the evaluation results, with no keys committed.
 - R83: The README carries a one-page rollback runbook: how to roll back a Fly.io release (prompts and the search index ship inside the release) and how to restore the disk from Fly's daily snapshot. The runbook is practised once before submission (retention, masking and rollback (D31)).
 - R84: Each read-back before a booking, cancellation or reschedule carries a confirmation identifier; a repeated or retried confirmation with the same identifier returns the first result and never changes the database again (booking, reviewer-link and downtime protections (D34)).
-- R85: The secret reviewer link's token is used once to start a signed reviewer session with the reserve budget, after which the browser is redirected to the plain address; the token is never written to logs.
+- R85: The secret reviewer link's token is used once to start a signed reviewer session with the reserve budget, after which the browser is redirected to the plain address; the token is never written to logs. *(Changed by reviewer-only chat (D50): one reusable link starts a 7-day reviewer session in any browser, and the page clears the token from the address instead of redirecting.)*
 - R86: A free outside uptime monitor checks the health endpoint and alerts the author when the site stops answering.
 
 ## 4. Success targets

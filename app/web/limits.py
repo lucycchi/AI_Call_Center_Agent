@@ -28,6 +28,8 @@ def network_block(address: str) -> str:
         ip = ipaddress.ip_address(address)
     except ValueError:
         return address
+    if ip.version == 6 and ip.ipv4_mapped:  # ::ffff:10.0.0.9 is the IPv4 address 10.0.0.9
+        ip = ip.ipv4_mapped
     return str(ipaddress.ip_network(f"{ip}/{24 if ip.version == 4 else 64}", strict=False))
 
 
@@ -56,12 +58,13 @@ class Limits:
         with self._lock:
             if self._safety_day != now.date():
                 self._safety_day, self._safety, self._safety_site = now.date(), {}, 0
-            if any(self._safety.get(k, 0) >= self.safety_per_day for k in keys):
-                return "advice"
+            if self._safety.get(keys[0], 0) >= self.safety_per_day:
+                return "advice"  # this visitor used its own allowance
+            block_spent = any(self._safety.get(k, 0) >= self.safety_per_day for k in keys[1:])
             for key in keys:
                 self._safety[key] = self._safety.get(key, 0) + 1
-            if self._safety_site >= self.safety_site_per_day:
-                return "overflow"
+            if block_spent or self._safety_site >= self.safety_site_per_day:
+                return "overflow"  # a shared block or the site ceiling: merged into one ticket, never silenced
             self._safety_site += 1
             return "ticket"
 
