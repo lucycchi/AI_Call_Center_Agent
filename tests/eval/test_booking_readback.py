@@ -247,3 +247,21 @@ def test_a_different_slot_named_or_offered_after_the_read_back_is_still_a_fault(
     attempt = _read_back_question_then_yes(_db(tmp_path, sql=_book(56)), between)
     assert _read_back_before(attempt, "booked appointment 160", "2026-10-19", "08:00-12:00") is False
     assert _checks(_case(), attempt)["booking_correct"] is False
+
+
+def test_a_read_back_that_also_says_another_window_is_unavailable_counts(tmp_path):
+    # Quick run (T1dee0920): "I can't offer 12pm-4pm that day. To confirm, that's ... Monday, October 19, from 1pm to
+    # 5pm." was flagged as not read back because the reply also named the unavailable window.
+    conversation = [{"role": "caller", "text": "I need a repair"},
+                    {"role": "agent", "text": "I have Monday, October 19, 1pm-5pm, or Tuesday, October 20, 8am-12pm."},
+                    {"role": "caller", "text": "Monday, but would 12 to 4 work instead?"},
+                    {"role": "agent", "text": "I only have the 1pm-5pm window open for Monday, October 19, so I can't offer "
+                                              "12pm-4pm that day. To confirm, that's an HVAC repair visit on Monday, "
+                                              "October 19, from 1pm to 5pm. Can you give me a clear yes?"},
+                    {"role": "caller", "text": "Yeah, that works."},
+                    {"role": "agent", "text": "Booked: your HVAC repair visit."}]
+    attempt = Attempt("c1", db_path=str(_db(tmp_path, sql=_book(58))), conversation=conversation,
+                      done_events=[{"db_actions": []}, {"db_actions": []}, {"db_actions": ["booked appointment 160"]}])
+    from eval.grade_conversations import _read_back_before
+    assert _read_back_before(attempt, "booked appointment 160", "2026-10-19", "13:00-17:00")
+    assert not _read_back_before(attempt, "booked appointment 160", "2026-10-19", "12:00-16:00")  # the window turned down

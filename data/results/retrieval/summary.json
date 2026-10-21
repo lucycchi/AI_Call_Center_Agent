@@ -5,7 +5,7 @@
  "coverage_basis": "9 caller questions from 85 calls",
  "index_has_excluded_documents": false,
  "keyword": {
-  "recall_at_5": 0.6931818181818182,
+  "recall_at_5": 0.7272727272727273,
   "hit_at_5": 0.7727272727272727,
   "stale_trap_hit_at_5": 0.8333333333333334,
   "misses": [
@@ -17,13 +17,13 @@
   ]
  },
  "meaning": {
-  "recall_at_5": 0.9431818181818182,
+  "recall_at_5": 0.9772727272727273,
   "hit_at_5": 1.0,
   "stale_trap_hit_at_5": 1.0,
   "misses": []
  },
  "combined": {
-  "recall_at_5": 0.8977272727272727,
+  "recall_at_5": 0.9318181818181818,
   "hit_at_5": 1.0,
   "stale_trap_hit_at_5": 1.0,
   "misses": []
@@ -42,6 +42,6 @@
   "anthropic_timeout_s": 20,
   "run_cap_usd": 8.0,
   "top_k": 5,
-  "answer_cost_usd": 0.5664
+  "answer_cost_usd": 0.5767
  }
 }

@@ -94,10 +94,15 @@ def _read_back_before(attempt, action: str, slot_date: str, window: str) -> bool
         return False
     for n in range(reported - 1, -1, -1):
         reply = replies[n]
+        # The read-back sentence itself decides when there is one, so a reply that also says another window is not
+        # available ("I can't offer 12pm-4pm that day. To confirm, ... 1pm to 5pm.") still counts (T1dee0920).
+        confirming = [s for s in re.split(r"(?<=[.!?])\s+", reply) if CONFIRMING.search(s)]
+        if confirming:
+            reply = " ".join(confirming)
         windows = [m.group(0) for m in WINDOW.finditer(reply)]
         others = [w for w in windows if not names_slot(f"{slot_date} {w}", slot_date, window)]
         if names_slot(reply, slot_date, window) and not others:
-            return n == reported - 1 or bool(READ_BACK.search(reply))
+            return n == reported - 1 or bool(READ_BACK.search(replies[n]))
         if windows or names_slot(reply, slot_date, window):
             return False  # a different slot, or an offer of several, since the read-back
     return False
@@ -146,6 +151,7 @@ def _seed_status(slot_id: int) -> str:
 
 # The agent's read-back wording ("Just to confirm ...", "To read it back ...", "Can you give me a clear yes?",
 # 'a clear "yes"' with straight or curly quotes).
+CONFIRMING = re.compile(r"\b(?:just )?to confirm\b|\bto read it back\b|\bjust to be sure\b", re.I)
 READ_BACK = re.compile(r"\b(just to confirm|just to be sure|to read it back|can you give me a clear)\b|"
                        r"\bclear\s+[\"\u201c\u201d']?yes\b", re.I)
 

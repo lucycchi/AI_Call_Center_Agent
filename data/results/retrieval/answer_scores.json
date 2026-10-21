@@ -1,8 +1,8 @@
 {
  "keyword": {
   "answers": 25,
-  "correct": 0.64,
-  "faithful": 0.88,
+  "correct": 0.8,
+  "faithful": 1.0,
   "citation_ok": 1.0,
   "refusal_ok": 1.0,
   "stale_trap_correct": 0.8333333333333334
@@ -11,22 +11,21 @@
   "answers": 25,
   "correct": 0.96,
   "faithful": 1.0,
-  "citation_ok": 1.0,
+  "citation_ok": 0.96,
   "refusal_ok": 1.0,
-  "stale_trap_correct": 0.8333333333333334
+  "stale_trap_correct": 1.0
  },
  "whole_kb": {
   "answers": 25,
-  "correct": 0.84,
+  "correct": 0.96,
   "faithful": null,
-  "citation_ok": 1.0,
+  "citation_ok": null,
   "refusal_ok": 1.0,
   "stale_trap_correct": 1.0
  },
  "grader_model": "gpt-5.6-sol",
  "passages_searched_again": 0,
  "grader_reported_model": [
-  "GPT-5",
   "gpt-5"
  ]
 }
