@@ -668,7 +668,7 @@ can only propose a decision; only the author settles one.
 
 ## D50: How should the deployed site protect the API spend, given that every chat message spends the key?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5), chosen by the author on 2026-10-20
 - **Options:**
   - A separate site-only key capped in the Anthropic console, and reviewer-only chat: the public budget is $0 and one reusable reviewer link
