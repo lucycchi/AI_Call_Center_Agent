@@ -40,6 +40,12 @@
       "date": "2026-10-18",
       "tag": "tortoise/milestone-3",
       "milestone": 3
+    },
+    {
+      "stage": "gate",
+      "date": "2026-10-20",
+      "tag": "tortoise/milestone-4",
+      "milestone": 4
     }
   ],
   "milestone": 4,
