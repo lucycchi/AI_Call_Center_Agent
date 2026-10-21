@@ -83,7 +83,7 @@ def load_settings() -> Settings:
         eval_writer_max_tokens=800,
         eval_simulator_max_tokens=300,
         eval_retries=1,
-        retrieval_threshold=0.35,
+        retrieval_threshold=0.25,
     )
 
 

@@ -1,0 +1,73 @@
+{
+ "containment": 0.5597014925373134,
+ "containment_without_redirects": 0.5390625,
+ "scope_ceiling": 0.746268656716418,
+ "adjusted_ceiling": 0.664179104477612,
+ "action_gap": 0.029850746268656716,
+ "wrong_confident": 0,
+ "knowledge_accuracy": 0.7272727272727273,
+ "routing_accuracy": 1.0,
+ "handoff_correct_safety_and_booking": 0.5555555555555556,
+ "handoff_correct_other": 1.0,
+ "booking_correct": 1.0,
+ "lookup_correct": 1.0,
+ "clean_declines": 1,
+ "flaky": [
+  "T0a995037",
+  "T9e29febc"
+ ],
+ "interval_low": 0.29914529914529914,
+ "interval_high": 0.7985074626865671,
+ "scenarios": 20,
+ "weighted_calls": 134,
+ "human_baseline": null,
+ "human_baseline_excluding_actions": null,
+ "stopped_at_budget": false,
+ "stopped_at_budget_cases": [],
+ "stopped_at_budget_count": 0,
+ "wrong_confident_cases": [],
+ "wrong_confident_share": 0.0,
+ "scope_ceiling_without_redirects": 0.734375,
+ "adjusted_ceiling_without_redirects": 0.6484375,
+ "extra": {
+  "spent_usd": 0.5202,
+  "grader_model": "gpt-5.6-sol",
+  "settings": {
+   "sdk_version": "anthropic 1.15.0",
+   "now": "2026-10-16T09:00:00-05:00",
+   "simulator": {
+    "model": "claude-sonnet-5-5",
+    "max_tokens": 300,
+    "effort": "low"
+   },
+   "router": {
+    "model": "claude-haiku-5-5",
+    "max_tokens": 2000,
+    "effort": "low"
+   },
+   "writer": {
+    "model": "claude-sonnet-5-5",
+    "max_tokens": 800,
+    "effort": "low"
+   },
+   "check": {
+    "model": "claude-haiku-5-5",
+    "max_tokens": 2000,
+    "effort": "low"
+   },
+   "embedding_model": "voyage-4",
+   "retrieval_threshold": 0.25,
+   "retries": 1,
+   "simulator_retries_within_cap": 0,
+   "anthropic_timeout_s": 20,
+   "message_deadline_s": 15,
+   "max_caller_turns": 12,
+   "conversation_seconds": 60,
+   "run_cap_usd": 8.0,
+   "grader": "gpt-5.6-sol"
+  },
+  "ticket_actionable": 0.3,
+  "errored": [],
+  "ungraded": []
+ }
+}
