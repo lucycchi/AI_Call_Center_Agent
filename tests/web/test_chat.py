@@ -463,6 +463,21 @@ def test_reloading_with_the_same_conversation_id_returns_its_history_and_active_
     assert saved["step_label"] == "Booking in progress: choosing a time"
 
 
+def test_a_reload_gets_each_reply_back_as_its_sentences_with_its_proof(store):
+    def reply(turn):
+        if "gas" in turn.text:
+            return ["Please leave your home now.", "Call 911 from outside."], DoneEvent("safety", 7, outcome="handed_off")
+        return ["The fee is $89."], DoneEvent("knowledge", None)
+
+    _, _, client = make(store, FakeEngine(store, reply))
+    say(client, "c1", "What's the fee?")
+    say(client, "c1", "I smell gas")
+    agents = [m for m in history(client, "c1")["messages"] if m["role"] == "agent"]
+    assert [m["sentences"] for m in agents] == [["The fee is $89."],
+                                                ["Please leave your home now.", "Call 911 from outside."]]
+    assert [m["proof"] for m in agents] == [None, "ticket #7 created"]
+
+
 def test_another_visitors_or_an_unknown_conversation_history_returns_404(store):
     app, _, alice = make(store)
     say(alice, "c1", "hello")
