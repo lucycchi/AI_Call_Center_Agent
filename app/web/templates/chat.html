@@ -45,6 +45,7 @@
 </header>
 <main>
   <section class="chat" aria-label="Chat">
+    <div class="chat-tools"><button type="button" id="staff-button" aria-controls="staff-panel" aria-expanded="false">Staff view <span id="staff-badge" class="badge" hidden></span></button></div>
     <p class="greeting">Hi, I'm Meridian's virtual assistant. I can answer questions about our fees, memberships and warranties, look up your account, and book or change an appointment. For anything else, I'll pass you to our team with a ticket.</p>
     <div id="log" aria-live="polite"></div>
     <div class="suggestions" aria-label="Suggested questions">
@@ -60,6 +61,7 @@
       <button type="submit">Send</button>
     </form>
   </section>
+<!-- staff panel -->
   <section class="test-customers" aria-label="Test customers">
     <h2>Test customers</h2>
     <p class="label">Synthetic customers from the demo database, not real people. Give a name with an account number, phone or address.</p>
@@ -73,5 +75,6 @@
 </main>
 <script src="/static/reviewer.js"></script>
 <script src="/static/chat.js"></script>
+<script src="/static/staff.js"></script>
 </body>
 </html>

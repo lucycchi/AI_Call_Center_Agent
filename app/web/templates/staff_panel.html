@@ -1,0 +1,49 @@
+  <style>
+    .chat-tools { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+    #staff-button { border: 1px solid var(--brand); color: var(--brand); background: var(--card); border-radius: 8px;
+                    padding: 4px 12px; font: inherit; font-size: .9rem; cursor: pointer; }
+    #staff-button[aria-expanded=true] { background: var(--brand); color: var(--brand-ink); }
+    .badge { display: inline-block; min-width: 1.4em; margin-left: 4px; padding: 0 6px; border-radius: 999px;
+             background: #b3261e; color: #fff; font-size: .75rem; text-align: center; }
+    .staff-panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px;
+                   font-size: .9rem; min-width: 0; }
+    .staff-panel[hidden] { display: none; }
+    @media (min-width: 820px) { main.staff-open { grid-template-columns: 3fr 2fr; } }
+    .staff-panel h2 { margin: 0 0 6px; font-size: 1rem; }
+    .staff-panel h3 { margin: 14px 0 6px; font-size: .95rem; }
+    .staff-panel .note { margin: 0 0 8px; color: var(--muted); font-size: .8rem; }
+    .numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin: 0; }
+    .numbers div { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+    .numbers dt { color: var(--muted); font-size: .75rem; }
+    .numbers dd { margin: 0; font-weight: 600; }
+    .staff-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .staff-list li { border: 1px solid var(--line); border-radius: 8px; padding: 8px; overflow-wrap: anywhere; }
+    .priority { font-size: .75rem; border-radius: 999px; padding: 0 8px; border: 1px solid currentColor; }
+    .priority.urgent { color: #b3261e; } .priority.normal { color: var(--brand); } .priority.low { color: var(--muted); }
+    .field { display: block; } .field b { font-weight: 600; }
+    details.receipt { margin-top: 4px; } details.receipt summary { cursor: pointer; color: var(--brand); }
+    .receipt dl { margin: 4px 0 0; } .receipt dt { color: var(--muted); font-size: .75rem; } .receipt dd { margin: 0 0 4px; }
+    .staff-panel form { display: flex; gap: 6px; flex-wrap: wrap; }
+    .staff-panel input, .staff-panel textarea { font: inherit; padding: 4px 6px; border: 1px solid var(--line);
+                                                border-radius: 6px; min-width: 0; flex: 1; }
+    .staff-panel button.small { font: inherit; font-size: .8rem; border: 1px solid var(--brand); color: var(--brand);
+                                background: var(--card); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+    .staff-message { color: var(--muted); font-size: .8rem; }
+  </style>
+  <aside class="staff-panel" id="staff-panel" aria-label="Staff view" hidden>
+    <h2>Staff view</h2>
+    <p class="note">Phone numbers, emails and street addresses are masked.</p>
+    <h3>Today's live numbers</h3>
+    <dl class="numbers" id="staff-numbers"></dl>
+    <h3>Your handoff tickets</h3>
+    <ul class="staff-list" id="staff-tickets"></ul>
+    <h3>Replies in this conversation</h3>
+    <ul class="staff-list" id="staff-replies"></ul>
+    <h3>Full queue</h3>
+    <form id="staff-login">
+      <input type="password" id="staff-password" autocomplete="current-password" aria-label="Staff password" placeholder="Staff password">
+      <button type="submit" class="small">Sign in</button>
+    </form>
+    <p class="staff-message" id="staff-login-message" aria-live="polite"></p>
+    <ul class="staff-list" id="staff-queue"></ul>
+  </aside>

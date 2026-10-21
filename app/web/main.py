@@ -26,6 +26,7 @@ from app.core.types import DoneEvent, SentenceEvent, Turn
 from app.handoff.flow import ERROR_MESSAGE
 from app.web.limits import LIMIT_MESSAGE, Limits
 from app.web.reviewer import reviewer_routes
+from app.web.staff import staff_routes
 from app.web.visitor import COOKIE, VisitorCookie
 
 log = logging.getLogger("meridian.web")
@@ -80,10 +81,11 @@ def behind_fly() -> bool:
 
 def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits | None = None, workers: int = 4,
                stream_timeout_s: float = 40.0, trust_fly_header: bool = False, spend=None,
-               reviewer_token: str | None = None) -> FastAPI:
+               reviewer_token: str | None = None, staff_password_hash: str | None = None) -> FastAPI:
     """trust_fly_header: trust the Fly-Client-IP header for the address limit; anywhere else a client could forge it.
     spend: an app.ops.spend.Spend that each turn's model calls are recorded against (the engine's pipeline asks it
-    for a refusal after its safety check). reviewer_token: the secret behind the reviewer link (R85)."""
+    for a refusal after its safety check). reviewer_token: the secret behind the reviewer link (R85).
+    staff_password_hash: the shared staff password's hash (R72); None turns staff sign-in off."""
     app = FastAPI(title="Meridian Home Comfort chat", docs_url=None, redoc_url=None, openapi_url=None)
     cookies = VisitorCookie(cookie_secret)
     limits = limits or Limits(clock)
@@ -93,8 +95,10 @@ def create_app(engine, store, cookie_secret: str, clock=real_now, limits: Limits
     conversation_locks: dict[str, threading.Lock] = {}
     app.state.executor = executor
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
-    chat_page = (HERE / "templates" / "chat.html").read_text()
+    chat_page = (HERE / "templates" / "chat.html").read_text().replace(
+        "<!-- staff panel -->", (HERE / "templates" / "staff_panel.html").read_text())
     app.include_router(reviewer_routes(store, reviewer_token))
+    app.include_router(staff_routes(store, cookie_secret, staff_password_hash, clock, trust_fly_header))
 
     @app.get("/", response_class=HTMLResponse)
     def chat():
@@ -255,7 +259,8 @@ def build_app() -> FastAPI:
     """The real app, wired as the terminal chat and eval/run.py wire the agent; never used by the tests.
 
     Run with one worker: uvicorn app.web.main:build_app --factory --workers 1 (needs ANTHROPIC_API_KEY,
-    VOYAGE_API_KEY and VISITOR_COOKIE_SECRET in the environment; REVIEWER_TOKEN turns on the reviewer link)."""
+    VOYAGE_API_KEY and VISITOR_COOKIE_SECRET in the environment; REVIEWER_TOKEN turns on the reviewer link and
+    STAFF_PASSWORD_HASH the staff sign-in)."""
     import anthropic
 
     from app.config import SETTINGS
@@ -271,6 +276,7 @@ def build_app() -> FastAPI:
     from app.replies.writer import write
     from app.routing.router import route
     from app.web.reviewer import token_from_environment
+    from app.web.staff import password_hash_from_environment
     from app.web.visitor import secret_from_environment
 
     secret = secret_from_environment()
@@ -290,4 +296,5 @@ def build_app() -> FastAPI:
                              threshold=SETTINGS.retrieval_threshold, money_check=MoneyCheck(client),
                              guard=spend.refusal)  # asked after the safety check, so emergencies always get through
     return create_app(Engine(pipeline), store, cookie_secret=secret, trust_fly_header=behind_fly(), spend=spend,
-                      reviewer_token=token_from_environment())
+                      reviewer_token=token_from_environment(),
+                      staff_password_hash=password_hash_from_environment())

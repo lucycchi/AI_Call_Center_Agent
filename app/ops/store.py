@@ -261,3 +261,34 @@ class OpsStore:
             cursor = self._db.execute("insert or ignore into used_tokens (token_hash, used_at) values (?, ?)",
                                       (token_hash, self._now()))
             return cursor.rowcount == 1
+
+    # -- the Staff view and flags (R70 to R72, R75) --------------------------------------------------------------
+    def read(self, sql: str, params: tuple = ()) -> list[dict]:
+        """A read-only query for the Staff view's numbers (app/ops/metrics.py)."""
+        return self._rows(sql, params)
+
+    def agent_messages(self, conversation_id: str) -> list[dict]:
+        """The conversation's agent replies, oldest first, each with its receipt fields (None where it has none)."""
+        return self._rows("select m.message_id, m.text_masked, m.created_at, r.safety_result, r.route, r.passages, "
+                          "r.excluded, r.db_action, r.outcome_label, (r.message_id is not null) as has_receipt "
+                          "from messages m left join receipts r using (message_id) where m.conversation_id = ? and "
+                          "m.role = 'agent' order by m.message_id", (conversation_id,))
+
+    def conversation_tickets(self, conversation_id: str) -> list[dict]:
+        return self._rows("select * from tickets where conversation_id = ? order by ticket_id", (conversation_id,))
+
+    def message(self, message_id: int) -> dict | None:
+        rows = self._rows("select * from messages where message_id = ?", (message_id,))
+        return rows[0] if rows else None
+
+    def add_flag(self, message_id: int, correction: str) -> int:
+        return self._write("insert into flags (message_id, correction, created_at) values (?, ?, ?)",
+                           (message_id, mask(correction), self._now()))
+
+    def flags(self) -> list[dict]:
+        return self._rows("select f.*, m.conversation_id from flags f join messages m using (message_id) "
+                          "order by f.flag_id")
+
+    def conversation_messages(self, conversation_id: str) -> list[dict]:
+        return self._rows("select message_id, role, text_masked, created_at from messages where conversation_id = ? "
+                          "order by message_id", (conversation_id,))
