@@ -59,8 +59,8 @@ behind a shared staff password).
 The site is public to view: the chat page, the Results tab and the four seeded test customers (Linda Foster, Omar
 Patel, Grace Okafor, Daniel Reyes; synthetic people). Chatting is reviewer-only, the protection for the API spend
 chosen in the reviewer-only decision (D50). `fly.toml` sets the public budget to $0 (`PER_VISITOR_DAILY_USD = "0"`),
-so a public message gets a plain handoff before any model call; the safety advice for an emergency still appears,
-since it is written in code. One reusable reviewer link, which the author provides with the submission (it is not in
+so a public message gets a reply saying chat is open to reviewers with a reviewer link, before any model call; the
+safety advice for an emergency, and its priority ticket, still appear, since they are written in code. One reusable reviewer link, which the author provides with the submission (it is not in
 this repository), starts a 7-day reviewer session in any browser that opens it; all reviewer sessions share a
 $3-a-day reserve (about 300 typical conversations a day). The live key is a site-only key with a monthly limit in the
 Anthropic console, a hard stop behind the site's own caps (about $25 a month covers a week at the full reserve). To
@@ -283,6 +283,10 @@ requires (live fixes after the measurement (D51)):
   Austin), since the demo runs on a fixed "now".
 - a caller who gives their name and account number in the same message as an emergency is identified then, so the
   priority ticket carries their details and they are not asked for them again.
+
+The final checks then changed the web and operations layers, not the agent: the Results tables, the reviewer-only
+reply, and two operations-store fixes for a failing database. `docs/FINAL_CHECKS.md` lists what each final check
+(browser QA, security audit, Codex whole-project review) found, what was fixed and what was left as a known limit.
 
 ### By call reason
 
