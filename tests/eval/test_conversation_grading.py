@@ -261,3 +261,11 @@ def test_a_booking_case_expecting_no_booking_fails_when_something_is_booked(tmp_
     checks = _checks(_case(outcome="handed_off", reason="safety"), _attempt(_db(tmp_path, sql=_book(56))))
     assert checks["booking_correct"] is False and checks["booking_fault"] is True
     assert any("was booked" in p for p in checks["booking_problems"])
+
+
+def test_a_slot_planted_by_a_case_is_not_in_the_seed_and_is_freed_to_open():
+    # Seen grading the fresh set: a reschedule's old slot was planted by the case (slot 9000 and up), so the seed
+    # lookup found no row and crashed; the freed-slot rule (D33) sends a slot not in the seed back to open.
+    from eval.grade_conversations import _freed, _seed_status
+    assert _seed_status(999999) is None
+    assert _freed(_seed_status(999999)) == "open"

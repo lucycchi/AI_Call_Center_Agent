@@ -33,5 +33,11 @@
  ],
  "hash": "db976680bfdea127a5caaba10b7163228202a10835a83520cd956951678f3a6c",
  "frozen_on": "2026-10-21",
- "runs": []
+ "runs": [
+  {
+   "agent_hash": "0f9cbc54e9da667e60d4749089352b80508763fb6213d9dea4b6f33cf6ce7a2c",
+   "folder": "fresh-before",
+   "on": "2026-10-21"
+  }
+ ]
 }

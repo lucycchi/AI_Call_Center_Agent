@@ -375,6 +375,8 @@ def main() -> None:
     parser.add_argument("--final", action="store_true", help="the final held-out measurement (checks the freeze hashes)")
     parser.add_argument("--fresh-final", action="store_true", help="the one run of this agent version on the frozen "
                         "fresh test set (eval/fresh_cases.py)")
+    parser.add_argument("--resume", action="store_true", help="grade the saved conversations of the stopped run --name "
+                        "(eval.run.resume_graded: first attempts are never run again)")
     parser.add_argument("--overwrite", action="store_true", help="replace the attempts already in the results folder "
                         "(never with --final)")
     args = parser.parse_args()
@@ -397,8 +399,11 @@ def main() -> None:
     if args.limit:
         cases = cases[:args.limit]
     out = ROOT / "data" / "results" / (args.name or f"{args.set}-{datetime.now():%Y%m%d-%H%M%S}")
-    check_results_folder(out, args.overwrite, args.final)
-    if args.provisional:
+    if not args.resume:
+        check_results_folder(out, args.overwrite, args.final)
+    if args.resume:
+        _, summary = resume_graded(cases, out)
+    elif args.provisional:
         client = build_client()
         summary = run_all(cases, engine_factory(client), lambda: Simulator(build_client(simulator=True)), RunBudget(SETTINGS.eval_run_cap_usd),
                           grade=provisional_grade, out=out, settings=run_settings(None))

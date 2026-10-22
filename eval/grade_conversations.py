@@ -108,7 +108,7 @@ def _read_back_before(attempt, action: str, slot_date: str, window: str) -> bool
     return False
 
 
-def _freed(seed_status: str) -> str:
+def _freed(seed_status: str | None) -> str:
     """A freed slot goes back to its seed status if that was open or members-only, otherwise open (D33)."""
     return seed_status if seed_status in ("open", "reserved_members") else "open"
 
@@ -143,10 +143,12 @@ def _slot_of(db, slot_id: int) -> tuple:
     return db.execute("select slot_date, window, service_type from appointment_slots where slot_id = ?", (slot_id,)).fetchone()
 
 
-def _seed_status(slot_id: int) -> str:
+def _seed_status(slot_id: int) -> str | None:
+    """The slot's status in the seed, or None for a slot a case planted (not in the seed)."""
     from app.config import SETTINGS
     with sqlite3.connect(SETTINGS.seed_db_path) as seed:
-        return seed.execute("select status from appointment_slots where slot_id = ?", (slot_id,)).fetchone()[0]
+        row = seed.execute("select status from appointment_slots where slot_id = ?", (slot_id,)).fetchone()
+    return row[0] if row else None
 
 
 # The agent's read-back wording ("Just to confirm ...", "To read it back ...", "Can you give me a clear yes?",

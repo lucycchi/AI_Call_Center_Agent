@@ -149,3 +149,23 @@ def test_an_appointment_no_free_technician_can_hold_is_planted_and_marked():
     assert case["appointment"]["window"] == "16:00-19:00" and case["appointment"]["source"] == "planted with overlap"
     tables = [f["table"] for f in case["fixtures"]]
     assert "appointment_slots" in tables and "appointments" in tables
+
+
+def test_resume_grades_the_saved_fresh_run_and_never_starts_a_new_one(monkeypatch, tmp_path):
+    # Seen on the first fresh run: grading crashed after the conversations were saved; they are graded, not run again.
+    import eval.run as run
+    calls = []
+
+    def never(*args, **kwargs):
+        raise AssertionError("resume must never start a new run")
+
+    class Summary:
+        def to_json(self):
+            return {}
+    monkeypatch.setattr(run, "run_graded", never)
+    monkeypatch.setattr(run, "resume_graded", lambda cases, out, **kw: calls.append((len(cases), out.name)) or (None, Summary()))
+    monkeypatch.setattr(fresh, "refuse", lambda ids, final, agent_hash, root=None: None)
+    monkeypatch.setattr(fresh, "record_run", lambda agent, folder, root=None: calls.append(("recorded", folder)))
+    monkeypatch.setattr("sys.argv", ["eval.run", "--set", "fresh", "--fresh-final", "--name", "fresh-x", "--resume"])
+    run.main()
+    assert calls == [(30, "fresh-x"), ("recorded", "fresh-x")]
