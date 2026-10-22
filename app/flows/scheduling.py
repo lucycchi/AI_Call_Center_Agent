@@ -207,6 +207,12 @@ def _earlier(db, customer, flow: dict, now) -> FlowResult:
         flow["step"] = "offer"
         return FlowResult(_offer_facts(flow["offered"], "These are the earliest open slots; ask which one suits:"),
                           "booking offer")
+    # Offering the earliest eligible slots meets R44; only a caller who asks again after hearing that gets the ticket
+    # (working set T391b9f20, T70425efa, Tf0d9c2f5: a booked call was counted as a handoff for the ticket).
+    if not flow.get("told_earliest"):
+        flow["told_earliest"] = True
+        return FlowResult(["The slots offered are the earliest available; the caller can still take one of them."],
+                          "booking offer")
     return FlowResult(["The slots offered are the earliest available; the caller can still take one of them."],
                       "booking offer", handoff_reason="earlier slot")
 

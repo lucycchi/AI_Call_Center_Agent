@@ -38,7 +38,10 @@ LIMIT = ("I can't continue this chat right now because the site has reached its 
 REDIRECTS = {"hiring": "We don't take job applications by phone; openings and applications are on the careers page of our website.",
              "wrong number": "This is Meridian Home Comfort, a heating, cooling and plumbing company in the Austin area; "
                              "it sounds like you may have the wrong number."}
-HANDOFF_TAGS = {"dispute": "dispute", "complaint": "complaint", "late technician": "late technician",
+OWN_WARRANTY = re.compile(r"\b(regist\w*|warrant\w*|covered|coverage)\b", re.I)
+INVOICE_COPY = re.compile(r"\b(?:e-?mail|send|mail|text)\b.{0,20}\b(?:copy|receipt|pdf)\b|\bcopy of (?:the |my |that |this )?"
+                          r"(?:invoice|bill|receipt)\b|\bitemi[sz]ed (?:copy|invoice|bill|receipt)\b", re.I)
+HANDOFF_TAGS = {"invoice copy": "invoice copy", "dispute": "dispute", "complaint": "complaint", "late technician": "late technician",
                 "commercial": "commercial", "person": "other", "other language": "other language", "other": "other"}
 SAFETY_TAGS = {"danger": "emergency", "burning": "burning smell", "urgent": "emergency"}
 # Post-measurement safety fix: after a safety reply, a booking request or a yes is never booked (SPEC anti-goal, R37).
@@ -65,6 +68,15 @@ FILLER = re.compile(r"\b(can you hear me|hold on|hang on|one sec(ond)?|(you|it|t
 FILLER_WORDS = re.compile(r"\b(sorry|oh|um|uh|ok|okay|yeah|hi|hello|so|just|please|there|again|still|real quick|wait|a bit|"
                           r"(for )?a (sec|second|moment|minute)|could you|can you|would you|my|the|is|me|that|you|it)\b", re.I)
 TAKE_YOUR_TIME = "No problem, take your time."
+# Thinking it over, or saying the last reply was a mistake: neither is a request, a wrong number or a complaint
+# (working set Tbaf67f84: "let me think about it" was redirected as a wrong number, then the correction opened a
+# complaint ticket). A message that also asks for a manager or complains is routed as usual.
+PAUSE = re.compile(r"\b(let me think(?: about it| it over)?|i'?ll think(?: about it| it over)?|(?:just )?thinking (?:it|about it) "
+                   r"over|think it over|need (?:some )?time to (?:think|decide))\b", re.I)
+MISTAKE = re.compile(r"\b(?:that|your|the) (?:last |previous )?(?:reply|answer|response|message) (?:seems|seemed|was|looks|looked|"
+                     r"is)(?: like)? (?:a |an )?(?:mistake|wrong|an error|off)\b", re.I)
+PAUSE_WORDS = re.compile(FILLER_WORDS.pattern + r"|\b(i'?m|i am|and|no|that'?s|everything|all|for now|actually)\b", re.I)
+APOLOGY = "Sorry about that; my last reply was a mistake."
 # "What day is it?" alone is answered from the fixed "now", which the caller is told is the demo's date.
 DATE_QUESTION = re.compile(r"\bwhat(?:'?s| is)? (?:day(?: of the week)?|(?:today'?s |the )?date|(?:the )?time)(?: is it)?"
                            r"(?: (?:today|now|right now))?\b|\bis (?:it|today) (?:a )?(?:weekday|weekend|monday|tuesday|"
@@ -354,6 +366,14 @@ class AgentPipeline:
             yield finish("limit", "limit", {"limit": limit}, [])
             return
         at_offer = state.flow.get("step") in ("offer", "readback")
+        pause = re.compile(f"{PAUSE.pattern}|{MISTAKE.pattern}|{FILLER.pattern}", re.I)
+        if (PAUSE.search(turn.text) or MISTAKE.search(turn.text)) and _only(turn.text, pause, PAUSE_WORDS) \
+                and not has_identifier(turn.text):
+            if MISTAKE.search(turn.text):
+                yield emit(APOLOGY)
+            yield emit(TAKE_YOUR_TIME)
+            yield finish(state.active_flow or "none", "answered", {"safety": "clear"}, [])
+            return
         # A clear goodbye ends the chat, even with a flow open; at an open offer or read-back only a plain closing does,
         # since "okay, I'm good" or "perfect, appreciate it" may answer it ("yes, that's it" is still a yes).
         says_goodbye = ENDING.match(turn.text) or (_only(turn.text, GOODBYE_ANYWHERE, GOODBYE_WORDS) and "?" not in turn.text)
@@ -451,6 +471,13 @@ class AgentPipeline:
                 repeat_flow, offer_return = True, False
             requests = [*requests, Request(turn.text, "account", "address")]
         # "Add it" or "sign me up" after the plan was discussed is a request to join, an action the agent cannot take (R48).
+        if INVOICE_COPY.search(turn.text):
+            # No document says how invoice copies are sent, so a team member sends it; never dropped (Tb9afdda4). It
+            # takes the place of an unnamed handoff or a repeated invoice lookup.
+            requests = [r for r in requests if not (r.route == "handoff" and r.detail in ("other", "unclear", "none"))
+                        and not (r.route == "account" and r.detail in ("invoice", "balance", "none"))]
+            if not any(r.route == "handoff" for r in requests):
+                requests = [*requests, Request(turn.text, "handoff", "invoice copy")]
         if JOIN_CONSENT.search(turn.text) and any(PLAN_WORDS.search(m["content"]) for m in history[-4:] + [{"content": turn.text}]) \
                 and not any(r.route == "handoff" or (r.route == "account" and r.detail == "action") for r in requests):
             requests = [*requests, Request(turn.text, "account", "action")]
@@ -753,6 +780,11 @@ class AgentPipeline:
                 state.pending.remove(request)
                 results.append(account_answer(read_only(self.scheduling_db), customer, request["detail"], state, self.store,
                                               request.get("text") or ""))
+                if request["detail"] == "system" and OWN_WARRANTY.search(request.get("text") or ""):
+                    # The lookup gives only the brand and install date; the policy answers the question (Tf7d382d9).
+                    found = answer(request["text"], self.searcher, self.threshold)
+                    if found.facts:
+                        results.append(found)
             flow_text = text if continuing or not state.flow else None
             while True:
                 if state.flow and flow_text is not None:

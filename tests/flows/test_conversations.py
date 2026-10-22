@@ -334,8 +334,11 @@ def test_an_action_request_misrouted_as_an_account_question_is_still_handed_off(
 
 
 def test_a_caller_wanting_earlier_than_the_earliest_slot_gets_an_earlier_slot_ticket(chat):
+    # Told first that these are the earliest (R44); asking again opens the ticket (Milestone 7, Task 31).
     chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair")
-    reply, done = chat["say"]("anything earlier?")
+    chat["say"]("anything earlier?")
+    assert not chat["store"].tickets()
+    chat["say"]("anything earlier?")
     assert chat["store"].tickets()[-1]["reason_tag"] == "earlier slot"
 
 
