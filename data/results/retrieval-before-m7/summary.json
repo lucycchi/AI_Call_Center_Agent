@@ -1,0 +1,47 @@
+{
+ "set": "working",
+ "questions": 25,
+ "coverage": 1.0,
+ "coverage_basis": "9 caller questions from 85 calls",
+ "index_has_excluded_documents": false,
+ "keyword": {
+  "recall_at_5": 0.7272727272727273,
+  "hit_at_5": 0.7727272727272727,
+  "stale_trap_hit_at_5": 0.8333333333333334,
+  "misses": [
+   "case-T2603f4e6",
+   "case-Tbaf67f84",
+   "case-Tbc5df324",
+   "answerable-6",
+   "stale_trap-7"
+  ]
+ },
+ "meaning": {
+  "recall_at_5": 0.9772727272727273,
+  "hit_at_5": 1.0,
+  "stale_trap_hit_at_5": 1.0,
+  "misses": []
+ },
+ "combined": {
+  "recall_at_5": 0.9318181818181818,
+  "hit_at_5": 1.0,
+  "stale_trap_hit_at_5": 1.0,
+  "misses": []
+ },
+ "settings": {
+  "anthropic_sdk": "1.15.0",
+  "voyage_sdk": "0.5.0",
+  "embedding_model": "voyage-4",
+  "voyage_input_type": "query",
+  "voyage_timeout_s": 5,
+  "voyage_retries": 1,
+  "writer_model": "claude-sonnet-5-5",
+  "writer_max_tokens": 800,
+  "writer_effort": "low",
+  "retries": 1,
+  "anthropic_timeout_s": 20,
+  "run_cap_usd": 8.0,
+  "top_k": 5,
+  "answer_cost_usd": 0.5737
+ }
+}

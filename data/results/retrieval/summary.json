@@ -5,7 +5,7 @@
  "coverage_basis": "9 caller questions from 85 calls",
  "index_has_excluded_documents": false,
  "keyword": {
-  "recall_at_5": 0.7272727272727273,
+  "recall_at_5": 0.7045454545454546,
   "hit_at_5": 0.7727272727272727,
   "stale_trap_hit_at_5": 0.8333333333333334,
   "misses": [
@@ -42,6 +42,6 @@
   "anthropic_timeout_s": 20,
   "run_cap_usd": 8.0,
   "top_k": 5,
-  "answer_cost_usd": 0.5737
+  "answer_cost_usd": 0.5906
  }
 }
