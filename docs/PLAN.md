@@ -668,7 +668,7 @@ was never tuned on, how often it resolves a call without a person before and aft
 view that a handed-off ticket carries the whole conversation.
 
 - [x] Task 29: fresh test set: 30 cases written blind by Codex, reviewed by the author and frozen (fresh test set decision (D52))
-- [ ] Task 30: handoffs carry the whole interaction, to staff and between the agent's own flows
+- [x] Task 30: handoffs carry the whole interaction, to staff and between the agent's own flows
 - [ ] Task 31: fewer needless handoffs, found and fixed on the working set only
 - [ ] Task 32: payment and autopay links, membership enrolment and upgrades, and cancelling auto-renew (money and membership actions decision (D54))
 - [ ] Task 33: the fresh measurement, before and after; DECISIONS.md entries with evidence; deploy and documents

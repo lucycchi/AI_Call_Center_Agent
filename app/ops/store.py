@@ -264,6 +264,13 @@ class OpsStore:
                                                      "using (message_id) where t.ticket_id = ? order by m.message_id",
                                                      (ticket_id,))]
 
+    def ticket_conversation(self, ticket_id: int) -> list[dict]:
+        """The whole conversation behind a ticket, both sides, oldest first: what the caller said and was told before
+        the handoff as well as after it, so staff never have to ask again."""
+        return [{"role": r["role"], "text": r["text_masked"]} for r in self._rows(
+            "select m.role, m.text_masked from messages m join tickets t using (conversation_id) where t.ticket_id = ? "
+            "and m.text_masked != '' order by m.message_id", (ticket_id,))]
+
     def tickets(self) -> list[dict]:
         """For staff only; visitors go through tickets_for_visitor."""
         return self._rows("select * from tickets order by ticket_id")

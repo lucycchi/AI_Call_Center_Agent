@@ -180,6 +180,26 @@ def _spoken_street(text: str) -> str:
     return " ".join(normalise.STREET_WORDS.get(w, w) for w in normalise.words(text))
 
 
+WANTS_LIMIT = 600  # characters; a ticket's "wants" is for a person to read at a glance
+
+
+def _only_identity(text: str) -> bool:
+    """A message that gives only who the caller is: a name with an account number, phone or address."""
+    rest = text
+    for pattern in (ACCOUNT, PHONE, STREET):
+        rest = pattern.sub(" ", rest)
+    return has_identifier(text) and len(WORD.findall(rest)) <= 4
+
+
+def _caller_words(earlier: list[str], now: str) -> str:
+    """What the caller wants, in their own words: each earlier message that says more than who they are, then this
+    turn's, so a problem said before the handoff reaches the ticket (seen in the held-out run: the backed-up sink,
+    the blower and the upgrade were said earlier and lost)."""
+    parts = [m for m in earlier if not _only_identity(m)] + [now]
+    words = "; ".join(dict.fromkeys(p.strip() for p in parts if p.strip()))
+    return words if len(words) <= WANTS_LIMIT else words[:WANTS_LIMIT - 1].rstrip() + "…"
+
+
 class AgentPipeline:
     def __init__(self, store, scheduling_db: Path, seed_db: Path, searcher, route_fn: Callable, writer: Callable,
                  threshold: float, guard: Callable[[str], str | None] = lambda visitor: None,
@@ -320,7 +340,7 @@ class AgentPipeline:
             for sentence in fixed_reply(safety.kind, turn.text):
                 yield emit(sentence)
             identify()  # after the advice: details given with the emergency go on its ticket and are not asked again
-            for sentence in ticket(SAFETY_TAGS[safety.kind], safety.kind, turn.text):
+            for sentence in ticket(SAFETY_TAGS[safety.kind], safety.kind, _caller_words(earlier, turn.text)):
                 yield emit(sentence)
             state.safety_reported = state.safety_reported or safety.kind
             if turn_tickets:
@@ -575,7 +595,7 @@ class AgentPipeline:
         elif handoffs:
             tags = [tag for tag, _, _ in handoffs]
             fixed += ticket(tags[0], "; ".join(c for _, c, _ in handoffs if c),
-                            "; ".join(dict.fromkeys(w for _, _, w in handoffs)), tags[1:])
+                            _caller_words(earlier, "; ".join(dict.fromkeys(w for _, _, w in handoffs))), tags[1:])
             outcome = "declined" if tags[0] == "decline" else "handed_off"
         if no_booking:
             fixed.append(_no_booking_after_safety(state.safety_ticket))

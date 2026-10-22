@@ -46,7 +46,14 @@
     field(item, "Tried", ticket.tried);
     field(item, "Constraints", ticket.constraints);
     field(item, "Mood", ticket.mood);
-    if (ticket.messages.length) field(item, "Later messages", ticket.messages.join(" / "));
+    if (ticket.conversation && ticket.conversation.length) {
+      var whole = el("details", "conversation");
+      whole.appendChild(el("summary", null, "Whole conversation (" + ticket.conversation.length + " messages)"));
+      ticket.conversation.forEach(function (m) {
+        field(whole, m.role === "caller" ? "Caller" : "Agent", m.text);
+      });
+      item.appendChild(whole);
+    }
     return item;
   }
 

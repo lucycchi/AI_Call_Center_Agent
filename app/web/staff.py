@@ -150,7 +150,8 @@ def ticket_view(store, row: dict) -> dict:
             "wants": row["wants"], "tried": row["tried"], "constraints": row["constraints"], "mood": row["mood"],
             "tags": store.ticket_tags(row["ticket_id"]), "priority": row["priority"],
             "priority_label": PRIORITY_LABELS.get(row["priority"], "normal"), "status": row["status"],
-            "created_at": row["created_at"], "messages": store.ticket_messages(row["ticket_id"])}
+            "created_at": row["created_at"], "messages": store.ticket_messages(row["ticket_id"]),
+            "conversation": store.ticket_conversation(row["ticket_id"])}
 
 
 def replies_view(store, conversation_id: str) -> list[dict]:
