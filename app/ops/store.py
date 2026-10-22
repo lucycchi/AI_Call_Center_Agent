@@ -265,10 +265,14 @@ class OpsStore:
                                                      (ticket_id,))]
 
     def record_action(self, conversation_id: str | None, customer_id: str, kind: str, detail: str, sent_to: str | None,
-                      expires_at: str | None) -> int:
+                      valid_hours: int | None) -> int:
+        """A link's expiry is counted from when it is recorded, on the same clock (review finding I5)."""
+        made = self._clock()
+        expires = (made + timedelta(hours=valid_hours)).isoformat(timespec="seconds") if valid_hours else None
         return self._write("insert into account_actions (conversation_id, customer_id, kind, detail, sent_to, created_at, "
                            "expires_at) values (?, ?, ?, ?, ?, ?, ?)",
-                           (conversation_id, customer_id, kind, mask(detail), sent_to, self._now(), expires_at))
+                           (conversation_id, customer_id, kind, mask(detail), sent_to, made.isoformat(timespec="seconds"),
+                            expires))
 
     def account_actions(self, conversation_id: str | None = None) -> list[dict]:
         if conversation_id is None:
@@ -381,6 +385,8 @@ class OpsStore:
                     self._db.execute(f"update tickets set conversation_id = null where conversation_id in ({old})",
                                      (cutoff,))
                     self._db.execute(f"delete from events where conversation_id in ({old})", (cutoff,))
+                    # Action records go with their conversation, under the 30-day retention (review finding S2).
+                    self._db.execute(f"delete from account_actions where conversation_id in ({old})", (cutoff,))
                     self._db.execute(f"delete from messages where conversation_id in ({old})", (cutoff,))
                     self._db.execute(f"delete from conversations where conversation_id in ({old})", (cutoff,))
                     self._db.execute("commit")

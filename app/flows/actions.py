@@ -124,48 +124,61 @@ def offer(db: sqlite3.Connection, customer, kind: str, state, now, text: str = "
     return FlowResult([readback + " Ask the caller for a clear yes before going ahead."], "read-back")
 
 
+def auto_renew_off(db: sqlite3.Connection, customer_id: str) -> bool:
+    """Whether auto-renew was turned off in this live copy (the table exists only once one was)."""
+    if not db.execute("select 1 from sqlite_master where name = 'membership_settings'").fetchone():
+        return False
+    row = db.execute("select auto_renew from membership_settings where customer_id = ?", (customer_id,)).fetchone()
+    return bool(row) and row[0] == 0
+
+
 def perform(db_path, store, customer, state, conversation_id: str, now) -> FlowResult:
-    """Do the action read back, after a plain yes: record it, and write a membership change in one transaction."""
+    """Do the action read back, after a plain yes. A membership change and its action record commit together: the
+    change is written in a transaction that commits only once the record is saved (review finding D1)."""
     kind, plan = state.action["kind"], state.action.get("plan")
     state.action = {}
-    db = sqlite3.connect(db_path)
+    db = sqlite3.connect(db_path, isolation_level=None)
     try:
         m = membership(db, customer.customer_id)
         to = _phone(db, customer.customer_id)
-        expires = (now + timedelta(hours=LINK_HOURS)).isoformat(timespec="seconds")
-        sent = to.removeprefix("the ")
-        if kind == "enrol":
-            renews = (now.date() + timedelta(days=365)).isoformat()
-            with db:
+        sent, hours = to.removeprefix("the "), LINK_HOURS
+        db.execute("begin immediate")
+        try:
+            if kind == "enrol":
+                renews = (now.date() + timedelta(days=365)).isoformat()
                 db.execute("update customers set membership_tier = ?, membership_renewal_date = ? where customer_id = ?",
                            (plan, renews, customer.customer_id))
-            facts = [f"Done: the account is enrolled in Comfort Club {plan.title()}, renewing on {_long(renews)}.",
-                     f"Sent: a secure payment link for the first charge by text to {to}, valid for {LINK_HOURS} hours."]
-            detail = f"enrolled in {plan}, renews {renews}; first-charge payment link"
-        elif kind == "upgrade":
-            with db:
+                facts = [f"Done: the account is enrolled in Comfort Club {plan.title()}, renewing on {_long(renews)}.",
+                         f"Sent: a secure payment link for the first charge by text to {to}, valid for {LINK_HOURS} hours."]
+                detail = f"enrolled in {plan}, renews {renews}; first-charge payment link"
+            elif kind == "upgrade":
                 db.execute("update customers set membership_tier = 'plus' where customer_id = ?", (customer.customer_id,))
-            facts = [f"Done: the account is upgraded to Comfort Club Plus; the renewal date stays {_long(m.renewal_date)}.",
-                     f"Sent: a secure payment link for the prorated difference by text to {to}, valid for {LINK_HOURS} hours."]
-            detail = "upgraded standard to plus; prorated-difference payment link"
-        elif kind == "cancel auto-renew":
-            with db:
+                facts = [f"Done: the account is upgraded to Comfort Club Plus; the renewal date stays "
+                         f"{_long(m.renewal_date)}.",
+                         f"Sent: a secure payment link for the prorated difference by text to {to}, valid for "
+                         f"{LINK_HOURS} hours."]
+                detail = "upgraded standard to plus; prorated-difference payment link"
+            elif kind == "cancel auto-renew":
                 db.execute("create table if not exists membership_settings (customer_id text primary key, "
                            "auto_renew integer not null, changed_at text not null, conversation_id text)")
                 db.execute("insert or replace into membership_settings values (?, 0, ?, ?)",
                            (customer.customer_id, now.isoformat(timespec="seconds"), conversation_id))
-            facts = [f"Done: auto-renew is off; the Comfort Club membership stays active until {_long(m.renewal_date)} "
-                     "and then ends. A confirmation goes to the email on the account."]
-            detail, sent, expires = f"auto-renew off; active until {m.renewal_date}", "email on the account", None
-        elif kind == "autopay off":
-            facts = ["Done: autopay is off for charges at least one business day away. A confirmation goes to the email "
-                     "on the account."]
-            detail, sent, expires = "autopay off", "email on the account", None
-        else:
-            what = "payment link" if kind == "payment link" else "autopay link"
-            facts = [f"Sent: a secure {what} by text to {to}, valid for {LINK_HOURS} hours; {NEVER_CARDS}."]
-            detail = what
-        store.record_action(conversation_id, customer.customer_id, kind, detail, sent, expires)
+                facts = [f"Done: auto-renew is off; the Comfort Club membership stays active until "
+                         f"{_long(m.renewal_date)} and then ends. A confirmation goes to the email on the account."]
+                detail, sent, hours = f"auto-renew off; active until {m.renewal_date}", "email on the account", None
+            elif kind == "autopay off":
+                facts = ["Done: autopay is off for charges at least one business day away. A confirmation goes to the "
+                         "email on the account."]
+                detail, sent, hours = "autopay off", "email on the account", None
+            else:
+                what = "payment link" if kind == "payment link" else "autopay link"
+                facts = [f"Sent: a secure {what} by text to {to}, valid for {LINK_HOURS} hours; {NEVER_CARDS}."]
+                detail = what
+            store.record_action(conversation_id, customer.customer_id, kind, detail, sent, hours)
+            db.execute("commit")
+        except BaseException:
+            db.execute("rollback")
+            raise
     finally:
         db.close()
     state.tried.append(f"{kind} for {customer.customer_id}")

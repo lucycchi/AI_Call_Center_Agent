@@ -8,6 +8,7 @@ from app.accounts import normalise
 from app.accounts.fee_check import fee_mismatches
 from app.accounts.lookups import membership, open_invoices, system, system_age
 from app.config import SETTINGS
+from app.flows.actions import auto_renew_off
 from app.flows.identify import STREET
 from app.flows.protocol import FlowResult
 
@@ -75,6 +76,9 @@ def account_answer(db, customer, detail: str | None, state, store, text: str = "
         m = membership(db, customer.customer_id)
         if m.tier == "none":
             facts = ["There is no Comfort Club membership on this account."]
+        elif auto_renew_off(db, customer.customer_id):  # turned off in this conversation or earlier (review finding I4)
+            facts = [f"Membership: Comfort Club {'Plus' if m.tier == 'plus' else 'Standard'}; auto-renew is off, so it "
+                     f"stays active until {m.renewal_date} and then ends."]
         else:
             facts = [f"Membership: Comfort Club {'Plus' if m.tier == 'plus' else 'Standard'}, renews {m.renewal_date} "
                      f"at {_money(m.renewal_price_cents)} a year, the current published price."]

@@ -25,7 +25,7 @@ from app.flows.account import about_address, account_answer
 from app.flows.identify import ACCOUNT, ASK, PHONE, STREET, find_customer, has_identifier
 from app.flows.knowledge import SAVINGS, answer
 from app.flows.protocol import FlowResult
-from app.ops.masking import CARD as CARD_NUMBER
+from app.ops.masking import BANK as BANK_NUMBER, CARD as CARD_NUMBER
 from app.handoff.flow import add_to_open_ticket, hand_off, safe
 from app.replies.checks import CheckedStream, check_sentence
 from app.routing.router import Request, RouteResult
@@ -79,8 +79,8 @@ MISTAKE = re.compile(r"\b(?:that|your|the) (?:last |previous )?(?:reply|answer|r
 PAUSE_WORDS = re.compile(FILLER_WORDS.pattern + r"|\b(i'?m|i am|and|no|that'?s|everything|all|for now|actually)\b", re.I)
 APOLOGY = "Sorry about that; my last reply was a mistake."
 
-NO_CARDS = ("For your security, please don't type card numbers in this chat; I never take them. The secure link is where "
-            "you enter payment details.")
+NO_CARDS = ("For your security, please don't type card or bank numbers in this chat; I never take them. The secure link "
+            "is where you enter payment details.")
 NOT_DONE = "Okay, I haven't changed anything. Is there anything else I can help you with?"
 # "What day is it?" alone is answered from the fixed "now", which the caller is told is the demo's date.
 DATE_QUESTION = re.compile(r"\bwhat(?:'?s| is)? (?:day(?: of the week)?|(?:today'?s |the )?date|(?:the )?time)(?: is it)?"
@@ -197,22 +197,29 @@ def _spoken_street(text: str) -> str:
     return " ".join(normalise.STREET_WORDS.get(w, w) for w in normalise.words(text))
 
 
-WANTS_LIMIT = 600  # characters; a ticket's "wants" is for a person to read at a glance
+WANTS_LIMIT = 1200  # characters; the first messages, which say the problem, are kept (the whole conversation is on the ticket)
+
+
+INTRO_WORDS = {"sure", "it's", "its", "this", "is", "i'm", "im", "i", "am", "my", "name", "names", "yes", "yeah", "ok",
+               "okay", "um", "uh", "the", "account", "number", "phone", "and", "hi", "hello", "at", "in", "on", "it",
+               "under", "that's", "thats", "here", "for", "of"}
 
 
 def _only_identity(text: str) -> bool:
-    """A message that gives only who the caller is: a name with an account number, phone or address."""
-    rest = text
+    """A message that gives only who the caller is: a name (capitalised words) with an account number, phone or
+    address. "MHC-10001 sink is backed up" also says the problem, so it is kept (review finding I6)."""
+    rest = text.replace("’", "'")
     for pattern in (ACCOUNT, PHONE, STREET):
         rest = pattern.sub(" ", rest)
-    return has_identifier(text) and len(WORD.findall(rest)) <= 4
+    left = [w for w in re.findall(r"[A-Za-z']+", rest) if w.lower() not in INTRO_WORDS]
+    return has_identifier(text) and len(left) <= 3 and all(w[0].isupper() for w in left)
 
 
 def _caller_words(earlier: list[str], now: str) -> str:
     """What the caller wants, in their own words: each earlier message that says more than who they are, then this
     turn's, so a problem said before the handoff reaches the ticket (seen in the held-out run: the backed-up sink,
     the blower and the upgrade were said earlier and lost)."""
-    parts = [m for m in earlier if not _only_identity(m)] + [now]
+    parts = [m for m in earlier if not _only_identity(m) and not _only(m, FILLER, FILLER_WORDS)] + [now]
     words = "; ".join(dict.fromkeys(p.strip() for p in parts if p.strip()))
     return words if len(words) <= WANTS_LIMIT else words[:WANTS_LIMIT - 1].rstrip() + "…"
 
@@ -298,6 +305,11 @@ class AgentPipeline:
         def error_event(detail: str) -> None:
             self._quietly(self.store.log_event, "error", detail, turn.conversation_id)
 
+        def caller_words(now: str) -> str:
+            """The caller's words from the whole conversation, not only the recent history (review finding I6)."""
+            whole = [m["content"] for m in self.store.history(turn.conversation_id, 1000) if m["role"] == "caller"]
+            return _caller_words(whole, now)
+
         def ticket(reason_tag: str, constraints: str, wants: str, also_tags: list[str] = []) -> list[str]:  # noqa: B006
             context = {"store": self.store, "conversation_id": turn.conversation_id, "who": state.who, "wants": wants,
                        "tried": "; ".join(state.tried), "mood": _mood(turn.text)}
@@ -354,10 +366,11 @@ class AgentPipeline:
         safety = check(turn.text, earlier, state.burning_mentioned)
         if safety.kind != "clear":
             state.flow, state.active_flow, state.pending = {}, None, []  # emergencies are never booked
+            state.action = {}  # nor is a money or membership action waiting for a yes (review finding I1)
             for sentence in fixed_reply(safety.kind, turn.text):
                 yield emit(sentence)
             identify()  # after the advice: details given with the emergency go on its ticket and are not asked again
-            for sentence in ticket(SAFETY_TAGS[safety.kind], safety.kind, _caller_words(earlier, turn.text)):
+            for sentence in ticket(SAFETY_TAGS[safety.kind], safety.kind, caller_words(turn.text)):
                 yield emit(sentence)
             state.safety_reported = state.safety_reported or safety.kind
             if turn_tickets:
@@ -371,7 +384,8 @@ class AgentPipeline:
             yield finish("limit", "limit", {"limit": limit}, [])
             return
         at_offer = state.flow.get("step") in ("offer", "readback")
-        if CARD_NUMBER.search(turn.text):  # never taken, never repeated, never stored (it is masked when logged)
+        if CARD_NUMBER.search(turn.text) or BANK_NUMBER.search(PHONE.sub(" ", turn.text)):
+            # Never taken, never repeated, never stored: it is masked when logged (review finding S1 for bank numbers).
             yield emit(NO_CARDS)
             yield finish(state.active_flow or "none", "answered", {"safety": "clear"}, [])
             return
@@ -379,10 +393,18 @@ class AgentPipeline:
             # A money or membership action waits for a plain yes (D54); a no drops it, anything else moves on.
             if scheduling.YES.search(turn.text):
                 result = safe(lambda: self._perform(state, turn.conversation_id), error_event)
-                for sentence in self._written(result, turn.conversation_id, state):
-                    yield emit(sentence)
+                # Done is confirmed in fixed text, checked, as a committed booking is (review finding I2).
+                for sentence in result.facts:
+                    if check_sentence(sentence, "").ok:
+                        yield emit(sentence)
+                    else:
+                        log.error("fixed action confirmation failed a check: %s", sentence)
+                nxt = self._next_action(state)  # a second action asked for in the same message (review finding I3)
+                if nxt is not None:
+                    for sentence in self._written(nxt, turn.conversation_id, state):
+                        yield emit(sentence)
                 if result.handoff_reason:
-                    for sentence in ticket(result.handoff_reason, "", _caller_words(earlier, turn.text)):
+                    for sentence in ticket(result.handoff_reason, "", caller_words(turn.text)):
                         yield emit(sentence)
                 yield finish("account", "handed_off" if result.handoff_reason else "answered", {"safety": "clear"},
                              result.db_actions)
@@ -533,8 +555,8 @@ class AgentPipeline:
             doable = self._action(request) and actions.kind_of(request.text)  # an action the agent takes itself (D54)
             if request.route in ("account", "scheduling") and not self._action(request) or request.route == "continue" \
                     or doable:
-                if doable:
-                    request = Request(request.text, "account", "action")
+                if doable:  # one pending request per action kind, so two actions never collapse (review finding I3)
+                    request = Request(request.text, "account", f"action:{doable}")
                 waiting = {(p["route"], p["detail"]) for p in state.pending}
                 in_progress = request.route == "scheduling" and request.detail == state.flow.get("kind")
                 # The router can split one request into two identical ones; each is handled once.
@@ -652,7 +674,7 @@ class AgentPipeline:
         elif handoffs:
             tags = [tag for tag, _, _ in handoffs]
             fixed += ticket(tags[0], "; ".join(c for _, c, _ in handoffs if c),
-                            _caller_words(earlier, "; ".join(dict.fromkeys(w for _, _, w in handoffs))), tags[1:])
+                            caller_words("; ".join(dict.fromkeys(w for _, _, w in handoffs))), tags[1:])
             outcome = "declined" if tags[0] == "decline" else "handed_off"
         if no_booking:
             fixed.append(_no_booking_after_safety(state.safety_ticket))
@@ -739,6 +761,22 @@ class AgentPipeline:
             return FlowResult([], "handoff", handoff_reason="not identified")
         return actions.perform(self.scheduling_db, self.store, customer, state, conversation_id, self.now)
 
+    def _next_action(self, state: ConversationState) -> FlowResult | None:
+        """The read-back of the next action still waiting from the same message, if there is one."""
+        waiting = [r for r in state.pending if r["route"] == "account" and r["detail"].startswith("action:")]
+        if not waiting or state.action:
+            return None
+        state.pending.remove(waiting[0])
+        db = sqlite3.connect(self.scheduling_db)
+        try:
+            customer = self._customer(db, state)
+            if customer is None:
+                return None
+            return actions.offer(db, customer, waiting[0]["detail"].partition(":")[2], state, self.now,
+                                 waiting[0].get("text") or "")
+        finally:
+            db.close()
+
     def _written(self, result: FlowResult, conversation_id: str, state: ConversationState) -> Iterator[str]:
         if not result.facts:
             return
@@ -824,12 +862,15 @@ class AgentPipeline:
             results: list[FlowResult] = []
             # Account questions are answered first, so a question asked mid-booking does not wait behind it.
             for request in [r for r in state.pending if r["route"] == "account"]:
-                state.pending.remove(request)
-                if request["detail"] == "action":
-                    kind = actions.kind_of(request.get("text") or "")
+                if request["detail"].startswith("action"):
+                    if state.action:
+                        continue  # one read-back at a time; the next is offered after the yes (review finding I3)
+                    state.pending.remove(request)
+                    kind = request["detail"].partition(":")[2] or actions.kind_of(request.get("text") or "")
                     results.append(actions.offer(db, customer, kind, state, self.now, request.get("text") or "")
                                    if kind else FlowResult([], "handoff", handoff_reason="action gap"))
                     continue
+                state.pending.remove(request)
                 results.append(account_answer(read_only(self.scheduling_db), customer, request["detail"], state, self.store,
                                               request.get("text") or ""))
                 if request["detail"] == "system" and OWN_WARRANTY.search(request.get("text") or ""):
@@ -846,9 +887,11 @@ class AgentPipeline:
                     flow_text = ""
                 elif state.flow:
                     break  # an open flow waits; the caller was offered a return to it
-                if not state.pending:
-                    break
-                request = state.pending.pop(0)
+                bookings = [r for r in state.pending if r["route"] == "scheduling"]
+                if not bookings:
+                    break  # an action still waiting for its turn is not a booking (review finding I3)
+                request = bookings[0]
+                state.pending.remove(request)
                 state.flow = {"kind": request["detail"] if request["detail"] in SCHEDULING_ACTIONS else "book",
                               "step": "start", "issue": request["text"]}
                 if request["service_type"]:

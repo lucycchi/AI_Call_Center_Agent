@@ -382,6 +382,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.overwrite and args.final:
         check_results_folder(Path(), overwrite=True, final=True)
+    if args.set == "fresh" and (args.limit or args.provisional or args.cases):
+        raise SystemExit("refusing: a fresh run is the whole fresh set, graded; no --limit, --provisional or --cases")
     if args.set == "fresh":
         from eval import fresh_cases
         from eval.freeze import freeze_agent

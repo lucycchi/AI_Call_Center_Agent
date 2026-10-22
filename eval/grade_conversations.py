@@ -215,20 +215,29 @@ ACTION_KINDS = {"payment link": {"payment link"}, "autopay": {"autopay link", "a
                 "upgrade": {"upgrade", "enrol"}, "cancel auto-renew": {"cancel auto-renew"}}
 
 
-def expected_actions(case: dict) -> set[str]:
-    """The action kinds this case allows: those of its sub-reason and its requests, when expected to be contained."""
+def required_actions(case: dict) -> list[set[str]]:
+    """For each request the case expects the agent to finish by acting, the action kinds that would do it."""
     from app.flows.actions import kind_of
-    allowed = set()
+    needed = []
     for r in case["requests"]:
         if r["expected_outcome"] != "contained":
             continue
         if r["kind"] == "sub-reason" and case["reason"] in ("billing", "membership"):
-            allowed |= ACTION_SUBS.get(case["sub_reason"], set())
+            kinds = ACTION_SUBS.get(case["sub_reason"], set())
         elif r["kind"].startswith("action:"):
-            allowed |= ACTION_KINDS.get(r["kind"].split(":", 1)[1], set())
+            kinds = ACTION_KINDS.get(r["kind"].split(":", 1)[1], set())
         elif r["kind"] == "action" and (found := kind_of(r["request"])):  # older cases name no kind
-            allowed |= {found}
-    return allowed
+            kinds = {found}
+        else:
+            kinds = set()
+        if kinds:
+            needed.append(kinds)
+    return needed
+
+
+def expected_actions(case: dict) -> set[str]:
+    """The action kinds this case allows: those of its sub-reason and its requests, when expected to be contained."""
+    return set().union(*required_actions(case)) if required_actions(case) else set()
 
 
 def recorded_actions(attempt) -> list[dict]:
@@ -254,15 +263,21 @@ def _action_checks(case: dict, attempt, db, start: dict, now: dict) -> tuple[lis
         if action["customer_id"] != customer:
             problems.append(f"{action['kind']} for {action['customer_id']}, not the caller")
     kinds = {a["kind"] for a in done if a["customer_id"] == customer}
-    tier_now = (now["customers"].get(customer) or (None,) * 9)
-    tier_before = (start["customers"].get(customer) or (None,) * 9)
-    changed = tier_now != tier_before
+    for needed in required_actions(case):  # an expected action must have been taken (review finding E1)
+        if not kinds & needed:
+            problems.append(f"{' or '.join(sorted(needed))} was expected but not taken")
+    # Only the membership columns may change, and only with an enrolment or upgrade recorded (review finding E1).
+    columns = ["key"] + [r[1] for r in db.execute("pragma table_info(customers)")]
+    keep = [i for i, name in enumerate(columns) if name not in ("membership_tier", "membership_renewal_date")]
+    row_now, row_before = now["customers"].get(customer), start["customers"].get(customer)
+    changed = row_now != row_before
+    others_same = bool(row_now and row_before) and [row_now[i] for i in keep] == [row_before[i] for i in keep]
     if "cancel auto-renew" in kinds:
         has = db.execute("select 1 from sqlite_master where name = 'membership_settings'").fetchone()
         off = has and db.execute("select auto_renew from membership_settings where customer_id = ?", (customer,)).fetchone()
         if not off or off[0] != 0:
             problems.append("auto-renew was recorded as turned off but is still on")
-    explained = changed and bool(kinds & {"enrol", "upgrade"})
+    explained = changed and others_same and bool(kinds & {"enrol", "upgrade"})
     return problems, explained
 
 

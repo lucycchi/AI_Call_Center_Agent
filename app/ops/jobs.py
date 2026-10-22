@@ -35,6 +35,8 @@ def restore(sched_db: Path, seed_db: Path) -> None:
                 db.execute(f'delete from main."{table}"')
                 db.execute(f'insert into main."{table}" select * from seed."{table}"')
             db.execute("delete from main.agent_confirmations")
+            # Auto-renew settings live only in the live copy (D54); the reset clears them (review finding I4).
+            db.execute("drop table if exists main.membership_settings")
             db.execute("commit")
         except BaseException:
             db.execute("rollback")

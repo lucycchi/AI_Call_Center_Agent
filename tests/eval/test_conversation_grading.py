@@ -327,3 +327,21 @@ def test_a_second_request_to_enrol_allows_the_enrolment(tmp_path):
     case = _case(card=NON_MEMBER, requests=requests)
     checks = _checks(case, _attempt(db, action=None))
     assert checks["actions_correct"] is True and not any("customers" in w for w in checks.get("unexpected_writes", []))
+
+
+# -- the Codex review of Milestone 7: the action grader accepted missing actions (E1) ---------------------------------
+
+def test_an_expected_action_that_was_not_taken_is_wrong(tmp_path):
+    db = _db(tmp_path)
+    checks = _checks(_membership_case("cancel"), _attempt(db, action=None))
+    assert checks["actions_correct"] is False and "not taken" in " ".join(checks["action_problems"])
+
+
+def test_an_enrolment_excuses_only_the_membership_columns(tmp_path):
+    db = _db(tmp_path, sql=["update customers set membership_tier = 'standard', membership_renewal_date = '2027-10-16', "
+                            "phone = '512-000-0000' where customer_id = 'MHC-10004'"])
+    _ops_with(db, ("MHC-10004", "enrol"))
+    requests = [{"request": "join the Comfort Club", "kind": "action:enrol", "expected_outcome": "contained",
+                 "handoff_reason": None}]
+    checks = _checks(_case(card=NON_MEMBER, requests=requests), _attempt(db, action=None))
+    assert checks["no_unexpected_writes"] is False

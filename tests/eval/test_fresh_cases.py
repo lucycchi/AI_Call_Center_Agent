@@ -192,3 +192,41 @@ def test_the_report_gives_each_agent_versions_average_and_range_weighted_and_by_
     assert report["runs"] == ["r1", "r2"]
     assert report["handoff_weighted"] == {"average": 50.0, "low": 25.0, "high": 75.0}
     assert report["containment_cases"] == {"average": 50.0, "low": 50.0, "high": 50.0}
+
+
+# -- the Codex review of Milestone 7: partial runs used up full-run slots (E2) ---------------------------------------
+
+def test_a_partial_fresh_run_is_refused(tmp_path):
+    root = _frozen(tmp_path)
+    (root / "data" / "testset_fresh" / "F02.json").write_text('{"case_id": "F02"}')
+    fresh.freeze(root)
+    with pytest.raises(SystemExit, match="all 2 fresh cases"):
+        fresh.refuse(["F01"], final=True, agent_hash="a1", root=root)
+    fresh.refuse(["F01", "F02"], final=True, agent_hash="a1", root=root)
+
+
+def test_the_run_command_refuses_a_limited_or_provisional_fresh_run(monkeypatch):
+    import eval.run as run
+
+    def never(*args, **kwargs):  # a test must never start a real (paid) run
+        raise AssertionError("a test must never start a real run")
+    for name in ("run_graded", "build_client", "resume_graded", "run_all"):
+        monkeypatch.setattr(run, name, never, raising=False)
+    monkeypatch.setattr(fresh, "refuse", lambda ids, final, agent_hash, root=None: None)
+    monkeypatch.setattr(fresh, "record_run", never)
+    for flag in (["--limit", "1"], ["--provisional"]):
+        monkeypatch.setattr("sys.argv", ["eval.run", "--set", "fresh", "--fresh-final", *flag])
+        with pytest.raises(SystemExit, match="whole fresh set"):
+            run.main()
+
+
+def test_the_report_leaves_out_a_run_without_all_the_cases(tmp_path):
+    import json as _json
+    root = _frozen(tmp_path)
+    out = root / "data" / "results" / "short"
+    out.mkdir(parents=True)
+    (out / "attempts.jsonl").write_text(_json.dumps({"case_id": "F01", "attempt": 1, "handed_off": True,
+                                                     "all_correct": False}) + "\n")
+    fresh.record_run("a1", "short", root=root)
+    with pytest.raises(ValueError, match="has 1 of 2"):
+        fresh.report({"F01": 1, "F02": 1}, root=root)

@@ -284,8 +284,8 @@ def refuse(ids: list[str], final: bool, agent_hash: str, root: Path = ROOT) -> N
         raise SystemExit("refusing: the fresh cases have changed since they were frozen")
     if sum(run["agent_hash"] == agent_hash for run in record["runs"]) >= RUNS_PER_AGENT:
         raise SystemExit(f"refusing: this agent version ({agent_hash[:8]}) already ran {RUNS_PER_AGENT} times on the fresh set")
-    if set(ids) - set(record["cases"]):
-        raise SystemExit(f"refusing: {sorted(set(ids) - set(record['cases']))} are not fresh cases")
+    if sorted(ids) != sorted(record["cases"]):  # a run is the whole set, or it is not a run (review finding E2)
+        raise SystemExit(f"refusing: a fresh run covers all {len(record['cases'])} fresh cases, not {len(ids)}")
 
 
 def record_run(agent_hash: str, folder: str, root: Path = ROOT) -> None:
@@ -310,6 +310,8 @@ def report(weights: dict[str, int] | None = None, root: Path = ROOT) -> dict:
         for folder in folders:
             lines = (root / "data" / "results" / folder / "attempts.jsonl").read_text().splitlines()
             first = [a for a in map(json.loads, lines) if a.get("attempt") == 1]
+            if len({a["case_id"] for a in first}) != len(weights):
+                raise ValueError(f"fresh run {folder} has {len({a['case_id'] for a in first})} of {len(weights)} cases")
             share = lambda test, by: 100 * sum(by(a) for a in first if test(a)) / sum(by(a) for a in first)  # noqa: E731
             rates["containment_weighted"].append(share(_contained, lambda a: weights[a["case_id"]]))
             rates["handoff_weighted"].append(share(lambda a: a["handed_off"], lambda a: weights[a["case_id"]]))
