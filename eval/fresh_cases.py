@@ -8,8 +8,8 @@ harness runs, with a real database customer, the fixtures it needs and its expec
 agent sends payment and autopay links, enrols, upgrades and turns off auto-renew; refunds, disputes and fee waivers
 stay with staff). Each case weighs as many calls as its sub-reason has in the 420 transcripts.
 
-The set is frozen after the author's review and then runs only with --fresh-final, unchanged, and once per agent
-version, so nothing is tuned on it.
+The set is frozen after the author's review and then runs only with --fresh-final, unchanged, and at most three times
+per agent version (the result is their average and range), so nothing is tuned on it.
 
 Run: python -m eval.fresh_cases write    (Codex writes the scenarios into data/fresh_scenarios/)
      python -m eval.fresh_cases build    (the cases, into data/testset_fresh/)
@@ -41,6 +41,7 @@ SPLIT = Path("data") / "fresh_split.json"
 PROMPT = ROOT / "eval" / "fresh_prompt.md"
 PLACEHOLDERS = {"name", "account", "phone", "address", "city", "amount"}
 BATCH = 10
+RUNS_PER_AGENT = 3  # the author's choice: each version's result is the average and range of three runs
 
 # The new scope (author's choices, 2026-10-21): payment and autopay links, enrolment, upgrades and cancelling
 # auto-renew are the agent's to finish; refunds, disputes and fee waivers stay with a person.
@@ -271,7 +272,8 @@ def freeze(root: Path = ROOT) -> str:
 
 
 def refuse(ids: list[str], final: bool, agent_hash: str, root: Path = ROOT) -> None:
-    """Fresh cases run only when frozen, with --fresh-final, unchanged since the freeze, and once per agent version."""
+    """Fresh cases run only when frozen, with --fresh-final, unchanged since the freeze, and at most three times per
+    agent version."""
     if not (root / SPLIT).exists():
         raise SystemExit("refusing: the fresh test set is not frozen yet (python -m eval.fresh_cases freeze)")
     record = json.loads((root / SPLIT).read_text())
@@ -279,8 +281,8 @@ def refuse(ids: list[str], final: bool, agent_hash: str, root: Path = ROOT) -> N
         raise SystemExit("refusing to run fresh cases without --fresh-final")
     if freeze_hash([root / "data" / "testset_fresh" / f"{cid}.json" for cid in record["cases"]]) != record["hash"]:
         raise SystemExit("refusing: the fresh cases have changed since they were frozen")
-    if any(run["agent_hash"] == agent_hash for run in record["runs"]):
-        raise SystemExit(f"refusing: this agent version ({agent_hash[:8]}) already ran on the fresh set")
+    if sum(run["agent_hash"] == agent_hash for run in record["runs"]) >= RUNS_PER_AGENT:
+        raise SystemExit(f"refusing: this agent version ({agent_hash[:8]}) already ran {RUNS_PER_AGENT} times on the fresh set")
     if set(ids) - set(record["cases"]):
         raise SystemExit(f"refusing: {sorted(set(ids) - set(record['cases']))} are not fresh cases")
 

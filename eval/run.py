@@ -410,7 +410,7 @@ def main() -> None:
     else:
         _, summary = run_graded(cases, out.name, overwrite=args.overwrite)
     if args.set == "fresh":
-        fresh_cases.record_run(agent, out.name)  # this agent version never runs on the fresh set again
+        fresh_cases.record_run(agent, out.name)  # counted: at most three runs per agent version
     print(json.dumps(summary.to_json(), indent=1))
     print(f"results in {out}")
 

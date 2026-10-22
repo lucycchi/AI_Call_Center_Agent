@@ -94,13 +94,16 @@ def _frozen(tmp_path):
     return root
 
 
-def test_the_fresh_set_runs_only_with_its_flag_once_per_agent_and_unchanged(tmp_path):
+def test_the_fresh_set_runs_only_with_its_flag_three_times_per_agent_and_unchanged(tmp_path):
+    # Three runs per agent version, chosen by the author before any agent change: one case can move the weighted
+    # result by up to 19 points, so each version's result is the average and range of three runs.
     root = _frozen(tmp_path)
     with pytest.raises(SystemExit, match="--fresh-final"):
         fresh.refuse(["F01"], final=False, agent_hash="a1", root=root)
-    fresh.refuse(["F01"], final=True, agent_hash="a1", root=root)
-    fresh.record_run("a1", "fresh-a1", root=root)
-    with pytest.raises(SystemExit, match="already ran"):
+    for n in range(1, 4):
+        fresh.refuse(["F01"], final=True, agent_hash="a1", root=root)
+        fresh.record_run("a1", f"fresh-a1-{n}", root=root)
+    with pytest.raises(SystemExit, match="already ran 3 times"):
         fresh.refuse(["F01"], final=True, agent_hash="a1", root=root)
     fresh.refuse(["F01"], final=True, agent_hash="b2", root=root)
     (root / "data" / "testset_fresh" / "F01.json").write_text('{"case_id": "F01", "changed": true}')

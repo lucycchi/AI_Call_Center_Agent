@@ -695,7 +695,7 @@ can only propose a decision; only the author settles one.
 
 ## D52: How is the improved agent measured, now that every call template has been used?
 
-- **Status:** proposed
+- **Status:** replaced by "How is the improved agent measured, now that every call template has been used (with three runs per agent version)?" (D55)
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-21
 - **Options:**
   - Thirty new cases written blind by Codex, one per sub-reason and weighted by its calls; frozen after the author's review; run once per agent version with --fresh-final
@@ -741,6 +741,21 @@ can only propose a decision; only the author settles one.
   - [data/kb_text/membership__comfort_club_overview.md](data/kb_text/membership__comfort_club_overview.md): 'Members may cancel auto-renewal at any time before the renewal date'; refunds are prorated within 60 days only if no tune-up was done.
 - **Choice:** Keep the three read-only lookups. The agent also sends a payment link or an autopay link (a secure page, valid 24 hours, sent to the phone or email on file; autopay starts only when the customer completes it), enrols in or upgrades the Comfort Club at the published price, and turns off auto-renew (the membership stays active until its renewal date, and the refund terms are stated without a promise). Each needs the caller identified, a read-back and a plain yes; card and bank numbers are never asked for or repeated. Autopay follows a policy the author supplied on 2026-10-21, added as a marked document. Every action is recorded in the operations database (account_actions) and shown in the Staff view; auto-renew lives in a new live-copy table (membership_settings) cleared by the nightly reset. Refunds, disputes and fee waivers still hand off.
 - **Reason:** Chosen and confirmed by the author on 2026-10-21 after the policy and the autopay research: these are actions the company's own staff take on the call, done the way the rules and card-network practice expect, and they move the whole 47-call action gap in the transcripts (paying an invoice, autopay, cancelling auto-renew, upgrades; 11% of calls) to the agent; the handed-off floor on the fresh cases falls to about 22%.
+
+## D55: How is the improved agent measured, now that every call template has been used (with three runs per agent version)?
+
+- **Status:** proposed
+- **Replaces:** "How is the improved agent measured, now that every call template has been used?" (D52)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-21
+- **Options:**
+  - Thirty new cases written blind by Codex, one per sub-reason and weighted by its calls; frozen after review; each agent version run three times; report the average and range of the call-weighted rates and of the plain share of cases
+  - The same cases, one run per agent version (the replaced decision)
+  - Working-set runs only
+- **Research:**
+  - [data/results/fresh-before/summary.json](data/results/fresh-before/summary.json): The first before run: 7.4% containment and 86.7% of weighted calls handed off (16.7% and 76.7% of the 30 cases); all 30 conversations ended normally, with no errors.
+  - [data/testset_fresh/F01.json](data/testset_fresh/F01.json): With one case per sub-reason, the HVAC repair case carries 79 of 420 calls (18.8%) and the three largest cases 29.8%, so one conversation can move the weighted result by up to 19 points.
+- **Choice:** The thirty frozen cases (data/testset_fresh/) as before, written blind by Codex and weighted by each sub-reason's calls. Each agent version runs on them at most three times (eval.run refuses a fourth), and its result is reported as the average and range over its three runs of: containment and the handoff rate weighted by calls, and the same two as plain shares of the 30 cases. The agent as it stood before Milestone 7 and the improved agent both get three runs. This reporting was fixed after the first before run and before any agent change.
+- **Reason:** Chosen by the author on 2026-10-21: one case can swing the weighted number by up to 19 points, so three runs and the unweighted share show how much of a change is the agent and how much is chance, for about $4 more.
 
 ## Glossary
 
