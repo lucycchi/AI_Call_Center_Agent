@@ -172,3 +172,23 @@ def test_resume_grades_the_saved_fresh_run_and_never_starts_a_new_one(monkeypatc
     monkeypatch.setattr("sys.argv", ["eval.run", "--set", "fresh", "--fresh-final", "--name", "fresh-x", "--resume"])
     run.main()
     assert calls == [(30, "fresh-x"), ("recorded", "fresh-x")]
+
+
+def test_the_report_gives_each_agent_versions_average_and_range_weighted_and_by_case(tmp_path):
+    import json as _json
+    root = _frozen(tmp_path)
+    (root / "data" / "testset_fresh" / "F02.json").write_text('{"case_id": "F02"}')
+    weights = {"F01": 3, "F02": 1}
+    runs = {"r1": [("F01", True, False), ("F02", False, True)],    # F01 handed off; F02 contained
+            "r2": [("F01", False, True), ("F02", True, False)]}    # F01 contained; F02 handed off
+    for folder, attempts in runs.items():
+        out = root / "data" / "results" / folder
+        out.mkdir(parents=True)
+        (out / "attempts.jsonl").write_text("".join(_json.dumps({"case_id": c, "attempt": 1, "handed_off": h,
+                                                                  "all_correct": ok, "clean_decline": False}) + "\n"
+                                                    for c, h, ok in attempts))
+        fresh.record_run("a1", folder, root=root)
+    report = fresh.report(weights, root=root)["a1"]
+    assert report["runs"] == ["r1", "r2"]
+    assert report["handoff_weighted"] == {"average": 50.0, "low": 25.0, "high": 75.0}
+    assert report["containment_cases"] == {"average": 50.0, "low": 50.0, "high": 50.0}

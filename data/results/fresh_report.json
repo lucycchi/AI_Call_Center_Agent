@@ -1,0 +1,29 @@
+{
+ "0f9cbc54e9da667e60d4749089352b80508763fb6213d9dea4b6f33cf6ce7a2c": {
+  "runs": [
+   "fresh-before",
+   "fresh-before-2",
+   "fresh-before-3"
+  ],
+  "containment_weighted": {
+   "average": 12.1,
+   "low": 2.6,
+   "high": 26.2
+  },
+  "handoff_weighted": {
+   "average": 77.5,
+   "low": 61.4,
+   "high": 86.7
+  },
+  "containment_cases": {
+   "average": 14.4,
+   "low": 6.7,
+   "high": 20.0
+  },
+  "handoff_cases": {
+   "average": 74.4,
+   "low": 70.0,
+   "high": 76.7
+  }
+ }
+}

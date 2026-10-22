@@ -14,6 +14,7 @@ per agent version (the result is their average and range), so nothing is tuned o
 Run: python -m eval.fresh_cases write    (Codex writes the scenarios into data/fresh_scenarios/)
      python -m eval.fresh_cases build    (the cases, into data/testset_fresh/)
      python -m eval.fresh_cases freeze   (after the author's review)
+     python -m eval.fresh_cases report   (each agent version's average and range, into data/results/fresh_report.json)
 """
 
 import csv
@@ -293,6 +294,32 @@ def record_run(agent_hash: str, folder: str, root: Path = ROOT) -> None:
     (root / SPLIT).write_text(json.dumps(record, indent=1))
 
 
+def _contained(attempt: dict) -> bool:
+    return bool(attempt.get("all_correct")) and not attempt["handed_off"] and not attempt.get("clean_decline")
+
+
+def report(weights: dict[str, int] | None = None, root: Path = ROOT) -> dict:
+    """Each agent version's fresh runs (measurement decision (D55)): the average and range over its runs of containment
+    and the handoff rate, weighted by calls and as plain shares of the cases, from each run's first attempts."""
+    weights = weights or {s["case_id"]: s["calls_weight"] for s in slots()}
+    record = json.loads((root / SPLIT).read_text())
+    out = {}
+    for agent in dict.fromkeys(run["agent_hash"] for run in record["runs"]):
+        folders = [run["folder"] for run in record["runs"] if run["agent_hash"] == agent]
+        rates = {key: [] for key in ("containment_weighted", "handoff_weighted", "containment_cases", "handoff_cases")}
+        for folder in folders:
+            lines = (root / "data" / "results" / folder / "attempts.jsonl").read_text().splitlines()
+            first = [a for a in map(json.loads, lines) if a.get("attempt") == 1]
+            share = lambda test, by: 100 * sum(by(a) for a in first if test(a)) / sum(by(a) for a in first)  # noqa: E731
+            rates["containment_weighted"].append(share(_contained, lambda a: weights[a["case_id"]]))
+            rates["handoff_weighted"].append(share(lambda a: a["handed_off"], lambda a: weights[a["case_id"]]))
+            rates["containment_cases"].append(share(_contained, lambda a: 1))
+            rates["handoff_cases"].append(share(lambda a: a["handed_off"], lambda a: 1))
+        out[agent] = {"runs": folders, **{key: {"average": round(sum(v) / len(v), 1), "low": round(min(v), 1),
+                                               "high": round(max(v), 1)} for key, v in rates.items()}}
+    return out
+
+
 def main() -> None:
     command = sys.argv[1] if len(sys.argv) > 1 else ""
     if command == "write":
@@ -303,8 +330,12 @@ def main() -> None:
         print(f"{len(cases)} cases in {FRESH}; weights {sum(c['calls_weight'] for c in cases)} calls")
     elif command == "freeze":
         print(f"frozen: {freeze()}")
+    elif command == "report":
+        result = report()
+        (ROOT / "data" / "results" / "fresh_report.json").write_text(json.dumps(result, indent=1))
+        print(json.dumps(result, indent=1))
     else:
-        raise SystemExit("usage: python -m eval.fresh_cases write|build|freeze")
+        raise SystemExit("usage: python -m eval.fresh_cases write|build|freeze|report")
 
 
 if __name__ == "__main__":
