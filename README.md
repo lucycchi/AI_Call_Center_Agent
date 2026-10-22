@@ -15,8 +15,9 @@ everything else to a person with a ticket.
   The most this agent could contain with its scope is 48.4%. See [Containment](#containment) and the honest reading
   under [Results](#results).
 - **After Milestone 7, on 30 new test calls** (written blind after the first measurement, 3 runs per version): the
-  share of calls handed to a person fell from 77.5% to **48.3%** and containment rose from 12.1% to **36.6%**,
-  weighted by real calls. About 22% of calls need a person by design. See
+  share of calls handed to a person fell from 77.5% to 48.3%, and containment rose from 12.1% to 36.6%, weighted by
+  real calls. The live build, with the Codex review's fixes, measured 53.9% handed off and 27.1% contained (25.6% of
+  the 30 calls, against 26.7% before the fixes). About 22% of calls need a person by design. See
   [The fresh test set](#the-fresh-test-set-milestone-7).
 - **When it does not know, it hands off.** On the held-out calls it gave no confident wrong answers, every call that
   should have gone to a person did, with the right reason, and document answers and account lookups were all correct.
@@ -171,12 +172,21 @@ hash in `data/fresh_split.json`). Each agent version ran on them 3 times, and th
 lowest and highest run (measurement decision (D55); `python -m eval.fresh_cases report` writes
 `data/results/fresh_report.json`). The fixes were found on the working set only; the fresh calls were only counted.
 
-| Measure (average, lowest to highest run) | Before Milestone 7 | After Milestone 7 (the live build) |
-| --- | --- | --- |
-| Handed to a person, weighted by calls | 77.5% (61.4 to 86.7) | 48.3% (46.0 to 51.2) |
-| Resolved by the agent, weighted by calls | 12.1% (2.6 to 26.2) | 36.6% (35.5 to 38.8) |
-| Handed to a person, share of the 30 calls | 74.4% (70.0 to 76.7) | 58.9% (56.7 to 60.0) |
-| Resolved by the agent, share of the 30 calls | 14.4% (6.7 to 20.0) | 26.7% (23.3 to 30.0) |
+| Measure (average, lowest to highest run) | Before Milestone 7 | After Milestone 7 | After the review fixes (the live build) |
+| --- | --- | --- | --- |
+| Handed to a person, weighted by calls | 77.5% (61.4 to 86.7) | 48.3% (46.0 to 51.2) | 53.9% (43.3 to 67.9) |
+| Resolved by the agent, weighted by calls | 12.1% (2.6 to 26.2) | 36.6% (35.5 to 38.8) | 27.1% (18.1 to 38.6) |
+| Handed to a person, share of the 30 calls | 74.4% (70.0 to 76.7) | 58.9% (56.7 to 60.0) | 60.0% (56.7 to 66.7) |
+| Resolved by the agent, share of the 30 calls | 14.4% (6.7 to 20.0) | 26.7% (23.3 to 30.0) | 25.6% (20.0 to 30.0) |
+
+**The review fixes** (`docs/MILESTONE7_REVIEW.md`, review fixes decision (D59)) closed eleven problems Codex found in
+the new code, from a waiting action surviving an emergency to card numbers with dots slipping past the mask. The fixed
+version is about level by share of calls (25.6% against 26.7% resolved) but lower weighted (27.1% against 36.6%), with
+a much wider spread between runs (18.1 to 38.6): the heaviest cases, one of which stands for 79 of the 420 calls,
+were missed more often. The stricter grader from the review does not explain it: rescoring the earlier version's runs
+with it changes nothing. Upgrades are now completed (none were before), but in 5 calls over the three runs an action
+the caller asked for was not carried out, which the earlier version did not miss. The cause would be found on the
+working set, never by opening the fresh calls.
 
 What changed, each with its evidence in `docs/DECISIONS.md`:
 
@@ -189,9 +199,9 @@ What changed, each with its evidence in `docs/DECISIONS.md`:
 - **Five money and membership actions** (D54): action-gap tickets fell from 7.0 a run to 2.0, with about 6 actions
   taken a run.
 
-What is left (D58): the handoff rate is still about 27 points above the 22% that need a person by design, and
-containment is short of the 60 to 75% target. No upgrade was taken in any run, and "dispute", "other" and "not
-enough evidence" handoffs did not fall. The 29.5% below stays on record as the first, frozen measurement.
+What is left (D58, D59): the handoff rate is still more than 25 points above the 22% that need a person by design,
+and containment is short of the 60 to 75% target. "Dispute", "other" and "not enough evidence" handoffs did not fall,
+and the review-fixed version skipped an expected action in 5 calls. The 29.5% below stays on record as the first, frozen measurement.
 
 ### The frozen held-out measurement
 

@@ -463,9 +463,12 @@ def fresh_html(report: dict | None) -> str:
     if not report:
         return '<p class="note">Fresh test runs not yet run.</p>'
     versions = list(report.items())
-    names = ["Before Milestone 7", "After Milestone 7 (the live build)"]
-    head = "".join(f"<th>{e(names[i] if i < len(names) else f'Version {agent[:8]}')}</th>"
-                   for i, (agent, _) in enumerate(versions))
+    stage = {"fresh-before": "Before Milestone 7", "fresh-after": "After Milestone 7",
+             "fresh-reviewed": "After the review fixes"}
+    names = [next((label for prefix, label in stage.items() if v["runs"][0].startswith(prefix)), f"Version {agent[:8]}")
+             for agent, v in versions]
+    names[-1] += " (the live build)"  # the newest version measured is the one deployed
+    head = "".join(f"<th>{e(name)}</th>" for name in names)
     rows = []
     for key, label in FRESH_ROWS:
         cells = "".join(f"<td>{v[key]['average']:.1f}%<br><small>{v[key]['low']:.1f}% to {v[key]['high']:.1f}%</small></td>"

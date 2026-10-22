@@ -307,3 +307,12 @@ def test_before_and_after_are_drawn_alike(store, tmp_path):
 def test_without_a_fresh_report_the_section_says_so(store, tmp_path):
     fresh = section(results_page(store, tmp_path, summary_fixture()), "fresh-results")
     assert "not yet run" in fresh
+
+
+def test_a_third_version_is_named_after_the_review_fixes_and_marked_live(store, tmp_path):
+    report = dict(FRESH) | {"486b6b23cccc": FRESH["9713717ebbbb"] | {"runs": ["fresh-reviewed-1", "fresh-reviewed-2",
+                                                                              "fresh-reviewed-3"]}}
+    (tmp_path / "fresh_report.json").write_text(json.dumps(report))
+    fresh = section(results_page(store, tmp_path, summary_fixture()), "fresh-results")
+    assert "After Milestone 7" in fresh and "After the review fixes (the live build)" in fresh
+    assert "(the live build)" not in fresh.split("After the review fixes")[0]

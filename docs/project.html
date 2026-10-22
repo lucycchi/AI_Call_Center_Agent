@@ -2142,6 +2142,25 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Choice:</strong> The weighted handoff rate fell from 77.5% to 48.3% and containment rose from 12.1% to 36.6%, with the run-to-run spread down from 25 points to 5. It is still 27 points above the 21.7% floor of calls that need a person by design, and short of the 60 to 75% containment target. Left: upgrades (none taken in any run), and needless 'dispute', 'other' and 'not enough evidence' handoffs; each would be found and fixed on the working set, then measured with three new fresh runs of the new agent version.</li>
 <li><strong>Reason:</strong> The author asked (2026-10-21) for the handoff rate to go down and for each fix to be documented with how we know it worked; three runs per version (measurement decision (D55)) show the change is the agent, not chance.</li>
 </ul>
+<h3>D59: Which findings of the Codex review of Milestone 7 are fixed, and what did the fixed version measure?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-22</li>
+<li><strong>Options:</strong>
+<ul>
+<li>All eleven, test-first, then three fresh runs of the fixed version, reported as measured next to the earlier versions</li>
+<li>The safety and money findings only</li>
+<li>Write them up as known limits</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="docs/MILESTONE7_REVIEW.md">docs/MILESTONE7_REVIEW.md</a>: What was wrong: a waiting action survived an emergency (I1); a done action could be confirmed silently (I2); dotted card numbers and bank numbers were not masked (S1); a membership change could commit without its record (D1); auto-renew was write-only and survived the reset (I4); links were recorded as already expired (I5); action records escaped the purge (S2); 'wants' could lose the problem (I6); two actions in one message collapsed into one (I3); the grader accepted missing actions (E1); partial fresh runs used up full-run slots (E2).</li>
+<li><a href="tests/flows/test_m7_review_fixes.py">tests/flows/test_m7_review_fixes.py</a>: How each was fixed and tested: 11 tests reproduce the findings and pass after the fixes, with the grader and fresh-run guard tests in tests/eval/.</li>
+<li><a href="data/results/fresh_report.json">data/results/fresh_report.json</a>: How we know: the fixed version (agent 486b6b23, 3 runs) measured 53.9% handed off weighted (43.3 to 67.9), 27.1% contained weighted (18.1 to 38.6), 60.0% and 25.6% of the 30 calls; the earlier version measured 48.3%, 36.6%, 58.9% and 26.7%; rescoring the earlier runs with the stricter grader changes nothing.</li>
+</ul></li>
+<li><strong>Choice:</strong> All eleven findings fixed (Codex listed eleven; ten was a miscount when they were first summarized); the fixed version is live. By share of calls it is about level with the earlier version; weighted it is lower, with a wider spread, because the heaviest cases were missed more often. Upgrades are now completed, but in 5 calls over three runs an action the caller asked for was not carried out. The security audit's identification finding (write actions need only a name and one identifier) is a known limit: real identity verification is a non-goal, chat is reviewer-only and the data is synthetic; a real deployment would send a one-time code to the phone on file.</li>
+<li><strong>Reason:</strong> Chosen by the author on 2026-10-22 (fix all of them; record the identification finding as a known limit): the review found real defects in the code that changes customer accounts, and each fix is reported with its measured effect, even where the number fell.</li>
+</ul>
 <h3>Glossary</h3>
 <ul>
 <li><strong>Action gap:</strong> calls the agent understands but deliberately hands off because they need an action it is not allowed to take</li>
@@ -3015,6 +3034,62 @@ tests/web/test_staff.py .................................                [100%]
 <li>The grader-check rows on the Results tab wrap inside their column, and at phone width every measure name stays in</li>
 </ul>
 <p>its own column. No console errors on either page.</p>
+<h3>Milestone 7: the checks run again</h3>
+<p>Milestone 7, added after the project was finished, let the agent take five money and membership actions, made a handoff carry the whole interaction, fixed needless handoffs, and measured the result on 30 fresh test calls. The checks were run again on the new code on 2026-10-22.</p>
+<h4>Codex review of Milestone 7</h4>
+<p>Codex (<code>gpt-5.6-sol</code>, read-only) reviewed the Milestone 7 changes and how they work with the rest; its report is <code>docs/MILESTONE7_REVIEW.md</code>. It listed eleven findings, several reproduced. All eleven were fixed, test-first (<code>tests/flows/test_m7_review_fixes.py</code> and the evaluation tests), as the author chose:</p>
+<ul>
+<li><strong>A waiting action survived an emergency (I1):</strong> an upgrade read back, then "I smell gas", then "yes" upgraded the</li>
+</ul>
+<p>membership. A safety reply now drops any waiting action.</p>
+<ul>
+<li><strong>A done action could be confirmed silently (I2):</strong> if the writer's sentence was blocked, the caller saw nothing.</li>
+</ul>
+<p>Done actions are now confirmed in fixed, checked text.</p>
+<ul>
+<li><strong>Card and bank numbers slipped past the mask (S1):</strong> dotted card numbers and bare bank numbers are now masked and</li>
+</ul>
+<p>get the security reply.</p>
+<ul>
+<li><strong>A membership change could commit without its record (D1):</strong> both now commit together or not at all.</li>
+<li><strong>Auto-renew was write-only (I4):</strong> the membership lookup now says when auto-renew is off, and the nightly reset</li>
+</ul>
+<p>clears the setting.</p>
+<ul>
+<li><strong>Links were recorded as already expired (I5):</strong> a link now expires 24 hours after it is recorded, on one clock.</li>
+<li><strong>Action records escaped the 30-day purge (S2):</strong> they now go with their conversation.</li>
+<li><strong>A ticket's "wants" could lose the problem (I6):</strong> it now reads the whole conversation and keeps a problem said</li>
+</ul>
+<p>with an account number.</p>
+<ul>
+<li><strong>Two actions in one message collapsed into one (I3):</strong> both are now offered, one after the other.</li>
+<li><strong>The grader accepted missing actions (E1):</strong> it now requires each expected action and excuses only the membership</li>
+</ul>
+<p>columns of a changed customer record.</p>
+<ul>
+<li><strong>Partial fresh runs used up full-run slots (E2):</strong> a fresh run must now be the whole set, graded.</li>
+</ul>
+<p>One mistake was made and undone while fixing them: a new test, before its fix existed, started a real one-call run (about $0.03 of test-key spend). The test can no longer reach a paid call, and that run was removed from the record.</p>
+<h4>Security audit of Milestone 7</h4>
+<p>The gstack security audit ran in its static, diff-only mode on the Milestone 7 changes. It finished as <strong>partial</strong> for the same reason as before: its scanners cannot run on this machine. It found one supported finding, low severity:</p>
+<ul>
+<li><strong>Account changes need only a name and one identifier.</strong> Turning off auto-renew, enrolling or upgrading needs the</li>
+</ul>
+<p>caller's name with an account number, phone or street address, then a plain yes. Someone who knows another customer's name and street could change that customer's membership. The author chose to record it as a known limit: real identity verification is a declared non-goal, chat is reviewer-only, the customers are synthetic, payment always happens on the secure page, and the nightly reset restores membership data. A real deployment would send a one-time code to the phone on file before any change.</p>
+<p>The audit also confirmed that card numbers never reach a model: the card check runs before the router, and stored messages are masked.</p>
+<h4>The fixed version, measured</h4>
+<p>The fixed version ran 3 times on the 30 fresh calls (review fixes decision (D59)):</p>
+<table>
+<thead><tr><th>Measure (average, lowest to highest run)</th><th>After Milestone 7</th><th>After the review fixes (live)</th></tr></thead>
+<tbody>
+<tr><td>Handed to a person, weighted by calls</td><td>48.3% (46.0 to 51.2)</td><td>53.9% (43.3 to 67.9)</td></tr>
+<tr><td>Resolved by the agent, weighted by calls</td><td>36.6% (35.5 to 38.8)</td><td>27.1% (18.1 to 38.6)</td></tr>
+<tr><td>Resolved by the agent, share of the 30 calls</td><td>26.7% (23.3 to 30.0)</td><td>25.6% (20.0 to 30.0)</td></tr>
+</tbody>
+</table>
+<p>By share of calls the two are about level; weighted, the fixed version is lower and much less steady, because the heaviest cases were missed more often. The review's stricter grader does not explain it: rescoring the earlier runs with it changes nothing. Upgrades are now completed, but in 5 calls over three runs an action the caller asked for was not carried out. Finding why would be done on the working set, never by opening the fresh calls.</p>
+<h4>Deploy and the live site</h4>
+<p>The fixed version was deployed with <code>scripts/deploy.sh</code>. A first try was cut off when a session ended, and an earlier one stopped when the quick run's booking-and-membership case (T9e29febc) reached its 60-second limit again; the next try passed. The Results tab shows all three versions, with the fixed one marked as the live build.</p>
 </section>
 </main>
 <script type="module">

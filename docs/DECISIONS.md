@@ -799,6 +799,21 @@ can only propose a decision; only the author settles one.
 - **Choice:** The weighted handoff rate fell from 77.5% to 48.3% and containment rose from 12.1% to 36.6%, with the run-to-run spread down from 25 points to 5. It is still 27 points above the 21.7% floor of calls that need a person by design, and short of the 60 to 75% containment target. Left: upgrades (none taken in any run), and needless 'dispute', 'other' and 'not enough evidence' handoffs; each would be found and fixed on the working set, then measured with three new fresh runs of the new agent version.
 - **Reason:** The author asked (2026-10-21) for the handoff rate to go down and for each fix to be documented with how we know it worked; three runs per version (measurement decision (D55)) show the change is the agent, not chance.
 
+## D59: Which findings of the Codex review of Milestone 7 are fixed, and what did the fixed version measure?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-22
+- **Options:**
+  - All eleven, test-first, then three fresh runs of the fixed version, reported as measured next to the earlier versions
+  - The safety and money findings only
+  - Write them up as known limits
+- **Research:**
+  - [docs/MILESTONE7_REVIEW.md](docs/MILESTONE7_REVIEW.md): What was wrong: a waiting action survived an emergency (I1); a done action could be confirmed silently (I2); dotted card numbers and bank numbers were not masked (S1); a membership change could commit without its record (D1); auto-renew was write-only and survived the reset (I4); links were recorded as already expired (I5); action records escaped the purge (S2); 'wants' could lose the problem (I6); two actions in one message collapsed into one (I3); the grader accepted missing actions (E1); partial fresh runs used up full-run slots (E2).
+  - [tests/flows/test_m7_review_fixes.py](tests/flows/test_m7_review_fixes.py): How each was fixed and tested: 11 tests reproduce the findings and pass after the fixes, with the grader and fresh-run guard tests in tests/eval/.
+  - [data/results/fresh_report.json](data/results/fresh_report.json): How we know: the fixed version (agent 486b6b23, 3 runs) measured 53.9% handed off weighted (43.3 to 67.9), 27.1% contained weighted (18.1 to 38.6), 60.0% and 25.6% of the 30 calls; the earlier version measured 48.3%, 36.6%, 58.9% and 26.7%; rescoring the earlier runs with the stricter grader changes nothing.
+- **Choice:** All eleven findings fixed (Codex listed eleven; ten was a miscount when they were first summarized); the fixed version is live. By share of calls it is about level with the earlier version; weighted it is lower, with a wider spread, because the heaviest cases were missed more often. Upgrades are now completed, but in 5 calls over three runs an action the caller asked for was not carried out. The security audit's identification finding (write actions need only a name and one identifier) is a known limit: real identity verification is a non-goal, chat is reviewer-only and the data is synthetic; a real deployment would send a one-time code to the phone on file.
+- **Reason:** Chosen by the author on 2026-10-22 (fix all of them; record the identification finding as a known limit): the review found real defects in the code that changes customer accounts, and each fix is reported with its measured effect, even where the number fell.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
