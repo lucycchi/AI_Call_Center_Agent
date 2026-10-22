@@ -48,7 +48,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <main>
 <header>
 <h1>AI Call Center Agent</h1>
-<p class="stage">Current stage: Milestone gate, milestone 6 of 6 (needs your approval before moving on)</p>
+<p class="stage">Current stage: Final checks (needs your approval before moving on)</p>
 </header>
 <section id="summary">
 <h2>Summary</h2>
@@ -836,7 +836,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     A --&gt;|"valid cookie"| D["Known visitor"]
     D --&gt;|"opens the reusable secret reviewer link"| C["Reviewer session on the reserve; token cleared from the address"]
     D --&gt;|"views pages and own Staff view"| E["Own conversations, tickets, receipts"]
-    D --&gt;|"public visitor sends a message"| P["Safety reply if an emergency, else a plain limit message ($0 public budget)"]
+    D --&gt;|"public visitor sends a message"| P["Safety reply if an emergency, else a reply that chat is for reviewers ($0 public budget)"]
     C --&gt;|"chat"| E
     D --&gt;|"correct shared password"| F["Staff session, 12 hours"]
     F --&gt;|"may see"| G["All visitors' queue and flagging"]
@@ -844,7 +844,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     D --&gt;|"5 wrong passwords in 15 minutes from one address"| H["Sign-in refused for that address until the oldest is 15 minutes old"]</pre>
 <p><em>Three levels of access: any visitor sees only their own session, the reviewer link adds the only budget that can chat on the live site, and the shared password unlocks the full queue.</em></p>
 <p>The visitor cookie is signed, HttpOnly, Secure, SameSite=Lax and lasts 7 days; its signing secret is the <code>VISITOR_COOKIE_SECRET</code> Fly.io secret, and the app does not start without it.</p>
-<p><strong>Reviewer-only chat (reviewer-only chat with a $0 public budget (D50)).</strong> On the live site <code>fly.toml</code> sets the public budget to $0 (<code>PER_VISITOR_DAILY_USD = "0"</code>). Anyone can open the chat page, the Results tab and the Staff view of their own session, and the chat page then shows a note that chat is open to reviewers with a reviewer link. A public visitor's message still gets the safety check first, so an emergency gets its fixed advice and priority ticket; anything else is refused by the spending guard before any model call, with the plain limit message. The site uses its own Anthropic key with a monthly limit set in the console, a hard stop behind the app's own caps.</p>
+<p><strong>Reviewer-only chat (reviewer-only chat with a $0 public budget (D50)).</strong> On the live site <code>fly.toml</code> sets the public budget to $0 (<code>PER_VISITOR_DAILY_USD = "0"</code>). Anyone can open the chat page, the Results tab and the Staff view of their own session, and the chat page then shows a note that chat is open to reviewers with a reviewer link. A public visitor's message still gets the safety check first, so an emergency gets its fixed advice and priority ticket; anything else is answered by the web layer, before the agent runs, with a reply saying chat is open to reviewers with a reviewer link (the agent's own spending refusal would speak of a usage limit and trying again tomorrow, found in the final QA). A later message in an emergency conversation, such as the caller's name, still meets the agent's spending guard and its plain limit message. The site uses its own Anthropic key with a monthly limit set in the console, a hard stop behind the app's own caps.</p>
 <p><strong>The reviewer link</strong> is <code>https://&lt;app&gt;/#r=&lt;token&gt;</code> and is reusable, a departure from the one-time token of the reviewer-link rule (R85), chosen by the author in the reviewer-only chat decision (D50). The token sits after the # (the fragment, which browsers never send to servers, so it never reaches Fly's or the app's request logs). On each page load that carries it, <code>reviewer.js</code> clears it from the address bar at once (replacing the history entry, so it stays out of history and screenshots; there is no redirect) and posts it once in a request body to <code>POST /api/reviewer</code>. The server compares it in constant time with <code>REVIEWER_TOKEN</code> (several tokens separated by commas are accepted; each must be at least 16 characters) and marks the signed visitor as a reviewer, so the reviewer session lasts as long as the 7-day visitor cookie. Every browser that opens the link gets its own reviewer session, and all of them share the $3-a-day reviewer reserve. The token is never stored or logged; a wrong, malformed or unconfigured token gets a plain 404.</p>
 <p><strong>Staff sign-in.</strong> The shared password is stored only as a PBKDF2 hash in the <code>STAFF_PASSWORD_HASH</code> Fly.io secret. A correct password starts a 12-hour staff session in its own signed cookie, separate from the visitor cookie: HttpOnly, Secure and SameSite=Strict, holding a random session id. <code>POST /api/staff/logout</code> ends the session on the server too (a "staff session ended" event), so a copied cookie stops working; changing the password ends every session. Sign-in attempts are counted per client address (the <code>Fly-Client-IP</code> header, trusted only behind Fly's proxy): after 5 wrong passwords in 15 minutes from one address, every attempt from it is refused until the oldest of them is 15 minutes old. The counts are kept in memory, so a restart clears them. The flag form carries a token against forged requests (an HMAC of the staff session id), which is passed through unmasked; every other string in a Staff view response is masked again. Phone numbers, emails and street addresses are masked at every level.</p>
 <p><strong>Message limits.</strong> Each visitor may send 20 messages in 10 minutes and 100 a day, counted both by the visitor cookie and by the client address (so clearing the cookie does not reset them), and the site takes 60 messages a minute. The counts are kept in memory by the one worker process and start again from zero after a restart or deploy.</p>
@@ -2767,15 +2767,100 @@ tests/web/test_staff.py .................................                [100%]
 <h4>Tasks</h4>
 <p>Every task in milestone 6 is ticked (2 of 2).</p>
 <h4>Architecture check</h4>
-<p>Not recorded yet.</p>
+<p>Covered by the milestone 5 architecture checks (Codex and a fresh Claude agent), which compared everything since <code>tortoise/milestone-4</code>: the final held-out run code (<code>eval/final.py</code>, the resume path in <code>eval/run.py</code>, <code>eval/per_driver.py</code>) and the documents written for this milestone. Since <code>tortoise/milestone-5</code> no code has changed (<code>git diff tortoise/milestone-5..HEAD</code> over app, eval, pipeline, scripts and tests is empty). The architecture document was brought up to date in that gate's fixes (commit 173723a), including the final-run tools and the <code>data/results/final/</code> files.</p>
 <h4>Reviews</h4>
-<p>Not recorded yet.</p>
+<p>Covered by the milestone 5 code reviews (Codex and a fresh Claude agent, base <code>tortoise/milestone-4</code>), which included the final-run code, the resume path that grades saved conversations without re-running them, the per-driver table and the README's repository checks; their findings and fixes are in <code>docs/gates/milestone-5.md</code>. No code has changed since <code>tortoise/milestone-5</code>.</p>
+<p>The milestone's own results, for the author:</p>
+<ul>
+<li><strong>Final held-out run (Task 27):</strong> the frozen agent 5b8f6899 on 15 held-out scenarios (122 weighted calls): containment 29.5% (scope ceiling 74.6%, adjusted ceiling 48.4%; human baselines 84.5% and 73.3%), no wrong confident answers, knowledge, lookups and every handoff correct, routing 76.2%, bookings 69.8%; correct on all three consistency runs 66.7%. Grading crashed once and resumed from the saved conversations. Results by call reason are in the README.</li>
+<li><strong>README and repository contents (Task 28):</strong> the README for a junior engineer with every required section, its numbers checked against the final summary by <code>tests/test_repository.py</code>, which also confirms the required files are tracked and scans for committed secrets (none). The video outline is the video agent's; the video is published by the author.</li>
+<li><strong>Live build:</strong> differs from the measured agent by the live fixes after the measurement (D51), as the README and Results tab say.</li>
+</ul>
 <h4>Author's choices</h4>
-<p>Not recorded yet.</p>
+<p>No findings to choose from: the milestone 5 reviews covered this milestone's code, and their fixes are made.</p>
 </section>
 <section id="final-checks">
 <h2>Final checks</h2>
-<p>Final checks have not run yet.</p>
+<p>Three checks ran on the finished project on 2026-10-21: a browser QA of the live site (gstack <code>/qa</code>), a security audit (gstack <code>/cso</code>), and a whole-project review by Codex (<code>docs/FINAL_REVIEW.md</code>). This page says what each found, what was fixed, and what the author chose to leave as a known limit. Fixes were made test-first; the full suite (1,438 tests) passes after them.</p>
+<h3>Browser QA of the live site</h3>
+<p>Run against https://ai-call-center-agent-bvgy9q.fly.dev as a public visitor, at desktop width (1280 px) and phone width (375 px). The author allowed three public chat messages: a blank message, "How much is a tune-up?" and "I smell gas". No password was typed on the site. The report and screenshots are kept locally (ignored by Git) in <code>.gstack/qa-reports/qa-report-ai-call-center-agent-2026-10-21.md</code>.</p>
+<p>Health score 99 out of 100. No console errors, no broken links. What worked:</p>
+<ul>
+<li>A blank message is not sent.</li>
+<li>"I smell gas" from a public visitor, who has no chat allowance, still got the full safety advice and an urgent</li>
+</ul>
+<p>ticket, and the staff view showed the ticket at once.</p>
+<ul>
+<li>The Results tab draws tables, not raw JSON, and its six "Try these" links open the chat with the question filled in.</li>
+<li>Neither page scrolls sideways at phone width.</li>
+<li><code>/health</code> answers 200. Unknown paths answer 404, and the staff queue answers 403 without a staff session. The API</li>
+</ul>
+<p>documentation pages are off.</p>
+<p>Found and fixed:</p>
+<ul>
+<li><strong>Results tables overlapped.</strong> In the grader-check rows, long values were drawn on top of the "What it means"</li>
+</ul>
+<p>column. The style that lets a long value wrap lost to the more specific style that keeps values on one line. At phone width, measure names such as "Containment" also ran into their values. Fixed in the Results page styles (<code>app/web/templates/results.html</code>), with a test that the wrap rules win.</p>
+<ul>
+<li><strong>A public question was told the site had hit its usage limit.</strong> Chat is reviewer-only, so "the site has reached its</li>
+</ul>
+<p>usage limit... try again tomorrow" was misleading: tomorrow changes nothing. The web layer now answers a public question with "Chat on this demo is open to project reviewers with a reviewer link", before the agent runs. A safety report still reaches the agent and gets its advice and ticket. The agent's code is unchanged (<code>app/web/main.py</code>).</p>
+<p>Left as known limits:</p>
+<ul>
+<li>The grader-check note on the Results tab starts with a lower-case "fable". The text comes from the frozen results</li>
+</ul>
+<p>file, which is part of the measured record and is not edited.</p>
+<ul>
+<li>After an emergency, the agent tells every caller "You can keep asking me other questions here". A public visitor</li>
+</ul>
+<p>cannot, and if they then give their name, the agent's spending guard answers with its usage-limit message, so the name is not added to the ticket. Reviewers are not affected. Changing it would change the agent's text.</p>
+<h3>Security audit</h3>
+<p>The gstack security audit ran in its static mode with a ten-minute budget. It finished as <strong>partial</strong>: its scanners (Gitleaks for secrets, OSV for dependencies, Semgrep, Trivy) did not run, because this machine does not let the helper isolate them (it needs control of CPU, memory and process limits, which WSL does not give it here). In the code it read, chiefly the reviewer link, it found no supported findings. The reviewer token is compared in constant time, is never stored or logged, and a wrong token gets a plain 404. The Codex review below also scanned the tree and the Git history for committed keys and found none, and the repository's own test (<code>tests/test_repository.py</code>) scans for secrets on every run.</p>
+<p>Earlier milestone reviews covered the rest of the security surface: staff sign-in and its attempt limit, the signed visitor cookie, the message and emergency limits, and masking of phone numbers, emails and streets.</p>
+<h3>Codex whole-project review</h3>
+<p>Codex (<code>gpt-5.6-sol</code>, read-only) reviewed the whole project; its report is <code>docs/FINAL_REVIEW.md</code>. It listed seven findings. Each was checked against the code: the mechanics are real in all seven, but six only matter while the operations database is already failing or when several paid calls arrive at the same instant.</p>
+<p>Fixed, as the author chose:</p>
+<ul>
+<li><strong>Unmasked backup ticket file (F2).</strong> A ticket that could not be saved to the database went to a backup file</li>
+</ul>
+<p>without masking, so a phone number or street given with a warranty booking stayed on the disk in plain text. The backup file is now masked like the database.</p>
+<ul>
+<li><strong>Backup ticket file race (F7).</strong> Saving to the backup file and retrying it had no lock, so a ticket written during</li>
+</ul>
+<p>a retry could be erased, or two retries could save the same ticket twice. Both now take one lock.</p>
+<ul>
+<li><strong>Lost message (F1).</strong> An accepted message was saved as an empty placeholder and then, in a second write, its text.</li>
+</ul>
+<p>If the second write failed, the text was lost and a retry of the same message was ignored. Both are now written in one transaction.</p>
+<p>Left as known limits, as the author chose:</p>
+<ul>
+<li><strong>Voyage calls are not counted (F3).</strong> Search embedding calls are not added to the spending totals or the model-call</li>
+</ul>
+<p>log. They run on Voyage's free allowance, so the spend they leave out is $0.</p>
+<ul>
+<li><strong>Spending cap race (F5).</strong> The cap is checked before a turn and charged after it, so up to four turns running at</li>
+</ul>
+<p>once could each pass the check on the same remaining amount. The overshoot is a few cents, and the site's Anthropic key has a $25-a-month limit in the console behind the app's own caps.</p>
+<ul>
+<li><strong>Finished reply replays as a failure (F4).</strong> If saving a reply's end marker fails, a reconnect after a restart</li>
+</ul>
+<p>replays that finished reply as a failure and opens an extra error ticket. It needs a database failure at that moment and then a restart before the caller's page reconnects.</p>
+<ul>
+<li><strong>Weak searches leave no record (F6).</strong> When a search finds nothing strong enough and the agent hands off, the</li>
+</ul>
+<p>passages it did find and their scores are not saved. The handoff and its reason ("not enough evidence") are saved. Recording them would change the agent's code.</p>
+<h3>After the fixes</h3>
+<p>The fixes were committed, pushed and deployed with <code>scripts/deploy.sh</code>, which runs the paid quick run first. The quick run failed twice before it passed, on the same case (T9e29febc, a repair booking with membership questions): the simulated caller kept asking whether the membership pays for itself, and the call reached its 60-second limit just after the booking read-back. Its retry passed both times, but the gate counts the first attempt. None of the fixes change the agent; the author chose a third try, which passed and deployed.</p>
+<p>The live site was then checked again, with two public messages:</p>
+<ul>
+<li>"How much is a tune-up?" now gets "Chat on this demo is open to project reviewers with a reviewer link, so I can't</li>
+</ul>
+<p>answer here", with no mention of a usage limit.</p>
+<ul>
+<li>"I smell gas" still gets the full safety advice and an urgent ticket.</li>
+<li>The grader-check rows on the Results tab wrap inside their column, and at phone width every measure name stays in</li>
+</ul>
+<p>its own column. No console errors on either page.</p>
 </section>
 </main>
 <script type="module">
