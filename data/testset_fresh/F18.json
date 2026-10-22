@@ -1,0 +1,87 @@
+{
+ "case_id": "F18",
+ "template_id": "F18",
+ "family": "F18",
+ "calls_weight": 10,
+ "reason": "warranty",
+ "sub_reason": "registration",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "Was the new Goodman system Meridian installed late last month registered with Goodman?",
+  "I'm Jordan Rivera, account MHC-05280.",
+  "I haven't received a registration confirmation, so please resend it if the registration is complete.",
+  "Also, what registered warranty length applies to Goodman parts and the heat exchanger?"
+ ],
+ "caller_card": {
+  "customer_id": "MHC-05280",
+  "name": "Jordan Rivera",
+  "phone": "512-555-0199",
+  "email": "jordan.rivera@example.com",
+  "service_address": "100 Test Lane",
+  "city": "Kyle",
+  "zip": "78600",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2026-09-20",
+  "zone": "south",
+  "synthetic": true,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [
+  {
+   "table": "customers",
+   "row": {
+    "customer_id": "MHC-05280",
+    "name": "Jordan Rivera",
+    "phone": "512-555-0199",
+    "email": "jordan.rivera@example.com",
+    "service_address": "100 Test Lane",
+    "city": "Kyle",
+    "zip": "78600",
+    "membership_tier": "none",
+    "membership_renewal_date": null,
+    "system_brand": "Goodman",
+    "system_install_date": "2026-09-20"
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "registration",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "Ask about Goodman's registered parts and heat-exchanger warranty terms.",
+   "kind": "knowledge",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Also, what registered warranty length applies to Goodman parts and the heat exchanger?",
+   "reference": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "Meridian registers every system it installs with the manufacturer within 30 days. When registered, a residential Goodman system has 10-year compressor and parts coverage and a limited lifetime heat-exchanger warranty; manufacturer warranties cover the part only.",
+ "evidence_spans": [
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "New system installation warranty",
+   "start_line": 12,
+   "end_line": 12
+  },
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "Manufacturer parts warranty (residential, when registered)",
+   "start_line": 21,
+   "end_line": 25
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

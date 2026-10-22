@@ -1,0 +1,82 @@
+{
+ "case_id": "F24",
+ "template_id": "F24",
+ "family": "F24",
+ "calls_weight": 6,
+ "reason": "existing appointment",
+ "sub_reason": "cancel appointment",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I need to make a change to an upcoming appointment.",
+  "This is Grace Garcia, account MHC-95149.",
+  "Please cancel the plumbing visit on Wednesday, October 21, from 8 to noon.",
+  "The leak has already been fixed, so I don't need to reschedule."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-95149",
+  "name": "Grace Garcia",
+  "phone": "512-686-4786",
+  "email": "grace.garcia@example.com",
+  "service_address": "7444 Lakeshore Blvd",
+  "city": "Buda",
+  "zip": "78610",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2026-12-12",
+  "system_brand": "Trane",
+  "system_install_date": "2026-07-12",
+  "zone": "south",
+  "synthetic": false,
+  "zone_source": "transcript"
+ },
+ "appointment": {
+  "appointment_id": 5124,
+  "slot_id": 9124,
+  "slot_date": "2026-10-21",
+  "window": "08:00-12:00",
+  "tech_id": 3,
+  "zone": "south",
+  "source": "planted with overlap"
+ },
+ "fixtures": [
+  {
+   "table": "appointment_slots",
+   "row": {
+    "slot_id": 9124,
+    "slot_date": "2026-10-21",
+    "window": "08:00-12:00",
+    "tech_id": 3,
+    "zone": "south",
+    "service_type": "plumbing",
+    "status": "booked"
+   }
+  },
+  {
+   "table": "appointments",
+   "row": {
+    "appointment_id": 5124,
+    "slot_id": 9124,
+    "customer_id": "MHC-95149",
+    "issue_description": "test appointment",
+    "created_at": "2026-10-10",
+    "status": "scheduled",
+    "is_warranty_visit": 0
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "cancel appointment",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

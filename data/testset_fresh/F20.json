@@ -1,0 +1,49 @@
+{
+ "case_id": "F20",
+ "template_id": "F20",
+ "family": "F20",
+ "calls_weight": 9,
+ "reason": "safety emergency",
+ "sub_reason": "gas, carbon monoxide or sparks",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "Sparks are coming from the furnace control panel, and I smell hot plastic.",
+  "We're outside now with the pets, and I haven't touched any switches or breakers.",
+  "Please arrange emergency service once it's safe. I'm Luis Foster, at 5547 Cedar Ridge Ln, Cedar Park, and my number is 512-382-8109.",
+  "The sparking seems to have stopped, but I won't go back inside."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-21112",
+  "name": "Luis Foster",
+  "phone": "512-382-8109",
+  "email": "luis.foster@example.com",
+  "service_address": "5547 Cedar Ridge Ln",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2027-01-31",
+  "system_brand": "American Standard",
+  "system_install_date": "2015-11-27",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "transcript"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "gas, carbon monoxide or sparks",
+   "kind": "sub-reason",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "emergency"
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "emergency",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

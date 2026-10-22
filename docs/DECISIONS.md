@@ -230,7 +230,7 @@ can only propose a decision; only the author settles one.
 
 ## D17: Does the agent answer questions about the caller's own account from the database?
 
-- **Status:** settled
+- **Status:** replaced by "Does the agent answer questions about the caller's own account, and which money and membership actions does it take itself?" (D53)
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-17
 - **Options:**
   - Yes: three read-only lookups (open invoices with balance, due date and line items; membership tier and renewal date; system brand and install date); every action that changes money or membership hands off and is reported as an action gap
@@ -693,6 +693,55 @@ can only propose a decision; only the author settles one.
 - **Reason:** The author's choice. The held-out rule (R10) forbids re-measuring after seeing held-out results, not fixing a live safety bug; reporting the measured agent's numbers while the demo runs a documented later build keeps both honest.
 - **Revised 2026-10-21:** a third live-only change, chosen by the author: a caller who identifies in the same message as an emergency is identified then, so the priority ticket carries their details and they are not asked again.
 
+## D52: How is the improved agent measured, now that every call template has been used?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-21
+- **Options:**
+  - Thirty new cases written blind by Codex, one per sub-reason and weighted by its calls; frozen after the author's review; run once per agent version with --fresh-final
+  - Other transcript calls of the same templates: cheap, but near-copies of cases already tuned on
+  - Working-set runs only
+  - Re-run the 15 held-out cases, which are no longer unseen
+- **Research:**
+  - [data/split.json](data/split.json): All 52 templates are used: 37 in the working set, 15 in the held-out set, which was measured once (29.5% containment) and then seen.
+  - [data/labels_codex.csv](data/labels_codex.csv): The 420 calls fall into exactly 30 sub-reasons, so one case per sub-reason covers every kind of call, each weighted by its calls (79 for HVAC repair down to 4).
+  - [eval/fresh_cases.py](eval/fresh_cases.py): Codex writes in a folder holding only the 9 current customer documents, two sample transcripts per sub-reason and its instructions (eval/fresh_prompt.md); the case builder attaches real database customers and fixtures.
+- **Choice:** Thirty new cases (data/testset_fresh/, F01 to F30), one per sub-reason, written by Codex without seeing the agent, its prompts or its results, weighted by each sub-reason's calls in the 420 transcripts and scored under the new action scope; the author reviews a sample, the set is frozen with a hash (data/fresh_split.json), and eval.run refuses it unless given --fresh-final, unchanged since the freeze, and never twice for the same agent version. Fixes are tuned only on the working set. The agent as it stood before this work and the improved agent each run on it once; 29.5% stays on record as the first held-out measurement.
+- **Reason:** Chosen by the author on 2026-10-21 (build new test cases, written blind by a model, 30 of them): it is the only way to give the improved agent a number on calls it has not been tuned on, and 30 cases roughly halve the width of the 15-case interval.
+
+## D53: Does the agent answer questions about the caller's own account, and which money and membership actions does it take itself?
+
+- **Status:** replaced by "Which money and membership actions does the agent take itself, and how are they done safely?" (D54)
+- **Replaces:** "Does the agent answer questions about the caller's own account from the database?" (D17)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-21
+- **Options:**
+  - Read-only lookups as before, plus two actions the company's own policy lets agents take: sending a secure payment link and enrolling in or upgrading the Comfort Club, each after a read-back and a plain yes; autopay, cancelling auto-renew, refunds, disputes and fee waivers stay handed off
+  - Read-only lookups only; every money and membership action hands off (the replaced decision)
+  - Also cancel auto-renew, which needs a new database field
+- **Research:**
+  - [call_data/knowledge_base/policies/escalation_and_safety.md](call_data/knowledge_base/policies/escalation_and_safety.md): Internal policy: agents can resolve directly sending payment links and Comfort Club enrollment, upgrades, renewal questions and cancelling auto-renew; billing disputes, refunds, complaints and manager requests go to a supervisor.
+  - [data/kb_text/faq__customer_faq.md](data/kb_text/faq__customer_faq.md): 'Card numbers are never taken over the phone. Agents send a secure payment link by text or email, valid for 24 hours.'
+  - [docs/FINDINGS.md](docs/FINDINGS.md): The action gap is 47 calls: paying an invoice 14, autopay 14, cancelling 13, upgrades 6; no document covers autopay.
+- **Choice:** Keep the three read-only lookups. The agent also sends a payment link (simulated: recorded in the operations database as sent to the phone or email on file, valid 24 hours; never a card number) and enrols in or upgrades a membership (the new tier written to the customer record at the published price). Both need the caller identified, a read-back and a plain yes. Autopay, cancelling auto-renew, refunds, disputes and fee waivers still hand off and stay in the action gap.
+- **Reason:** Chosen by the author on 2026-10-21 after reading the policy: the 'never take money actions' rule was this project's own caution, not the company's; these two actions are ones its staff take on the call, and they move about 20 calls out of the action gap.
+
+## D54: Which money and membership actions does the agent take itself, and how are they done safely?
+
+- **Status:** proposed
+- **Replaces:** "Does the agent answer questions about the caller's own account, and which money and membership actions does it take itself?" (D53)
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-21
+- **Options:**
+  - The actions the company's policy lets its agents take: payment links, autopay links (under an author-supplied autopay policy), Comfort Club enrolment and upgrades, and cancelling auto-renew; each after identification, a read-back and a plain yes, never taking card or bank numbers; refunds, disputes and fee waivers stay with a person
+  - Payment links and enrolment or upgrades only (the replaced decision)
+  - Read-only lookups only; every action hands off (the original account-lookups decision)
+- **Research:**
+  - [call_data/knowledge_base/policies/escalation_and_safety.md](call_data/knowledge_base/policies/escalation_and_safety.md): Agents can resolve directly: sending payment links, Comfort Club enrollment, upgrades, renewal questions and cancelling auto-renew; refunds and billing disputes go to a supervisor.
+  - [https://www.ecfr.gov/current/title-12/chapter-X/part-1005/subpart-A/section-1005.10](https://www.ecfr.gov/current/title-12/chapter-X/part-1005/subpart-A/section-1005.10): Regulation E 1005.10(b): recurring debits from a consumer's account need a writing signed or similarly authenticated by the consumer, and the consumer gets a copy; so autopay is set up on a secure form, not by a yes in chat.
+  - [https://listings.pcisecuritystandards.org/documents/Protecting_Telephone_Based_Payment_Card_Data_v3-0_nov_2018.pdf](https://listings.pcisecuritystandards.org/documents/Protecting_Telephone_Based_Payment_Card_Data_v3-0_nov_2018.pdf): PCI guidance for telephone payments: do not capture or store card data if you can avoid it; a secure link keeps card numbers out of the conversation.
+  - [data/kb_text/membership__comfort_club_overview.md](data/kb_text/membership__comfort_club_overview.md): 'Members may cancel auto-renewal at any time before the renewal date'; refunds are prorated within 60 days only if no tune-up was done.
+- **Choice:** Keep the three read-only lookups. The agent also sends a payment link or an autopay link (a secure page, valid 24 hours, sent to the phone or email on file; autopay starts only when the customer completes it), enrols in or upgrades the Comfort Club at the published price, and turns off auto-renew (the membership stays active until its renewal date, and the refund terms are stated without a promise). Each needs the caller identified, a read-back and a plain yes; card and bank numbers are never asked for or repeated. Autopay follows a policy the author supplied on 2026-10-21, added as a marked document. Every action is recorded in the operations database (account_actions) and shown in the Staff view; auto-renew lives in a new live-copy table (membership_settings) cleared by the nightly reset. Refunds, disputes and fee waivers still hand off.
+- **Reason:** Chosen and confirmed by the author on 2026-10-21 after the policy and the autopay research: these are actions the company's own staff take on the call, done the way the rules and card-network practice expect, and they move the whole 47-call action gap in the transcripts (paying an invoice, autopay, cancelling auto-renew, upgrades; 11% of calls) to the agent; the handed-off floor on the fresh cases falls to about 22%.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take
@@ -721,6 +770,7 @@ can only propose a decision; only the author settles one.
 - **Expected outcome:** the result a test case should have (contained, handed off or clean decline), fixed before tuning
 - **Fail closed:** when a check cannot give an answer, treat it as a failure, so the sentence is blocked rather than shown
 - **Fixture:** prepared test data loaded into a test copy of the database
+- **Fresh test set:** Thirty new test calls written after the first measurement, never used for tuning, run once per agent version.
 - **Grader:** a model that scores whether the agent's answer was correct
 - **Ground-truth label:** the label treated as correct when measuring accuracy
 - **Handoff ticket:** a record of an escalated call with everything a human needs to continue it

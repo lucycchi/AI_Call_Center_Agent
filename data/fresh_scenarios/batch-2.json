@@ -1,0 +1,296 @@
+{
+ "model": "gpt-5.6-sol",
+ "scenarios": [
+  {
+   "case_id": "F11",
+   "sub_reason": "pay an invoice",
+   "caller_script": [
+    "I need to pay the ${amount} invoice from last week's furnace repair. I haven't paid it yet.",
+    "The account is under {name}, account {account}.",
+    "Please text the secure payment link to {phone}; I don't want to put my card details in chat."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": {
+    "amount_dollars": 318,
+    "paid": false
+   },
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F12",
+   "sub_reason": "autopay",
+   "caller_script": [
+    "The card used for my Comfort Club autopay expired, and I need to replace it.",
+    "I'm {name}, and the account number is {account}.",
+    "Please send whatever secure link I need to {phone}.",
+    "I want the next membership payment to use the new card."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": "standard",
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F13",
+   "sub_reason": "renewal date",
+   "caller_script": [
+    "I received a membership reminder, but it doesn't show me the exact date I'll be charged.",
+    "It's {name}, account {account}.",
+    "Please tell me the renewal date and amount before changing anything.",
+    "Actually, go ahead and turn off auto-renew after you confirm it."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": "standard",
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [
+    {
+     "request": "Turn off membership auto-renewal after confirming the renewal details.",
+     "kind": "action:cancel auto-renew",
+     "caller_words": "Actually, go ahead and turn off auto-renew after you confirm it."
+    }
+   ],
+   "knowledge": null
+  },
+  {
+   "case_id": "F14",
+   "sub_reason": "what an invoice is for",
+   "caller_script": [
+    "There's a ${amount} invoice on my account that I don't recognize, and I haven't paid it.",
+    "My name is {name}, and my phone number is {phone}.",
+    "Can you tell me the service date and what each charge was for?",
+    "Once that's explained, please send me a payment link at {phone}."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": {
+    "amount_dollars": 184,
+    "paid": false
+   },
+   "appointment": null,
+   "extra_requests": [
+    {
+     "request": "Send a secure link to pay the invoice.",
+     "kind": "action:payment link",
+     "caller_words": "Once that's explained, please send me a payment link at {phone}."
+    }
+   ],
+   "knowledge": null
+  },
+  {
+   "case_id": "F15",
+   "sub_reason": "cancel",
+   "caller_script": [
+    "I'm moving out, so I want my Comfort Club Plus membership canceled.",
+    "The account is under {name} at {address}, {city}.",
+    "Yes, cancel it and make sure it won't renew. I don't need a sales pitch.",
+    "Please send confirmation to the contact information already on the account."
+   ],
+   "card_needs": {
+    "city": "Cedar Park",
+    "tier": "plus",
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F16",
+   "sub_reason": "replacement estimate",
+   "caller_script": [
+    "Our heat pump is 17 years old and keeps needing repairs. What does a full replacement usually cost?",
+    "I'm {name}; the service address is {address}, {city}, and my number is {phone}.",
+    "I'd like a free in-home estimate next Friday morning if possible.",
+    "I'm a Comfort Club member; is there a replacement discount, and can the rest be financed?"
+   ],
+   "card_needs": {
+    "city": "Austin",
+    "tier": "member",
+    "brand": null,
+    "install_after": null,
+    "install_before": "2009-10-16"
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [
+    {
+     "request": "Ask about the member replacement discount and financing.",
+     "kind": "knowledge",
+     "caller_words": "I'm a Comfort Club member; is there a replacement discount, and can the rest be financed?"
+    }
+   ],
+   "knowledge": {
+    "reference_answer": "A full residential split-system replacement typically costs $8,000\u2013$16,000, depending on tonnage, efficiency, ductwork condition and brand. The in-home estimate is free, financing is available, and Comfort Club members receive $500 off.",
+    "evidence": [
+     {
+      "file": "services__service_catalog.md",
+      "heading": "System replacement",
+      "phrases": [
+       "Free in-home estimate with a Comfort Advisor.",
+       "Typical installed price range for a full residential split system: $8,000 \u2013 $16,000",
+       "Financing available. Comfort Club members receive $500 off."
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "F17",
+   "sub_reason": "charged twice",
+   "caller_script": [
+    "I paid the ${amount} invoice on Wednesday, but my card now shows two completed charges from Meridian.",
+    "Neither one says pending. Both are fully posted.",
+    "I'm {name}, and the account number is {account}.",
+    "Please check whether you received both payments and open a processor case if they're duplicates."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": {
+    "amount_dollars": 426,
+    "paid": true
+   },
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": {
+    "reference_answer": "One of two charges is often a pending authorization that disappears within 3\u20135 business days. If both charges have posted, Meridian will open a case with its payment processor.",
+    "evidence": [
+     {
+      "file": "faq__customer_faq.md",
+      "heading": "Duplicate charges",
+      "phrases": [
+       "one is usually a pending authorization",
+       "drops off in 3\u20135 business days",
+       "contact us and we will open a case with our payment processor"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "F18",
+   "sub_reason": "registration",
+   "caller_script": [
+    "Was the new Goodman system Meridian installed late last month registered with Goodman?",
+    "I'm {name}, account {account}.",
+    "I haven't received a registration confirmation, so please resend it if the registration is complete.",
+    "Also, what registered warranty length applies to Goodman parts and the heat exchanger?"
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": "Goodman",
+    "install_after": "2026-09-20",
+    "install_before": "2026-10-01"
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [
+    {
+     "request": "Ask about Goodman's registered parts and heat-exchanger warranty terms.",
+     "kind": "knowledge",
+     "caller_words": "Also, what registered warranty length applies to Goodman parts and the heat exchanger?"
+    }
+   ],
+   "knowledge": {
+    "reference_answer": "Meridian registers every system it installs with the manufacturer within 30 days. When registered, a residential Goodman system has 10-year compressor and parts coverage and a limited lifetime heat-exchanger warranty; manufacturer warranties cover the part only.",
+    "evidence": [
+     {
+      "file": "warranty__warranty_policy.md",
+      "heading": "New system installation warranty",
+      "phrases": [
+       "Meridian registers every installed unit with the manufacturer within 30 days of install.",
+       "Registration is required for the full parts warranty term"
+      ]
+     },
+     {
+      "file": "warranty__warranty_policy.md",
+      "heading": "Manufacturer parts warranty (residential, when registered)",
+      "phrases": [
+       "| Goodman | 10 years | 10 years | Lifetime (limited) |",
+       "Manufacturer warranties cover the **part only**."
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "F19",
+   "sub_reason": "technician late",
+   "caller_script": [
+    "My plumbing appointment is today, and nobody has arrived. I thought the 8-to-noon window meant 8 sharp, and it's already 9.",
+    "The booking is for {name}, account {account}.",
+    "Can you check the technician's ETA and tell me whether I should keep waiting?",
+    "I need to leave by 11:30, so I need an honest update."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": {
+    "window": "08:00-12:00",
+    "service": "plumbing"
+   },
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F20",
+   "sub_reason": "gas, carbon monoxide or sparks",
+   "caller_script": [
+    "Sparks are coming from the furnace control panel, and I smell hot plastic.",
+    "We're outside now with the pets, and I haven't touched any switches or breakers.",
+    "Please arrange emergency service once it's safe. I'm {name}, at {address}, {city}, and my number is {phone}.",
+    "The sparking seems to have stopped, but I won't go back inside."
+   ],
+   "card_needs": {
+    "city": "Hutto",
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  }
+ ]
+}

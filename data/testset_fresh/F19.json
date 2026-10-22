@@ -1,0 +1,82 @@
+{
+ "case_id": "F19",
+ "template_id": "F19",
+ "family": "F19",
+ "calls_weight": 9,
+ "reason": "existing appointment",
+ "sub_reason": "technician late",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "My plumbing appointment is today, and nobody has arrived. I thought the 8-to-noon window meant 8 sharp, and it's already 9.",
+  "The booking is for Michael Foster, account MHC-57204.",
+  "Can you check the technician's ETA and tell me whether I should keep waiting?",
+  "I need to leave by 11:30, so I need an honest update."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-57204",
+  "name": "Michael Foster",
+  "phone": "512-294-5440",
+  "email": "michael.foster@example.com",
+  "service_address": "4170 Pecan Grove Rd",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2021-10-13",
+  "zone": "central",
+  "synthetic": false,
+  "zone_source": "transcript"
+ },
+ "appointment": {
+  "appointment_id": 5119,
+  "slot_id": 9119,
+  "slot_date": "2026-10-16",
+  "window": "08:00-12:00",
+  "tech_id": 4,
+  "zone": "central",
+  "source": "planted with overlap"
+ },
+ "fixtures": [
+  {
+   "table": "appointment_slots",
+   "row": {
+    "slot_id": 9119,
+    "slot_date": "2026-10-16",
+    "window": "08:00-12:00",
+    "tech_id": 4,
+    "zone": "central",
+    "service_type": "plumbing",
+    "status": "booked"
+   }
+  },
+  {
+   "table": "appointments",
+   "row": {
+    "appointment_id": 5119,
+    "slot_id": 9119,
+    "customer_id": "MHC-57204",
+    "issue_description": "test appointment",
+    "created_at": "2026-10-10",
+    "status": "scheduled",
+    "is_warranty_visit": 0
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "technician late",
+   "kind": "sub-reason",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "late technician"
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "late technician",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

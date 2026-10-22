@@ -48,7 +48,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <main>
 <header>
 <h1>AI Call Center Agent</h1>
-<p class="stage">Current stage: Final checks (needs your approval before moving on)</p>
+<p class="stage">Current stage: Done</p>
 </header>
 <section id="summary">
 <h2>Summary</h2>
@@ -121,6 +121,14 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <ul>
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 27: final held-out run, summary and optional consistency runs. Requirements: R23</span></li>
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 28: README, video outline and repository contents. Requirements: R78, R79, R80</span></li>
+</ul>
+<h3>Milestone 7: Complete handoffs, more calls resolved, and a fresh measurement (1 of 5 done)</h3>
+<ul>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 29: fresh test set: 30 cases written blind by Codex, reviewed by the author and frozen (fresh test set decision (D52))</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 30: handoffs carry the whole interaction, to staff and between the agent's own flows</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 31: fewer needless handoffs, found and fixed on the working set only</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 32: payment and autopay links, membership enrolment and upgrades, and cancelling auto-renew (money and membership actions decision (D54))</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 33: the fresh measurement, before and after; DECISIONS.md entries with evidence; deploy and documents</span></li>
 </ul>
 </section>
 <section id="requirements">
@@ -1386,7 +1394,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D17: Does the agent answer questions about the caller's own account from the database?</h3>
 <ul>
-<li><strong>Status:</strong> settled</li>
+<li><strong>Status:</strong> replaced by "Does the agent answer questions about the caller's own account, and which money and membership actions does it take itself?" (D53)</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-17</li>
 <li><strong>Options:</strong>
 <ul>
@@ -1989,6 +1997,67 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Reason:</strong> The author's choice. The held-out rule (R10) forbids re-measuring after seeing held-out results, not fixing a live safety bug; reporting the measured agent's numbers while the demo runs a documented later build keeps both honest.</li>
 <li><strong>Revised 2026-10-21:</strong> a third live-only change, chosen by the author: a caller who identifies in the same message as an emergency is identified then, so the priority ticket carries their details and they are not asked again.</li>
 </ul>
+<h3>D52: How is the improved agent measured, now that every call template has been used?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-21</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Thirty new cases written blind by Codex, one per sub-reason and weighted by its calls; frozen after the author's review; run once per agent version with --fresh-final</li>
+<li>Other transcript calls of the same templates: cheap, but near-copies of cases already tuned on</li>
+<li>Working-set runs only</li>
+<li>Re-run the 15 held-out cases, which are no longer unseen</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="data/split.json">data/split.json</a>: All 52 templates are used: 37 in the working set, 15 in the held-out set, which was measured once (29.5% containment) and then seen.</li>
+<li><a href="data/labels_codex.csv">data/labels_codex.csv</a>: The 420 calls fall into exactly 30 sub-reasons, so one case per sub-reason covers every kind of call, each weighted by its calls (79 for HVAC repair down to 4).</li>
+<li><a href="eval/fresh_cases.py">eval/fresh_cases.py</a>: Codex writes in a folder holding only the 9 current customer documents, two sample transcripts per sub-reason and its instructions (eval/fresh_prompt.md); the case builder attaches real database customers and fixtures.</li>
+</ul></li>
+<li><strong>Choice:</strong> Thirty new cases (data/testset_fresh/, F01 to F30), one per sub-reason, written by Codex without seeing the agent, its prompts or its results, weighted by each sub-reason's calls in the 420 transcripts and scored under the new action scope; the author reviews a sample, the set is frozen with a hash (data/fresh_split.json), and eval.run refuses it unless given --fresh-final, unchanged since the freeze, and never twice for the same agent version. Fixes are tuned only on the working set. The agent as it stood before this work and the improved agent each run on it once; 29.5% stays on record as the first held-out measurement.</li>
+<li><strong>Reason:</strong> Chosen by the author on 2026-10-21 (build new test cases, written blind by a model, 30 of them): it is the only way to give the improved agent a number on calls it has not been tuned on, and 30 cases roughly halve the width of the 15-case interval.</li>
+</ul>
+<h3>D53: Does the agent answer questions about the caller's own account, and which money and membership actions does it take itself?</h3>
+<ul>
+<li><strong>Status:</strong> replaced by "Which money and membership actions does the agent take itself, and how are they done safely?" (D54)</li>
+<li><strong>Replaces:</strong> "Does the agent answer questions about the caller's own account from the database?" (D17)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-21</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Read-only lookups as before, plus two actions the company's own policy lets agents take: sending a secure payment link and enrolling in or upgrading the Comfort Club, each after a read-back and a plain yes; autopay, cancelling auto-renew, refunds, disputes and fee waivers stay handed off</li>
+<li>Read-only lookups only; every money and membership action hands off (the replaced decision)</li>
+<li>Also cancel auto-renew, which needs a new database field</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="call_data/knowledge_base/policies/escalation_and_safety.md">call_data/knowledge_base/policies/escalation_and_safety.md</a>: Internal policy: agents can resolve directly sending payment links and Comfort Club enrollment, upgrades, renewal questions and cancelling auto-renew; billing disputes, refunds, complaints and manager requests go to a supervisor.</li>
+<li><a href="data/kb_text/faq__customer_faq.md">data/kb_text/faq__customer_faq.md</a>: 'Card numbers are never taken over the phone. Agents send a secure payment link by text or email, valid for 24 hours.'</li>
+<li><a href="docs/FINDINGS.md">docs/FINDINGS.md</a>: The action gap is 47 calls: paying an invoice 14, autopay 14, cancelling 13, upgrades 6; no document covers autopay.</li>
+</ul></li>
+<li><strong>Choice:</strong> Keep the three read-only lookups. The agent also sends a payment link (simulated: recorded in the operations database as sent to the phone or email on file, valid 24 hours; never a card number) and enrols in or upgrades a membership (the new tier written to the customer record at the published price). Both need the caller identified, a read-back and a plain yes. Autopay, cancelling auto-renew, refunds, disputes and fee waivers still hand off and stay in the action gap.</li>
+<li><strong>Reason:</strong> Chosen by the author on 2026-10-21 after reading the policy: the 'never take money actions' rule was this project's own caution, not the company's; these two actions are ones its staff take on the call, and they move about 20 calls out of the action gap.</li>
+</ul>
+<h3>D54: Which money and membership actions does the agent take itself, and how are they done safely?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Replaces:</strong> "Does the agent answer questions about the caller's own account, and which money and membership actions does it take itself?" (D53)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-21</li>
+<li><strong>Options:</strong>
+<ul>
+<li>The actions the company's policy lets its agents take: payment links, autopay links (under an author-supplied autopay policy), Comfort Club enrolment and upgrades, and cancelling auto-renew; each after identification, a read-back and a plain yes, never taking card or bank numbers; refunds, disputes and fee waivers stay with a person</li>
+<li>Payment links and enrolment or upgrades only (the replaced decision)</li>
+<li>Read-only lookups only; every action hands off (the original account-lookups decision)</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="call_data/knowledge_base/policies/escalation_and_safety.md">call_data/knowledge_base/policies/escalation_and_safety.md</a>: Agents can resolve directly: sending payment links, Comfort Club enrollment, upgrades, renewal questions and cancelling auto-renew; refunds and billing disputes go to a supervisor.</li>
+<li><a href="https://www.ecfr.gov/current/title-12/chapter-X/part-1005/subpart-A/section-1005.10">https://www.ecfr.gov/current/title-12/chapter-X/part-1005/subpart-A/section-1005.10</a>: Regulation E 1005.10(b): recurring debits from a consumer's account need a writing signed or similarly authenticated by the consumer, and the consumer gets a copy; so autopay is set up on a secure form, not by a yes in chat.</li>
+<li><a href="https://listings.pcisecuritystandards.org/documents/Protecting_Telephone_Based_Payment_Card_Data_v3-0_nov_2018.pdf">https://listings.pcisecuritystandards.org/documents/Protecting_Telephone_Based_Payment_Card_Data_v3-0_nov_2018.pdf</a>: PCI guidance for telephone payments: do not capture or store card data if you can avoid it; a secure link keeps card numbers out of the conversation.</li>
+<li><a href="data/kb_text/membership__comfort_club_overview.md">data/kb_text/membership__comfort_club_overview.md</a>: 'Members may cancel auto-renewal at any time before the renewal date'; refunds are prorated within 60 days only if no tune-up was done.</li>
+</ul></li>
+<li><strong>Choice:</strong> Keep the three read-only lookups. The agent also sends a payment link or an autopay link (a secure page, valid 24 hours, sent to the phone or email on file; autopay starts only when the customer completes it), enrols in or upgrades the Comfort Club at the published price, and turns off auto-renew (the membership stays active until its renewal date, and the refund terms are stated without a promise). Each needs the caller identified, a read-back and a plain yes; card and bank numbers are never asked for or repeated. Autopay follows a policy the author supplied on 2026-10-21, added as a marked document. Every action is recorded in the operations database (account_actions) and shown in the Staff view; auto-renew lives in a new live-copy table (membership_settings) cleared by the nightly reset. Refunds, disputes and fee waivers still hand off.</li>
+<li><strong>Reason:</strong> Chosen and confirmed by the author on 2026-10-21 after the policy and the autopay research: these are actions the company's own staff take on the call, done the way the rules and card-network practice expect, and they move the whole 47-call action gap in the transcripts (paying an invoice, autopay, cancelling auto-renew, upgrades; 11% of calls) to the agent; the handed-off floor on the fresh cases falls to about 22%.</li>
+</ul>
 <h3>Glossary</h3>
 <ul>
 <li><strong>Action gap:</strong> calls the agent understands but deliberately hands off because they need an action it is not allowed to take</li>
@@ -2017,6 +2086,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Expected outcome:</strong> the result a test case should have (contained, handed off or clean decline), fixed before tuning</li>
 <li><strong>Fail closed:</strong> when a check cannot give an answer, treat it as a failure, so the sentence is blocked rather than shown</li>
 <li><strong>Fixture:</strong> prepared test data loaded into a test copy of the database</li>
+<li><strong>Fresh test set:</strong> Thirty new test calls written after the first measurement, never used for tuning, run once per agent version.</li>
 <li><strong>Grader:</strong> a model that scores whether the agent's answer was correct</li>
 <li><strong>Ground-truth label:</strong> the label treated as correct when measuring accuracy</li>
 <li><strong>Handoff ticket:</strong> a record of an escalated call with everything a human needs to continue it</li>

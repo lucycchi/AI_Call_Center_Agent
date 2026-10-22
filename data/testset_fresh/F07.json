@@ -1,0 +1,49 @@
+{
+ "case_id": "F07",
+ "template_id": "F07",
+ "family": "F07",
+ "calls_weight": 16,
+ "reason": "new booking",
+ "sub_reason": "burning smell",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I turned the heat on this morning and got a sharp burning-plastic smell from the return vent, so I shut the system off.",
+  "There's no smoke or flame now, but I need someone to inspect it today.",
+  "The account is under Michael Foster at 4170 Pecan Grove Rd, Austin.",
+  "I can be home any time today\u2014the sooner the better."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-57204",
+  "name": "Michael Foster",
+  "phone": "512-294-5440",
+  "email": "michael.foster@example.com",
+  "service_address": "4170 Pecan Grove Rd",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2021-10-13",
+  "zone": "central",
+  "synthetic": false,
+  "zone_source": "transcript"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "burning smell",
+   "kind": "sub-reason",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "burning smell"
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "burning smell",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

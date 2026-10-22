@@ -1,0 +1,56 @@
+{
+ "case_id": "F26",
+ "template_id": "F26",
+ "family": "F26",
+ "calls_weight": 6,
+ "reason": "membership",
+ "sub_reason": "upgrade",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I need to make a change to my Comfort Club membership.",
+  "I'm Jennifer Hernandez, account MHC-72227.",
+  "I'm on Standard and want to upgrade to Plus for the rest of my current term.",
+  "Can you upgrade it today and tell me the prorated amount?"
+ ],
+ "caller_card": {
+  "customer_id": "MHC-72227",
+  "name": "Jennifer Hernandez",
+  "phone": "512-872-9110",
+  "email": "jennifer.hernandez@example.com",
+  "service_address": "9044 Pecan Grove Rd",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-09-18",
+  "system_brand": "Rheem",
+  "system_install_date": "2016-12-07",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "upgrade",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "A Standard member may upgrade to Plus at any time. The $80 annual price difference is prorated for the months remaining in the current term.",
+ "evidence_spans": [
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Upgrades",
+   "start_line": 40,
+   "end_line": 40
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

@@ -1,0 +1,49 @@
+{
+ "case_id": "F12",
+ "template_id": "F12",
+ "family": "F12",
+ "calls_weight": 14,
+ "reason": "membership",
+ "sub_reason": "autopay",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "The card used for my Comfort Club autopay expired, and I need to replace it.",
+  "I'm Maria Reyes, and the account number is MHC-83207.",
+  "Please send whatever secure link I need to 512-701-5321.",
+  "I want the next membership payment to use the new card."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-83207",
+  "name": "Maria Reyes",
+  "phone": "512-701-5321",
+  "email": "maria.reyes@example.com",
+  "service_address": "154 Harbor View Way",
+  "city": "Round Rock",
+  "zip": "78664",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-10-04",
+  "system_brand": "Trane",
+  "system_install_date": "2021-02-21",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "autopay",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

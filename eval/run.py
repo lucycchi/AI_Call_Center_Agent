@@ -367,22 +367,33 @@ def main() -> None:
     from eval.simulator import Simulator
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--set", choices=["working", "held_out"], default="working")
+    parser.add_argument("--set", choices=["working", "held_out", "fresh"], default="working")
     parser.add_argument("--cases", default="")
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--name", default="")
     parser.add_argument("--provisional", action="store_true", help="grade outcomes only, without Codex")
     parser.add_argument("--final", action="store_true", help="the final held-out measurement (checks the freeze hashes)")
+    parser.add_argument("--fresh-final", action="store_true", help="the one run of this agent version on the frozen "
+                        "fresh test set (eval/fresh_cases.py)")
     parser.add_argument("--overwrite", action="store_true", help="replace the attempts already in the results folder "
                         "(never with --final)")
     args = parser.parse_args()
     if args.overwrite and args.final:
         check_results_folder(Path(), overwrite=True, final=True)
-    split = json.loads((ROOT / "data" / "split.json").read_text())
-    ids = args.cases.split(",") if args.cases else split[args.set]
-    refuse_held_out(ids, args.final)
+    if args.set == "fresh":
+        from eval import fresh_cases
+        from eval.freeze import freeze_agent
+        ids = args.cases.split(",") if args.cases else [s["case_id"] for s in fresh_cases.slots()]
+        agent = freeze_agent(ROOT)
+        fresh_cases.refuse(ids, args.fresh_final, agent)
+        folder = ROOT / "data" / "testset_fresh"
+    else:
+        split = json.loads((ROOT / "data" / "split.json").read_text())
+        ids = args.cases.split(",") if args.cases else split[args.set]
+        refuse_held_out(ids, args.final)
+        folder = ROOT / "data" / "testset"
     load_dotenv(ROOT / ".env")
-    cases = [json.loads((ROOT / "data" / "testset" / f"{cid}.json").read_text()) for cid in ids]
+    cases = [json.loads((folder / f"{cid}.json").read_text()) for cid in ids]
     if args.limit:
         cases = cases[:args.limit]
     out = ROOT / "data" / "results" / (args.name or f"{args.set}-{datetime.now():%Y%m%d-%H%M%S}")
@@ -393,6 +404,8 @@ def main() -> None:
                           grade=provisional_grade, out=out, settings=run_settings(None))
     else:
         _, summary = run_graded(cases, out.name, overwrite=args.overwrite)
+    if args.set == "fresh":
+        fresh_cases.record_run(agent, out.name)  # this agent version never runs on the fresh set again
     print(json.dumps(summary.to_json(), indent=1))
     print(f"results in {out}")
 

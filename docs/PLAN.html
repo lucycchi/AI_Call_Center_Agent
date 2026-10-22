@@ -618,10 +618,10 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <ul>
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 21: chat page, message requests, sentence stream and visitor cookie. Requirements: R62, R64, R65, R66</span></li>
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 22: spending budgets, reviewer link and instruction resistance. Requirements: R61, R63, R85</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 23: Staff view, staff password, receipts and flagging. Requirements: R70, R71, R72, R75</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 24: Results tab. Requirements: R67, R68, R69</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 25: nightly reset gate, log purge, alerts, health and uptime monitor. Requirements: R74, R76, R86</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 26: deploy to Fly.io with the rollback runbook. Requirements: R77, R83</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 23: Staff view, staff password, receipts and flagging. Requirements: R70, R71, R72, R75</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 24: Results tab. Requirements: R67, R68, R69</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 25: nightly reset gate, log purge, alerts, health and uptime monitor. Requirements: R74, R76, R86</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 26: deploy to Fly.io with the rollback runbook. Requirements: R77, R83</span></li>
 </ul>
 <h3>Task 21: Chat page, message requests, sentence stream and visitor cookie</h3>
 <p><strong>Files:</strong></p>
@@ -728,7 +728,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>Produces: <code>ResetGate</code> (shared for messages, exclusive for the reset); <code>nightly_reset(sched_db, seed_db, store) -&gt; str</code>; <code>next_reset_time(real_now) -&gt; datetime</code>; <code>purge(store, older_than_days=30)</code>; <code>Alerts.send(kind, detail)</code> posting to <code>ALERT_WEBHOOK_URL</code> with a 5-second timeout; <code>GET /health</code>.</li>
 </ul>
 <ul>
-<li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 1: Write the failing tests.</strong> Each group is its own cycle:</span>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 1: Write the failing tests.</strong> Each group is its own cycle:</span>
 <ul>
 <li><strong>Reset:</strong> after a booking on a copy, <code>nightly_reset</code> restores every slot and appointment to the seed, empties <code>agent_confirmations</code>, records a job run <code>ok</code>, and leaves the operations database untouched; a second call while one is running returns <code>"already running"</code>; <code>next_reset_time</code> for 2026-10-20 22:00 Austin is 2026-10-21 03:00 Austin.</li>
 <li><strong>Gate:</strong> a message that starts while the reset holds the gate waits and then sees the restored data; startup runs a reset if the last success is before the most recent 03:00; a reset failing twice records <code>failed</code>, sends one alert and shows "nightly reset failed" in the live numbers.</li>
@@ -736,10 +736,10 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li><strong>Purge:</strong> a 31-day-old conversation is deleted with its messages, receipts and model calls; a flagged one is kept.</li>
 <li><strong>Health:</strong> <code>GET /health</code> returns 200 <code>{"ok": true}</code> when both databases open, and 503 when the scheduling file is missing.</li>
 </ul></li>
-<li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 2: Run</strong> <code>python -m pytest tests/ops/test_jobs.py -v</code>. Expected: FAIL.</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 3: Implement.</strong> After deployment, set up the outside uptime monitor: UptimeRobot's free plan, an HTTP check of <code>/health</code> every 5 minutes, alerts to the author's email; record the setup in the README; verify once by stopping the machine and confirming the alert arrives.</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 4: Run</strong> the tests. Expected: PASS.</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 5: Commit</strong> <code>feat: reset gate, nightly reset, purge, alerts and health</code>.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 2: Run</strong> <code>python -m pytest tests/ops/test_jobs.py -v</code>. Expected: FAIL.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 3: Implement.</strong> (Code done; the uptime monitor below waits for the Task 26 deploy.) After deployment, set up the outside uptime monitor: UptimeRobot's free plan, an HTTP check of <code>/health</code> every 5 minutes, alerts to the author's email; record the setup in the README; verify once by stopping the machine and confirming the alert arrives.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 4: Run</strong> the tests. Expected: PASS.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 5: Commit</strong> <code>feat: reset gate, nightly reset, purge, alerts and health</code>.</span></li>
 </ul>
 <h3>Task 26: Deploy to Fly.io with the rollback runbook</h3>
 <p><strong>Files:</strong></p>
@@ -761,8 +761,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <h2>Milestone 6: Final measurement and deliverables</h2>
 <p>The author can read the final numbers on the Results tab and in the README, and record the video from the outline.</p>
 <ul>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 27: final held-out run, summary and optional consistency runs. Requirements: R23</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 28: README, video outline and repository contents. Requirements: R78, R79, R80</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 27: final held-out run, summary and optional consistency runs. Requirements: R23</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 28: README, video outline and repository contents. Requirements: R78, R79, R80</span></li>
 </ul>
 <h3>Task 27: Final held-out run, summary and optional consistency runs</h3>
 <p><strong>Files:</strong></p>
@@ -776,11 +776,11 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li>Produces: <code>run_final()</code> writing the complete <code>summary.json</code>.</li>
 </ul>
 <ul>
-<li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 1: Write the failing tests.</strong> <code>run_final</code> raises if any held-out file differs from the hash in <code>data/split.json</code>, or if the agent-behaviour hash differs from <code>data/agent_freeze.json</code>; changes to <code>app/web/</code> do not stop it. The final summary contains every <code>Summary</code> field plus <code>retrieval</code>, <code>answers</code>, <code>adversarial</code>, <code>grader_agreement</code> and <code>label_agreement</code> sections, and fails validation if any is missing. The consistency option runs 30 held-out cases three times each with seed 3 and reports the share correct on all three.</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 2: Run</strong> <code>python -m pytest tests/eval/test_final.py -v</code>. Expected: FAIL.</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 3: Implement</strong>, then <strong>tell the author</strong> (Codex grading follows), run the final held-out set once, grade it, run the adversarial set, and complete the grader check with the author's blind grades.</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 4: Run</strong> the tests. Expected: PASS and <code>data/results/final/summary.json</code> complete.</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 5: Commit</strong> <code>feat: final held-out results</code>.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 1: Write the failing tests.</strong> <code>run_final</code> raises if any held-out file differs from the hash in <code>data/split.json</code>, or if the agent-behaviour hash differs from <code>data/agent_freeze.json</code>; changes to <code>app/web/</code> do not stop it. The final summary contains every <code>Summary</code> field plus <code>retrieval</code>, <code>answers</code>, <code>adversarial</code>, <code>grader_agreement</code> and <code>label_agreement</code> sections, and fails validation if any is missing. The consistency option runs 30 held-out cases three times each with seed 3 and reports the share correct on all three.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 2: Run</strong> <code>python -m pytest tests/eval/test_final.py -v</code>. Expected: FAIL.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 3: Implement</strong> (code done in <code>eval/final.py</code>; the held-out run itself has not happened), then <strong>tell the author</strong> (Codex grading follows), run the final held-out set once, grade it, run the adversarial set, and complete the grader check with the author's blind grades.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 4: Run</strong> the tests. Expected: PASS and <code>data/results/final/summary.json</code> complete.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 5: Commit</strong> <code>feat: final held-out results</code>.</span></li>
 </ul>
 <h3>Task 28: README, video outline and repository contents</h3>
 <p><strong>Files:</strong></p>
@@ -794,6 +794,29 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 3: Write</strong> the README for a junior software engineer and the outline.</span></li>
 <li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 4: Run</strong> the full suite <code>python -m pytest</code>. Expected: PASS.</span></li>
 <li class="task"><span class="box" aria-label="not done"></span><span><strong>Step 5: Commit</strong> <code>docs: README and video outline</code>.</span></li>
+</ul>
+<h2>Milestone 7: Complete handoffs, more calls resolved, and a fresh measurement</h2>
+<p>Added after the project was finished, at the author's request (2026-10-21). The author can read, on 30 calls the agent was never tuned on, how often it resolves a call without a person before and after this work, and see in the Staff view that a handed-off ticket carries the whole conversation.</p>
+<ul>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 29: fresh test set: 30 cases written blind by Codex, reviewed by the author and frozen (fresh test set decision (D52))</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 30: handoffs carry the whole interaction, to staff and between the agent's own flows</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 31: fewer needless handoffs, found and fixed on the working set only</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 32: payment and autopay links, membership enrolment and upgrades, and cancelling auto-renew (money and membership actions decision (D54))</span></li>
+<li class="task"><span class="box" aria-label="not done"></span><span>Task 33: the fresh measurement, before and after; DECISIONS.md entries with evidence; deploy and documents</span></li>
+</ul>
+<h3>Task 29: Fresh test set</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>eval/fresh_cases.py</code>, <code>eval/fresh_prompt.md</code>, <code>tests/eval/test_fresh_cases.py</code></li>
+<li>Modify: <code>eval/run.py</code></li>
+<li>Output: <code>data/fresh_scenarios/</code>, <code>data/testset_fresh/</code>, <code>data/fresh_split.json</code></li>
+</ul>
+<ul>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 1: Write the failing tests.</strong> One slot per sub-reason (30), weighted by its calls (420 in all); expected outcomes under the new action scope; a scenario becomes a case with a real customer and its fixtures; unknown placeholders and evidence phrases not in the documents are refused; the set runs only when frozen, with <code>--fresh-final</code>, unchanged, and once per agent version.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 2: Run</strong> <code>python -m pytest tests/eval/test_fresh_cases.py</code>. Expected: FAIL.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 3: Implement</strong>, then have Codex write the scenarios (<code>python -m eval.fresh_cases write</code>) and build the cases.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 4: The author reviews</strong> a sample of the cases; then <code>python -m eval.fresh_cases freeze</code>.</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span><strong>Step 5: Commit</strong> <code>feat: fresh test set</code>.</span></li>
 </ul>
 <h2>Schedule</h2>
 <table>

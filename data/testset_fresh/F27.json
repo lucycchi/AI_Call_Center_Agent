@@ -1,0 +1,65 @@
+{
+ "case_id": "F27",
+ "template_id": "F27",
+ "family": "F27",
+ "calls_weight": 6,
+ "reason": "warranty",
+ "sub_reason": "repeat repair",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "The capacitor you replaced in February seems to be failing again; the outdoor unit only hums.",
+  "I'm Jennifer Hernandez, account MHC-72227.",
+  "Is that repeat failure still under Meridian's repair warranty?",
+  "Please book the warranty diagnostic for Monday afternoon.",
+  "If Monday is full, Tuesday from 8 to noon works."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-72227",
+  "name": "Jennifer Hernandez",
+  "phone": "512-872-9110",
+  "email": "jennifer.hernandez@example.com",
+  "service_address": "9044 Pecan Grove Rd",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-09-18",
+  "system_brand": "Rheem",
+  "system_install_date": "2016-12-07",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "repeat repair",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "book a warranty diagnostic for the repeat HVAC failure",
+   "kind": "booking:hvac_repair",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Please book the warranty diagnostic for Monday afternoon.",
+   "reference": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "Meridian repairs carry a one-year labor warranty on the specific part repaired or replaced. If the same capacitor failed within that year, the return visit and labor are free, and the part is covered if Meridian supplied it.",
+ "evidence_spans": [
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "Repair warranty (Meridian labor warranty)",
+   "start_line": 5,
+   "end_line": 6
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

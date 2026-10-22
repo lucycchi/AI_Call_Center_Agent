@@ -1,0 +1,82 @@
+{
+ "case_id": "F10",
+ "template_id": "F10",
+ "family": "F10",
+ "calls_weight": 15,
+ "reason": "existing appointment",
+ "sub_reason": "reschedule",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I need to move my plumbing appointment tomorrow, Saturday October 17. It's currently scheduled from eight to noon.",
+  "Sure, the name is Priya Nguyen, and the phone on the account is 512-204-6698.",
+  "Tuesday the 20th from noon to four would be much better.",
+  "If that's full, Wednesday from one to five also works."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-32330",
+  "name": "Priya Nguyen",
+  "phone": "512-204-6698",
+  "email": "priya.nguyen@example.com",
+  "service_address": "8141 Cedar Ridge Ln",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2025-06-01",
+  "zone": "central",
+  "synthetic": false,
+  "zone_source": "transcript"
+ },
+ "appointment": {
+  "appointment_id": 5110,
+  "slot_id": 9110,
+  "slot_date": "2026-10-17",
+  "window": "08:00-12:00",
+  "tech_id": 4,
+  "zone": "central",
+  "source": "planted with overlap"
+ },
+ "fixtures": [
+  {
+   "table": "appointment_slots",
+   "row": {
+    "slot_id": 9110,
+    "slot_date": "2026-10-17",
+    "window": "08:00-12:00",
+    "tech_id": 4,
+    "zone": "central",
+    "service_type": "plumbing",
+    "status": "booked"
+   }
+  },
+  {
+   "table": "appointments",
+   "row": {
+    "appointment_id": 5110,
+    "slot_id": 9110,
+    "customer_id": "MHC-32330",
+    "issue_description": "test appointment",
+    "created_at": "2026-10-10",
+    "status": "scheduled",
+    "is_warranty_visit": 0
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "reschedule",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

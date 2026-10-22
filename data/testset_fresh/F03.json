@@ -1,0 +1,85 @@
+{
+ "case_id": "F03",
+ "template_id": "F03",
+ "family": "F03",
+ "calls_weight": 21,
+ "reason": "warranty",
+ "sub_reason": "claim",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "The indoor blower on the Carrier system you installed this January has stopped working. I need to file a warranty claim.",
+  "The name is Jordan Rivera, and the account number is MHC-00673.",
+  "Does the installation warranty cover the part and labor, and would I owe a diagnostic fee?",
+  "Please schedule the warranty diagnostic for Monday afternoon if you have an opening."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-00673",
+  "name": "Jordan Rivera",
+  "phone": "512-555-0199",
+  "email": "jordan.rivera@example.com",
+  "service_address": "100 Test Lane",
+  "city": "Round Rock",
+  "zip": "78600",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Carrier",
+  "system_install_date": "2025-12-31",
+  "zone": "north",
+  "synthetic": true,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [
+  {
+   "table": "customers",
+   "row": {
+    "customer_id": "MHC-00673",
+    "name": "Jordan Rivera",
+    "phone": "512-555-0199",
+    "email": "jordan.rivera@example.com",
+    "service_address": "100 Test Lane",
+    "city": "Round Rock",
+    "zip": "78600",
+    "membership_tier": "none",
+    "membership_renewal_date": null,
+    "system_brand": "Carrier",
+    "system_install_date": "2025-12-31"
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "claim",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "Because this Meridian-installed Carrier system was installed less than two years ago, it is within Meridian's 2-year labor warranty, and registered Carrier parts have 10-year coverage. Meridian registers every installed unit within 30 days. If the failure is covered, there is no diagnostic fee; otherwise the standard $89 diagnostic fee applies.",
+ "evidence_spans": [
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "New system installation warranty",
+   "start_line": 10,
+   "end_line": 12
+  },
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "Manufacturer parts warranty (residential, when registered)",
+   "start_line": 19,
+   "end_line": 19
+  },
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "Filing a claim",
+   "start_line": 32,
+   "end_line": 32
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

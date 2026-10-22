@@ -1,0 +1,329 @@
+{
+ "model": "gpt-5.6-sol",
+ "scenarios": [
+  {
+   "case_id": "F21",
+   "sub_reason": "refund",
+   "caller_script": [
+    "I need help with a charge for a repair that didn't solve the problem.",
+    "I'm {name}, and the account number is {account}.",
+    "The invoice was for ${amount}, and I already paid it.",
+    "You cleared the AC drain, but the ceiling started dripping again the next morning.",
+    "I want that charge refunded."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": {
+    "amount_dollars": 438,
+    "paid": true
+   },
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F22",
+   "sub_reason": "confirm",
+   "caller_script": [
+    "I want to make sure my appointment is still on the schedule.",
+    "This is {name}, account {account}.",
+    "It's the HVAC tune-up on Thursday, October 22, from 4 to 7.",
+    "Will I get a text before the technician arrives?"
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": {
+    "window": "16:00-19:00",
+    "service": "hvac_tune_up"
+   },
+   "extra_requests": [
+    {
+     "request": "ask about appointment text notifications",
+     "kind": "knowledge",
+     "caller_words": "Will I get a text before the technician arrives?"
+    }
+   ],
+   "knowledge": {
+    "reference_answer": "Yes. Meridian sends a text the morning of the appointment with the technician's name and photo, then another when the technician is 30 minutes away.",
+    "evidence": [
+     {
+      "file": "faq__customer_faq.md",
+      "heading": "Scheduling",
+      "phrases": [
+       "You will receive a text the morning of your appointment with the technician's name and photo",
+       "another text when the tech is 30 minutes away"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "F23",
+   "sub_reason": "transfer",
+   "caller_script": [
+    "We just bought a home with a Meridian-installed Carrier system.",
+    "I'm {name}, and the property is {address}, {city}.",
+    "The previous owner left the installation paperwork but no transfer form.",
+    "Do the manufacturer parts warranty and Meridian labor warranty both transfer to me?"
+   ],
+   "card_needs": {
+    "city": "Leander",
+    "tier": null,
+    "brand": "Carrier",
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": {
+    "reference_answer": "The manufacturer parts warranty may transfer once, usually within 90 days of the home sale and with a $50\u2013$100 manufacturer fee. Meridian's labor warranty does not transfer to a new homeowner.",
+    "evidence": [
+     {
+      "file": "warranty__warranty_policy.md",
+      "heading": "Warranty transfer",
+      "phrases": [
+       "Manufacturer parts warranties may transfer once to a subsequent homeowner",
+       "usually within 90 days of the home sale",
+       "Meridian labor warranties do **not** transfer to a new homeowner"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "F24",
+   "sub_reason": "cancel appointment",
+   "caller_script": [
+    "I need to make a change to an upcoming appointment.",
+    "This is {name}, account {account}.",
+    "Please cancel the plumbing visit on Wednesday, October 21, from 8 to noon.",
+    "The leak has already been fixed, so I don't need to reschedule."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": {
+    "window": "08:00-12:00",
+    "service": "plumbing"
+   },
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F25",
+   "sub_reason": "hiring",
+   "caller_script": [
+    "Hi, I'm contacting you about jobs, not a service appointment.",
+    "I'm finishing HVAC trade school in December and have my EPA exam scheduled.",
+    "Are you hiring entry-level helpers or apprentices right now?"
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F26",
+   "sub_reason": "upgrade",
+   "caller_script": [
+    "I need to make a change to my Comfort Club membership.",
+    "I'm {name}, account {account}.",
+    "I'm on Standard and want to upgrade to Plus for the rest of my current term.",
+    "Can you upgrade it today and tell me the prorated amount?"
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": "standard",
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": {
+    "reference_answer": "A Standard member may upgrade to Plus at any time. The $80 annual price difference is prorated for the months remaining in the current term.",
+    "evidence": [
+     {
+      "file": "membership__comfort_club_overview.md",
+      "heading": "Upgrades",
+      "phrases": [
+       "Standard members may upgrade to Plus at any time",
+       "The difference ($80) is prorated for the months remaining in the current term"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "F27",
+   "sub_reason": "repeat repair",
+   "caller_script": [
+    "The capacitor you replaced in February seems to be failing again; the outdoor unit only hums.",
+    "I'm {name}, account {account}.",
+    "Is that repeat failure still under Meridian's repair warranty?",
+    "Please book the warranty diagnostic for Monday afternoon.",
+    "If Monday is full, Tuesday from 8 to noon works."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [
+    {
+     "request": "book a warranty diagnostic for the repeat HVAC failure",
+     "kind": "booking:hvac_repair",
+     "caller_words": "Please book the warranty diagnostic for Monday afternoon."
+    }
+   ],
+   "knowledge": {
+    "reference_answer": "Meridian repairs carry a one-year labor warranty on the specific part repaired or replaced. If the same capacitor failed within that year, the return visit and labor are free, and the part is covered if Meridian supplied it.",
+    "evidence": [
+     {
+      "file": "warranty__warranty_policy.md",
+      "heading": "Repair warranty (Meridian labor warranty)",
+      "phrases": [
+       "All repairs performed by Meridian carry a **1-year labor warranty** on the specific part repaired or replaced",
+       "If the same part fails within 1 year, the return visit and labor are free",
+       "Parts are covered if they were supplied by Meridian"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "F28",
+   "sub_reason": "commercial",
+   "caller_script": [
+    "I manage a two-story medical office, and one of our rooftop units keeps shutting down.",
+    "We're considering replacing it without interrupting the weekday clinics.",
+    "Does Meridian handle commercial rooftop-unit replacement?",
+    "If you need contact information, it's {name} at {phone}."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": {
+    "reference_answer": "Meridian's residential service operation does not offer commercial HVAC work. Commercial HVAC requests are referred to the Meridian Commercial division.",
+    "evidence": [
+     {
+      "file": "services__service_catalog.md",
+      "heading": "Not offered",
+      "phrases": [
+       "Commercial HVAC (referred to Meridian Commercial division)"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "F29",
+   "sub_reason": "wrong number",
+   "caller_script": [
+    "Hi, is this Meridian Storage?",
+    "I'm trying to reserve a unit near the airport.",
+    "Oh, I have the wrong Meridian. Sorry about that."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F30",
+   "sub_reason": "member discount on a new system",
+   "caller_script": [
+    "I'm a Comfort Club member and I'm comparing replacement options for my heat pump.",
+    "Do members get 15% off a whole new system, or is the replacement benefit different?",
+    "My name is {name}, and my account number is {account}.",
+    "The current system has become unreliable, so please book a free in-home replacement estimate for Saturday morning.",
+    "The service address is {address}, {city}."
+   ],
+   "card_needs": {
+    "city": "Austin",
+    "tier": "member",
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [
+    {
+     "request": "book an in-home system replacement estimate",
+     "kind": "booking:estimate",
+     "caller_words": "The current system has become unreliable, so please book a free in-home replacement estimate for Saturday morning."
+    }
+   ],
+   "knowledge": {
+    "reference_answer": "The 15% member discount applies to repairs, not a full system replacement. Comfort Club members receive $500 off a full replacement and, if they are members when it is installed, an extended five-year Meridian labor warranty.",
+    "evidence": [
+     {
+      "file": "pricing__2026_fee_schedule.md",
+      "heading": "Notes",
+      "phrases": [
+       "Repair discount applies to parts and labor on residential HVAC repairs"
+      ]
+     },
+     {
+      "file": "membership__comfort_club_overview.md",
+      "heading": "Comfort Club Plus",
+      "phrases": [
+       "$500 off any full system replacement (Standard members also receive this)"
+      ]
+     },
+     {
+      "file": "warranty__warranty_policy.md",
+      "heading": "New system installation warranty",
+      "phrases": [
+       "Comfort Club members at the time of installation receive an extended **5-year labor warranty**"
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

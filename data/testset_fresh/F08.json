@@ -1,0 +1,49 @@
+{
+ "case_id": "F08",
+ "template_id": "F08",
+ "family": "F08",
+ "calls_weight": 16,
+ "reason": "new booking",
+ "sub_reason": "tune-up",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I'd like to book the fall heating tune-up for my one HVAC system. Nothing is broken; it's just routine maintenance.",
+  "This should be included with my Plus membership. The name is Kim Baker, and the phone number is 512-832-1884.",
+  "Wednesday the 21st from noon to four would be best.",
+  "If that window is full, I can also do Thursday morning."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-58398",
+  "name": "Kim Baker",
+  "phone": "512-832-1884",
+  "email": "kim.baker@example.com",
+  "service_address": "7581 Sunset Terrace",
+  "city": "Hutto",
+  "zip": "78634",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2027-10-09",
+  "system_brand": "Goodman",
+  "system_install_date": "2015-01-25",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "tune-up",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

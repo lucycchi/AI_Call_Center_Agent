@@ -1,0 +1,64 @@
+{
+ "case_id": "F04",
+ "template_id": "F04",
+ "family": "F04",
+ "calls_weight": 20,
+ "reason": "membership",
+ "sub_reason": "what it includes or price",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I'm comparing maintenance plans. What does the regular Comfort Club cost, and does it include both yearly HVAC tune-ups?",
+  "Okay, I want the annual Standard plan, not Plus. Please enroll me.",
+  "It's Priya Rivera, and my account number is MHC-28442.",
+  "There's just one HVAC system at the address."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-28442",
+  "name": "Priya Rivera",
+  "phone": "512-201-6317",
+  "email": "priya.rivera@example.com",
+  "service_address": "5642 Pecan Grove Rd",
+  "city": "Kyle",
+  "zip": "78640",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Trane",
+  "system_install_date": "2019-03-13",
+  "zone": "south",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "what it includes or price",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "Enroll in the annual Standard Comfort Club plan",
+   "kind": "action:enrol",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Okay, I want the annual Standard plan, not Plus. Please enroll me.",
+   "reference": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "Comfort Club Standard costs $189 per year per system or $16.99 per month. It includes two seasonal tune-ups each year, one for cooling and one for heating.",
+ "evidence_spans": [
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Comfort Club (Standard)",
+   "start_line": 9,
+   "end_line": 12
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

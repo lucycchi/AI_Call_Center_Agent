@@ -1,0 +1,49 @@
+{
+ "case_id": "F06",
+ "template_id": "F06",
+ "family": "F06",
+ "calls_weight": 16,
+ "reason": "complaint or manager",
+ "sub_reason": "complaint or manager",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "This is Hannah Diaz, account MHC-66261. I need a service manager.",
+  "Your technician never arrived for yesterday's noon-to-four window, nobody called me, and the portal now says the job was completed.",
+  "I took the afternoon off work for this, so I don't want another generic apology.",
+  "I want a manager to call me today and explain what happened."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-66261",
+  "name": "Hannah Diaz",
+  "phone": "512-970-9263",
+  "email": "hannah.diaz@example.com",
+  "service_address": "9413 Oak Hollow Dr",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "American Standard",
+  "system_install_date": "2014-11-18",
+  "zone": "central",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "complaint or manager",
+   "kind": "sub-reason",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "complaint"
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "complaint",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

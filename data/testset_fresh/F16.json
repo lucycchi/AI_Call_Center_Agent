@@ -1,0 +1,81 @@
+{
+ "case_id": "F16",
+ "template_id": "F16",
+ "family": "F16",
+ "calls_weight": 12,
+ "reason": "replacement estimate",
+ "sub_reason": "replacement estimate",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "Our heat pump is 17 years old and keeps needing repairs. What does a full replacement usually cost?",
+  "I'm Jordan Rivera; the service address is 100 Test Lane, Austin, and my number is 512-555-0199.",
+  "I'd like a free in-home estimate next Friday morning if possible.",
+  "I'm a Comfort Club member; is there a replacement discount, and can the rest be financed?"
+ ],
+ "caller_card": {
+  "customer_id": "MHC-09847",
+  "name": "Jordan Rivera",
+  "phone": "512-555-0199",
+  "email": "jordan.rivera@example.com",
+  "service_address": "100 Test Lane",
+  "city": "Austin",
+  "zip": "78600",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2026-11-15",
+  "system_brand": "Trane",
+  "system_install_date": "2020-01-01",
+  "zone": "central",
+  "synthetic": true,
+  "zone_source": "transcript"
+ },
+ "appointment": null,
+ "fixtures": [
+  {
+   "table": "customers",
+   "row": {
+    "customer_id": "MHC-09847",
+    "name": "Jordan Rivera",
+    "phone": "512-555-0199",
+    "email": "jordan.rivera@example.com",
+    "service_address": "100 Test Lane",
+    "city": "Austin",
+    "zip": "78600",
+    "membership_tier": "standard",
+    "membership_renewal_date": "2026-11-15",
+    "system_brand": "Trane",
+    "system_install_date": "2020-01-01"
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "replacement estimate",
+   "kind": "sub-reason",
+   "expected_outcome": "clean_decline",
+   "handoff_reason": "no estimate capacity in central zone"
+  },
+  {
+   "request": "Ask about the member replacement discount and financing.",
+   "kind": "knowledge",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "I'm a Comfort Club member; is there a replacement discount, and can the rest be financed?",
+   "reference": null
+  }
+ ],
+ "expected_outcome": "clean_decline",
+ "expected_handoff_reason": "no estimate capacity in central zone",
+ "needs_documents": true,
+ "reference_answer": "A full residential split-system replacement typically costs $8,000\u2013$16,000, depending on tonnage, efficiency, ductwork condition and brand. The in-home estimate is free, financing is available, and Comfort Club members receive $500 off.",
+ "evidence_spans": [
+  {
+   "file": "services__service_catalog.md",
+   "heading": "System replacement",
+   "start_line": 27,
+   "end_line": 29
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

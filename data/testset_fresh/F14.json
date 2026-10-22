@@ -1,0 +1,71 @@
+{
+ "case_id": "F14",
+ "template_id": "F14",
+ "family": "F14",
+ "calls_weight": 13,
+ "reason": "billing",
+ "sub_reason": "what an invoice is for",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "There's a $184 invoice on my account that I don't recognize, and I haven't paid it.",
+  "My name is Kim Murphy, and my phone number is 512-494-3705.",
+  "Can you tell me the service date and what each charge was for?",
+  "Once that's explained, please send me a payment link at 512-494-3705."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-18700",
+  "name": "Kim Murphy",
+  "phone": "512-494-3705",
+  "email": "kim.murphy@example.com",
+  "service_address": "3722 Cedar Ridge Ln",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Lennox",
+  "system_install_date": "2015-08-06",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [
+  {
+   "table": "invoices",
+   "row": {
+    "invoice_id": "INV-900114",
+    "customer_id": "MHC-18700",
+    "appointment_id": null,
+    "issued_date": "2026-10-02",
+    "due_date": "2026-11-01",
+    "amount_cents": 18400,
+    "balance_cents": 18400,
+    "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 9500}]"
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "what an invoice is for",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "Send a secure link to pay the invoice.",
+   "kind": "action:payment link",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Once that's explained, please send me a payment link at {phone}.",
+   "reference": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

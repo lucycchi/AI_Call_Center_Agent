@@ -1,0 +1,97 @@
+{
+ "case_id": "F22",
+ "template_id": "F22",
+ "family": "F22",
+ "calls_weight": 8,
+ "reason": "existing appointment",
+ "sub_reason": "confirm",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I want to make sure my appointment is still on the schedule.",
+  "This is Robert Chen, account MHC-10023.",
+  "It's the HVAC tune-up on Thursday, October 22, from 4 to 7.",
+  "Will I get a text before the technician arrives?"
+ ],
+ "caller_card": {
+  "customer_id": "MHC-10023",
+  "name": "Robert Chen",
+  "phone": "512-311-4666",
+  "email": "robert.chen@example.com",
+  "service_address": "2629 Maple St",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-06-07",
+  "system_brand": "Rheem",
+  "system_install_date": "2021-01-20",
+  "zone": "central",
+  "synthetic": false,
+  "zone_source": "transcript"
+ },
+ "appointment": {
+  "appointment_id": 5122,
+  "slot_id": 9122,
+  "slot_date": "2026-10-22",
+  "window": "16:00-19:00",
+  "tech_id": 2,
+  "zone": "central",
+  "source": "planted with overlap"
+ },
+ "fixtures": [
+  {
+   "table": "appointment_slots",
+   "row": {
+    "slot_id": 9122,
+    "slot_date": "2026-10-22",
+    "window": "16:00-19:00",
+    "tech_id": 2,
+    "zone": "central",
+    "service_type": "hvac_tune_up",
+    "status": "booked"
+   }
+  },
+  {
+   "table": "appointments",
+   "row": {
+    "appointment_id": 5122,
+    "slot_id": 9122,
+    "customer_id": "MHC-10023",
+    "issue_description": "test appointment",
+    "created_at": "2026-10-10",
+    "status": "scheduled",
+    "is_warranty_visit": 0
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "confirm",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "ask about appointment text notifications",
+   "kind": "knowledge",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Will I get a text before the technician arrives?",
+   "reference": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "Yes. Meridian sends a text the morning of the appointment with the technician's name and photo, then another when the technician is 30 minutes away.",
+ "evidence_spans": [
+  {
+   "file": "faq__customer_faq.md",
+   "heading": "Scheduling",
+   "start_line": 11,
+   "end_line": 11
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

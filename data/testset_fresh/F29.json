@@ -1,0 +1,48 @@
+{
+ "case_id": "F29",
+ "template_id": "F29",
+ "family": "F29",
+ "calls_weight": 5,
+ "reason": "wrong number",
+ "sub_reason": "wrong number",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "Hi, is this Meridian Storage?",
+  "I'm trying to reserve a unit near the airport.",
+  "Oh, I have the wrong Meridian. Sorry about that."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-56591",
+  "name": "Patricia Singh",
+  "phone": "512-986-5709",
+  "email": "patricia.singh@example.com",
+  "service_address": "2219 Brookside Ct",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2021-09-25",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "wrong number",
+   "kind": "sub-reason",
+   "expected_outcome": "redirect",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "redirect",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

@@ -1,0 +1,63 @@
+{
+ "case_id": "F05",
+ "template_id": "F05",
+ "family": "F05",
+ "calls_weight": 16,
+ "reason": "billing",
+ "sub_reason": "quote dispute",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "This is about the repair invoice from Monday. The invoice total is $780, but the signed quote I approved was $640.",
+  "The account is under Maria Ali, number MHC-73231.",
+  "I have not paid it because I want the difference explained and the invoice corrected first.",
+  "Please have billing review the signed quote against that invoice."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-73231",
+  "name": "Maria Ali",
+  "phone": "512-891-9021",
+  "email": "maria.ali@example.com",
+  "service_address": "4865 Sunset Terrace",
+  "city": "Leander",
+  "zip": "78641",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2026-12-10",
+  "system_brand": "Lennox",
+  "system_install_date": "2021-09-29",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [
+  {
+   "table": "invoices",
+   "row": {
+    "invoice_id": "INV-900105",
+    "customer_id": "MHC-73231",
+    "appointment_id": null,
+    "issued_date": "2026-10-02",
+    "due_date": "2026-11-01",
+    "amount_cents": 78000,
+    "balance_cents": 78000,
+    "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 69100}]"
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "quote dispute",
+   "kind": "sub-reason",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "dispute"
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "dispute",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

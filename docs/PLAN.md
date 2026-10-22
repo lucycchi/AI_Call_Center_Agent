@@ -661,6 +661,31 @@ The author can read the final numbers on the Results tab and in the README, and 
 - [ ] **Step 4: Run** the full suite `python -m pytest`. Expected: PASS.
 - [ ] **Step 5: Commit** `docs: README and video outline`.
 
+## Milestone 7: Complete handoffs, more calls resolved, and a fresh measurement
+
+Added after the project was finished, at the author's request (2026-10-21). The author can read, on 30 calls the agent
+was never tuned on, how often it resolves a call without a person before and after this work, and see in the Staff
+view that a handed-off ticket carries the whole conversation.
+
+- [x] Task 29: fresh test set: 30 cases written blind by Codex, reviewed by the author and frozen (fresh test set decision (D52))
+- [ ] Task 30: handoffs carry the whole interaction, to staff and between the agent's own flows
+- [ ] Task 31: fewer needless handoffs, found and fixed on the working set only
+- [ ] Task 32: payment and autopay links, membership enrolment and upgrades, and cancelling auto-renew (money and membership actions decision (D54))
+- [ ] Task 33: the fresh measurement, before and after; DECISIONS.md entries with evidence; deploy and documents
+
+### Task 29: Fresh test set
+
+**Files:**
+- Create: `eval/fresh_cases.py`, `eval/fresh_prompt.md`, `tests/eval/test_fresh_cases.py`
+- Modify: `eval/run.py`
+- Output: `data/fresh_scenarios/`, `data/testset_fresh/`, `data/fresh_split.json`
+
+- [x] **Step 1: Write the failing tests.** One slot per sub-reason (30), weighted by its calls (420 in all); expected outcomes under the new action scope; a scenario becomes a case with a real customer and its fixtures; unknown placeholders and evidence phrases not in the documents are refused; the set runs only when frozen, with `--fresh-final`, unchanged, and once per agent version.
+- [x] **Step 2: Run** `python -m pytest tests/eval/test_fresh_cases.py`. Expected: FAIL.
+- [x] **Step 3: Implement**, then have Codex write the scenarios (`python -m eval.fresh_cases write`) and build the cases.
+- [x] **Step 4: The author reviews** a sample of the cases; then `python -m eval.fresh_cases freeze`.
+- [x] **Step 5: Commit** `feat: fresh test set`.
+
 ## Schedule
 
 | Day | Work |

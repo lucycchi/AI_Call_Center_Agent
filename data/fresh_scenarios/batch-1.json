@@ -1,0 +1,279 @@
+{
+ "model": "gpt-5.6-sol",
+ "scenarios": [
+  {
+   "case_id": "F01",
+   "sub_reason": "hvac repair",
+   "caller_script": [
+    "Our upstairs AC makes a grinding noise when it starts, and hardly any air is coming from the vents. I need a repair visit.",
+    "Sure, it's {name}, and the phone on the account is {phone}.",
+    "Monday afternoon\u2014sorry, I mean Tuesday the 20th after 4 p.m. would work best.",
+    "It's only the upstairs system; the downstairs one is fine."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F02",
+   "sub_reason": "plumbing",
+   "caller_script": [
+    "I need a plumber. The laundry standpipe overflows whenever the washer drains.",
+    "The account is under {name} at {address}, {city}.",
+    "Monday morning would be ideal, but I can take any time Monday.",
+    "Could you check for anything earlier than that, even a cancellation?",
+    "If not, go ahead with the slot you offered."
+   ],
+   "card_needs": {
+    "city": "Buda",
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [
+    {
+     "request": "Check for an earlier appointment or cancellation opening",
+     "kind": "earlier slot",
+     "caller_words": "Could you check for anything earlier than that, even a cancellation?"
+    }
+   ],
+   "knowledge": null
+  },
+  {
+   "case_id": "F03",
+   "sub_reason": "claim",
+   "caller_script": [
+    "The indoor blower on the Carrier system you installed this January has stopped working. I need to file a warranty claim.",
+    "The name is {name}, and the account number is {account}.",
+    "Does the installation warranty cover the part and labor, and would I owe a diagnostic fee?",
+    "Please schedule the warranty diagnostic for Monday afternoon if you have an opening."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": "Carrier",
+    "install_after": "2025-12-31",
+    "install_before": "2026-02-01"
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": {
+    "reference_answer": "Because this Meridian-installed Carrier system was installed less than two years ago, it is within Meridian's 2-year labor warranty, and registered Carrier parts have 10-year coverage. Meridian registers every installed unit within 30 days. If the failure is covered, there is no diagnostic fee; otherwise the standard $89 diagnostic fee applies.",
+    "evidence": [
+     {
+      "file": "warranty__warranty_policy.md",
+      "heading": "New system installation warranty",
+      "phrases": [
+       "Meridian provides a **2-year labor warranty** on all full system installations.",
+       "Meridian registers every installed unit with the manufacturer within 30 days of install."
+      ]
+     },
+     {
+      "file": "warranty__warranty_policy.md",
+      "heading": "Manufacturer parts warranty (residential, when registered)",
+      "phrases": [
+       "| Carrier | 10 years | 10 years | 20 years |"
+      ]
+     },
+     {
+      "file": "warranty__warranty_policy.md",
+      "heading": "Filing a claim",
+      "phrases": [
+       "If the failure is covered, there is no diagnostic fee.",
+       "the standard $89 diagnostic fee applies."
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "F04",
+   "sub_reason": "what it includes or price",
+   "caller_script": [
+    "I'm comparing maintenance plans. What does the regular Comfort Club cost, and does it include both yearly HVAC tune-ups?",
+    "Okay, I want the annual Standard plan, not Plus. Please enroll me.",
+    "It's {name}, and my account number is {account}.",
+    "There's just one HVAC system at the address."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": "none",
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [
+    {
+     "request": "Enroll in the annual Standard Comfort Club plan",
+     "kind": "action:enrol",
+     "caller_words": "Okay, I want the annual Standard plan, not Plus. Please enroll me."
+    }
+   ],
+   "knowledge": {
+    "reference_answer": "Comfort Club Standard costs $189 per year per system or $16.99 per month. It includes two seasonal tune-ups each year, one for cooling and one for heating.",
+    "evidence": [
+     {
+      "file": "membership__comfort_club_overview.md",
+      "heading": "Comfort Club (Standard)",
+      "phrases": [
+       "Price: **$189 per year** per system, or **$16.99 per month**",
+       "Two seasonal tune-ups per year (one cooling, one heating)"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "F05",
+   "sub_reason": "quote dispute",
+   "caller_script": [
+    "This is about the repair invoice from Monday. The invoice total is ${amount}, but the signed quote I approved was $640.",
+    "The account is under {name}, number {account}.",
+    "I have not paid it because I want the difference explained and the invoice corrected first.",
+    "Please have billing review the signed quote against that invoice."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": {
+    "amount_dollars": 780,
+    "paid": false
+   },
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F06",
+   "sub_reason": "complaint or manager",
+   "caller_script": [
+    "This is {name}, account {account}. I need a service manager.",
+    "Your technician never arrived for yesterday's noon-to-four window, nobody called me, and the portal now says the job was completed.",
+    "I took the afternoon off work for this, so I don't want another generic apology.",
+    "I want a manager to call me today and explain what happened."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F07",
+   "sub_reason": "burning smell",
+   "caller_script": [
+    "I turned the heat on this morning and got a sharp burning-plastic smell from the return vent, so I shut the system off.",
+    "There's no smoke or flame now, but I need someone to inspect it today.",
+    "The account is under {name} at {address}, {city}.",
+    "I can be home any time today\u2014the sooner the better."
+   ],
+   "card_needs": {
+    "city": "Austin",
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F08",
+   "sub_reason": "tune-up",
+   "caller_script": [
+    "I'd like to book the fall heating tune-up for my one HVAC system. Nothing is broken; it's just routine maintenance.",
+    "This should be included with my Plus membership. The name is {name}, and the phone number is {phone}.",
+    "Wednesday the 21st from noon to four would be best.",
+    "If that window is full, I can also do Thursday morning."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": "plus",
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [],
+   "knowledge": null
+  },
+  {
+   "case_id": "F09",
+   "sub_reason": "current balance",
+   "caller_script": [
+    "Can you tell me my current total balance? I'm not asking about one particular invoice.",
+    "It's {name}, account number {account}.",
+    "I haven't made any payments today, if that matters.",
+    "Once you find the balance, please text me a secure payment link at {phone}."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": null,
+   "extra_requests": [
+    {
+     "request": "Send a secure payment link by text",
+     "kind": "action:payment link",
+     "caller_words": "Once you find the balance, please text me a secure payment link at {phone}."
+    }
+   ],
+   "knowledge": null
+  },
+  {
+   "case_id": "F10",
+   "sub_reason": "reschedule",
+   "caller_script": [
+    "I need to move my plumbing appointment tomorrow, Saturday October 17. It's currently scheduled from eight to noon.",
+    "Sure, the name is {name}, and the phone on the account is {phone}.",
+    "Tuesday the 20th from noon to four would be much better.",
+    "If that's full, Wednesday from one to five also works."
+   ],
+   "card_needs": {
+    "city": null,
+    "tier": null,
+    "brand": null,
+    "install_after": null,
+    "install_before": null
+   },
+   "invoice": null,
+   "appointment": {
+    "window": "08:00-12:00",
+    "service": "plumbing"
+   },
+   "extra_requests": [],
+   "knowledge": null
+  }
+ ]
+}

@@ -1,0 +1,56 @@
+{
+ "case_id": "F28",
+ "template_id": "F28",
+ "family": "F28",
+ "calls_weight": 5,
+ "reason": "commercial",
+ "sub_reason": "commercial",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I manage a two-story medical office, and one of our rooftop units keeps shutting down.",
+  "We're considering replacing it without interrupting the weekday clinics.",
+  "Does Meridian handle commercial rooftop-unit replacement?",
+  "If you need contact information, it's Jennifer Cruz at 512-334-1997."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-75688",
+  "name": "Jennifer Cruz",
+  "phone": "512-334-1997",
+  "email": "jennifer.cruz@example.com",
+  "service_address": "5896 Harbor View Way",
+  "city": "Hutto",
+  "zip": "78634",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "American Standard",
+  "system_install_date": "2017-03-25",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "commercial",
+   "kind": "sub-reason",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "commercial"
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "commercial",
+ "needs_documents": true,
+ "reference_answer": "Meridian's residential service operation does not offer commercial HVAC work. Commercial HVAC requests are referred to the Meridian Commercial division.",
+ "evidence_spans": [
+  {
+   "file": "services__service_catalog.md",
+   "heading": "Not offered",
+   "start_line": 38,
+   "end_line": 38
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

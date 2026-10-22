@@ -1,0 +1,70 @@
+{
+ "case_id": "F17",
+ "template_id": "F17",
+ "family": "F17",
+ "calls_weight": 11,
+ "reason": "billing",
+ "sub_reason": "charged twice",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I paid the $426 invoice on Wednesday, but my card now shows two completed charges from Meridian.",
+  "Neither one says pending. Both are fully posted.",
+  "I'm Marcus Baker, and the account number is MHC-82768.",
+  "Please check whether you received both payments and open a processor case if they're duplicates."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-82768",
+  "name": "Marcus Baker",
+  "phone": "512-844-7459",
+  "email": "marcus.baker@example.com",
+  "service_address": "6186 Windcrest Ave",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2014-08-12",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [
+  {
+   "table": "invoices",
+   "row": {
+    "invoice_id": "INV-900117",
+    "customer_id": "MHC-82768",
+    "appointment_id": null,
+    "issued_date": "2026-10-02",
+    "due_date": "2026-11-01",
+    "amount_cents": 42600,
+    "balance_cents": 0,
+    "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 33700}]"
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "charged twice",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "One of two charges is often a pending authorization that disappears within 3\u20135 business days. If both charges have posted, Meridian will open a case with its payment processor.",
+ "evidence_spans": [
+  {
+   "file": "faq__customer_faq.md",
+   "heading": "Duplicate charges",
+   "start_line": 27,
+   "end_line": 27
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

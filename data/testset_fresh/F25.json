@@ -1,0 +1,48 @@
+{
+ "case_id": "F25",
+ "template_id": "F25",
+ "family": "F25",
+ "calls_weight": 6,
+ "reason": "hiring",
+ "sub_reason": "hiring",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "Hi, I'm contacting you about jobs, not a service appointment.",
+  "I'm finishing HVAC trade school in December and have my EPA exam scheduled.",
+  "Are you hiring entry-level helpers or apprentices right now?"
+ ],
+ "caller_card": {
+  "customer_id": "MHC-32330",
+  "name": "Priya Nguyen",
+  "phone": "512-204-6698",
+  "email": "priya.nguyen@example.com",
+  "service_address": "8141 Cedar Ridge Ln",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Goodman",
+  "system_install_date": "2025-06-01",
+  "zone": "central",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "hiring",
+   "kind": "sub-reason",
+   "expected_outcome": "redirect",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "redirect",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

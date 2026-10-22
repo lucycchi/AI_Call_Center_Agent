@@ -310,8 +310,9 @@ def _existing_appointment(db: sqlite3.Connection, need: dict, day: str, window: 
     for slot_window in [window] if window else sorted(offered):
         if slot_window not in offered:
             continue
-        for (tech,) in db.execute("select tech_id from technicians where home_zone = ? and skills like '%hvac%' order by tech_id",
-                                  (card["zone"],)):
+        skill = {"plumbing": "plumbing", "estimate": "estimate"}.get(service or "", "hvac")  # a technician for the service
+        for (tech,) in db.execute("select tech_id from technicians where home_zone = ? and skills like ? order by tech_id",
+                                  (card["zone"], f"%{skill}%")):
             busy = [w for (w,) in db.execute("select window from appointment_slots where tech_id = ? and slot_date = ?", (tech, day))]
             if not any(_overlaps(slot_window, w) for w in busy):
                 slot_id = 9000 + n

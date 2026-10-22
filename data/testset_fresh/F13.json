@@ -1,0 +1,57 @@
+{
+ "case_id": "F13",
+ "template_id": "F13",
+ "family": "F13",
+ "calls_weight": 14,
+ "reason": "membership",
+ "sub_reason": "renewal date",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I received a membership reminder, but it doesn't show me the exact date I'll be charged.",
+  "It's Beth Cruz, account MHC-14512.",
+  "Please tell me the renewal date and amount before changing anything.",
+  "Actually, go ahead and turn off auto-renew after you confirm it."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-14512",
+  "name": "Beth Cruz",
+  "phone": "512-494-8817",
+  "email": "beth.cruz@example.com",
+  "service_address": "1736 Maple St",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-09-09",
+  "system_brand": "Trane",
+  "system_install_date": "2012-06-12",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "renewal date",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "Turn off membership auto-renewal after confirming the renewal details.",
+   "kind": "action:cancel auto-renew",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Actually, go ahead and turn off auto-renew after you confirm it.",
+   "reference": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

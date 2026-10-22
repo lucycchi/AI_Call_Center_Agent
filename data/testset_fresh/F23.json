@@ -1,0 +1,56 @@
+{
+ "case_id": "F23",
+ "template_id": "F23",
+ "family": "F23",
+ "calls_weight": 8,
+ "reason": "warranty",
+ "sub_reason": "transfer",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "We just bought a home with a Meridian-installed Carrier system.",
+  "I'm Michael Lee, and the property is 8412 Sunset Terrace, Georgetown.",
+  "The previous owner left the installation paperwork but no transfer form.",
+  "Do the manufacturer parts warranty and Meridian labor warranty both transfer to me?"
+ ],
+ "caller_card": {
+  "customer_id": "MHC-40867",
+  "name": "Michael Lee",
+  "phone": "512-457-5029",
+  "email": "michael.lee@example.com",
+  "service_address": "8412 Sunset Terrace",
+  "city": "Georgetown",
+  "zip": "78626",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Carrier",
+  "system_install_date": "2017-09-29",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "transcript"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "transfer",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "The manufacturer parts warranty may transfer once, usually within 90 days of the home sale and with a $50\u2013$100 manufacturer fee. Meridian's labor warranty does not transfer to a new homeowner.",
+ "evidence_spans": [
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "Warranty transfer",
+   "start_line": 28,
+   "end_line": 29
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

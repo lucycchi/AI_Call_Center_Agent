@@ -1,0 +1,49 @@
+{
+ "case_id": "F01",
+ "template_id": "F01",
+ "family": "F01",
+ "calls_weight": 79,
+ "reason": "new booking",
+ "sub_reason": "hvac repair",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "Our upstairs AC makes a grinding noise when it starts, and hardly any air is coming from the vents. I need a repair visit.",
+  "Sure, it's Sofia Diaz, and the phone on the account is 512-490-3371.",
+  "Monday afternoon\u2014sorry, I mean Tuesday the 20th after 4 p.m. would work best.",
+  "It's only the upstairs system; the downstairs one is fine."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-30349",
+  "name": "Sofia Diaz",
+  "phone": "512-490-3371",
+  "email": "sofia.diaz@example.com",
+  "service_address": "817 Sunset Terrace",
+  "city": "Kyle",
+  "zip": "78640",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-07-01",
+  "system_brand": "American Standard",
+  "system_install_date": "2023-04-11",
+  "zone": "south",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "hvac repair",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

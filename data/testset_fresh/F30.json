@@ -1,0 +1,77 @@
+{
+ "case_id": "F30",
+ "template_id": "F30",
+ "family": "F30",
+ "calls_weight": 4,
+ "reason": "membership",
+ "sub_reason": "member discount on a new system",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I'm a Comfort Club member and I'm comparing replacement options for my heat pump.",
+  "Do members get 15% off a whole new system, or is the replacement benefit different?",
+  "My name is Robert Chen, and my account number is MHC-10023.",
+  "The current system has become unreliable, so please book a free in-home replacement estimate for Saturday morning.",
+  "The service address is 2629 Maple St, Austin."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-10023",
+  "name": "Robert Chen",
+  "phone": "512-311-4666",
+  "email": "robert.chen@example.com",
+  "service_address": "2629 Maple St",
+  "city": "Austin",
+  "zip": "78745",
+  "membership_tier": "standard",
+  "membership_renewal_date": "2027-06-07",
+  "system_brand": "Rheem",
+  "system_install_date": "2021-01-20",
+  "zone": "central",
+  "synthetic": false,
+  "zone_source": "transcript"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "member discount on a new system",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "book an in-home system replacement estimate",
+   "kind": "booking:estimate",
+   "expected_outcome": "clean_decline",
+   "handoff_reason": "no estimate capacity in central zone",
+   "caller_words": "The current system has become unreliable, so please book a free in-home replacement estimate for Saturday morning.",
+   "reference": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": true,
+ "reference_answer": "The 15% member discount applies to repairs, not a full system replacement. Comfort Club members receive $500 off a full replacement and, if they are members when it is installed, an extended five-year Meridian labor warranty.",
+ "evidence_spans": [
+  {
+   "file": "pricing__2026_fee_schedule.md",
+   "heading": "Notes",
+   "start_line": 46,
+   "end_line": 46
+  },
+  {
+   "file": "membership__comfort_club_overview.md",
+   "heading": "Comfort Club Plus",
+   "start_line": 25,
+   "end_line": 25
+  },
+  {
+   "file": "warranty__warranty_policy.md",
+   "heading": "New system installation warranty",
+   "start_line": 11,
+   "end_line": 11
+  }
+ ],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

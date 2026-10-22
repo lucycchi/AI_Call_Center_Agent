@@ -1,0 +1,64 @@
+{
+ "case_id": "F21",
+ "template_id": "F21",
+ "family": "F21",
+ "calls_weight": 8,
+ "reason": "billing",
+ "sub_reason": "refund",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I need help with a charge for a repair that didn't solve the problem.",
+  "I'm Omar Garcia, and the account number is MHC-77976.",
+  "The invoice was for $438, and I already paid it.",
+  "You cleared the AC drain, but the ceiling started dripping again the next morning.",
+  "I want that charge refunded."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-77976",
+  "name": "Omar Garcia",
+  "phone": "512-750-4548",
+  "email": "omar.garcia@example.com",
+  "service_address": "1589 Ridgeline Pass",
+  "city": "Hutto",
+  "zip": "78634",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "Lennox",
+  "system_install_date": "2025-07-19",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "drawn"
+ },
+ "appointment": null,
+ "fixtures": [
+  {
+   "table": "invoices",
+   "row": {
+    "invoice_id": "INV-900121",
+    "customer_id": "MHC-77976",
+    "appointment_id": null,
+    "issued_date": "2026-10-02",
+    "due_date": "2026-11-01",
+    "amount_cents": 43800,
+    "balance_cents": 0,
+    "line_items": "[{\"desc\": \"Diagnostic visit\", \"cents\": 8900}, {\"desc\": \"Repair\", \"cents\": 34900}]"
+   }
+  }
+ ],
+ "requests": [
+  {
+   "request": "refund",
+   "kind": "sub-reason",
+   "expected_outcome": "handed_off",
+   "handoff_reason": "dispute"
+  }
+ ],
+ "expected_outcome": "handed_off",
+ "expected_handoff_reason": "dispute",
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

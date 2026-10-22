@@ -1,0 +1,49 @@
+{
+ "case_id": "F15",
+ "template_id": "F15",
+ "family": "F15",
+ "calls_weight": 13,
+ "reason": "membership",
+ "sub_reason": "cancel",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I'm moving out, so I want my Comfort Club Plus membership canceled.",
+  "The account is under Angela Kim at 5451 Lakeshore Blvd, Cedar Park.",
+  "Yes, cancel it and make sure it won't renew. I don't need a sales pitch.",
+  "Please send confirmation to the contact information already on the account."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-40346",
+  "name": "Angela Kim",
+  "phone": "512-913-2713",
+  "email": "angela.kim@example.com",
+  "service_address": "5451 Lakeshore Blvd",
+  "city": "Cedar Park",
+  "zip": "78613",
+  "membership_tier": "plus",
+  "membership_renewal_date": "2026-12-01",
+  "system_brand": "Trane",
+  "system_install_date": "2015-08-19",
+  "zone": "north",
+  "synthetic": false,
+  "zone_source": "transcript"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "cancel",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}

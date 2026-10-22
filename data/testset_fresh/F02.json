@@ -1,0 +1,58 @@
+{
+ "case_id": "F02",
+ "template_id": "F02",
+ "family": "F02",
+ "calls_weight": 25,
+ "reason": "new booking",
+ "sub_reason": "plumbing",
+ "sample_call_id": null,
+ "source": "fresh: written blind by Codex",
+ "caller_script": [
+  "I need a plumber. The laundry standpipe overflows whenever the washer drains.",
+  "The account is under Robert Patel at 5397 Lakeshore Blvd, Buda.",
+  "Monday morning would be ideal, but I can take any time Monday.",
+  "Could you check for anything earlier than that, even a cancellation?",
+  "If not, go ahead with the slot you offered."
+ ],
+ "caller_card": {
+  "customer_id": "MHC-66681",
+  "name": "Robert Patel",
+  "phone": "512-657-4162",
+  "email": "robert.patel@example.com",
+  "service_address": "5397 Lakeshore Blvd",
+  "city": "Buda",
+  "zip": "78610",
+  "membership_tier": "none",
+  "membership_renewal_date": null,
+  "system_brand": "American Standard",
+  "system_install_date": "2014-06-25",
+  "zone": "south",
+  "synthetic": false,
+  "zone_source": "transcript"
+ },
+ "appointment": null,
+ "fixtures": [],
+ "requests": [
+  {
+   "request": "plumbing",
+   "kind": "sub-reason",
+   "expected_outcome": "contained",
+   "handoff_reason": null
+  },
+  {
+   "request": "Check for an earlier appointment or cancellation opening",
+   "kind": "earlier slot",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
+   "caller_words": "Could you check for anything earlier than that, even a cancellation?",
+   "reference": null
+  }
+ ],
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
+ "needs_documents": false,
+ "reference_answer": null,
+ "evidence_spans": [],
+ "must_not": [],
+ "written_by": "gpt-5.6-sol"
+}
