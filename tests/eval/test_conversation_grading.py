@@ -269,3 +269,61 @@ def test_a_slot_planted_by_a_case_is_not_in_the_seed_and_is_freed_to_open():
     from eval.grade_conversations import _freed, _seed_status
     assert _seed_status(999999) is None
     assert _freed(_seed_status(999999)) == "open"
+
+
+# -- money and membership actions (Milestone 7, Task 32; actions decision (D54)) ------------------------------------
+
+def _ops_with(db, *rows):
+    from app.ops.store import OpsStore
+    store = OpsStore(Path(db).with_name(Path(db).stem + "-ops.sqlite"))
+    for customer, kind in rows:
+        store.record_action(None, customer, kind, kind, "phone ending 0101", None)
+
+
+def _membership_case(sub, outcome="contained", card=CARD):
+    return _case(sub=sub, outcome=outcome, card=card) | {"reason": "membership"}
+
+
+def test_an_upgrade_the_case_asks_for_is_checked_not_flagged_as_an_unexpected_write(tmp_path):
+    db = _db(tmp_path, sql=["update customers set membership_tier = 'plus' where customer_id = 'MHC-10001'"])
+    _ops_with(db, ("MHC-10001", "upgrade"))
+    checks = _checks(_membership_case("upgrade"), _attempt(db, action=None))
+    assert checks["no_unexpected_writes"] is True and checks["actions_correct"] is True
+
+
+def test_a_tier_change_without_a_recorded_action_is_an_unexpected_write(tmp_path):
+    db = _db(tmp_path, sql=["update customers set membership_tier = 'plus' where customer_id = 'MHC-10001'"])
+    checks = _checks(_membership_case("upgrade"), _attempt(db, action=None))
+    assert checks["no_unexpected_writes"] is False
+
+
+def test_an_action_the_case_does_not_ask_for_is_wrong(tmp_path):
+    db = _db(tmp_path)
+    _ops_with(db, ("MHC-10001", "payment link"))
+    checks = _checks(_case(), _attempt(db, action=None))
+    assert checks["actions_correct"] is False and "payment link" in " ".join(checks["action_problems"])
+
+
+def test_turning_off_auto_renew_must_be_in_the_database(tmp_path):
+    db = _db(tmp_path)
+    _ops_with(db, ("MHC-10001", "cancel auto-renew"))
+    checks = _checks(_membership_case("cancel"), _attempt(db, action=None))
+    assert checks["actions_correct"] is False  # recorded, but auto-renew is still on
+    conn = sqlite3.connect(db)
+    conn.execute("create table membership_settings (customer_id text primary key, auto_renew integer not null, "
+                 "changed_at text not null, conversation_id text)")
+    conn.execute("insert into membership_settings values ('MHC-10001', 0, '2026-10-16T09:00', null)")
+    conn.commit()
+    assert _checks(_membership_case("cancel"), _attempt(db, action=None))["actions_correct"] is True
+
+
+def test_a_second_request_to_enrol_allows_the_enrolment(tmp_path):
+    db = _db(tmp_path, sql=["update customers set membership_tier = 'standard', membership_renewal_date = '2027-10-16' "
+                            "where customer_id = 'MHC-10004'"])
+    _ops_with(db, ("MHC-10004", "enrol"))
+    requests = [{"request": "hvac repair", "kind": "sub-reason", "expected_outcome": "contained", "handoff_reason": None},
+                {"request": "join the Comfort Club", "kind": "action:enrol", "expected_outcome": "contained",
+                 "handoff_reason": None}]
+    case = _case(card=NON_MEMBER, requests=requests)
+    checks = _checks(case, _attempt(db, action=None))
+    assert checks["actions_correct"] is True and not any("customers" in w for w in checks.get("unexpected_writes", []))

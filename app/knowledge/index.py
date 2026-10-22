@@ -28,7 +28,11 @@ class Chunk:
 def _source_of(kb_file: Path) -> tuple[str, str]:
     """The original document path and its effective date, from the document list."""
     stem = kb_file.stem.replace("__", "/")
-    for row in csv.DictReader(DOCUMENT_LIST.open()):
+    rows = list(csv.DictReader(DOCUMENT_LIST.open()))
+    added = DOCUMENT_LIST.with_name("documents_added.csv")  # author-supplied documents, named "added/..." (D54)
+    if added.exists():
+        rows += [{**r, "path": "added/" + r["path"]} for r in csv.DictReader(added.open())]
+    for row in rows:
         if row["path"].rsplit(".", 1)[0] == stem:
             return row["path"], row["effective_date"]
     return stem, ""

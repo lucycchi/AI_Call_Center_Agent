@@ -66,4 +66,4 @@ def test_asking_for_an_emailed_invoice_copy_is_handed_off_not_dropped(chat):
     # The agent said it could not email and moved on: the request was dropped. No document says how copies are sent.
     chat["say"]("I'm Omar Patel, MHC-10002, what's my balance?")
     reply, done = chat["say"]("Oh okay. Can you email me an itemized copy?")
-    assert "invoice copy" in tags(chat) and done.ticket
+    assert "action gap" in tags(chat) and done.ticket  # an account action staff take (Tb9afdda4 expects this tag)

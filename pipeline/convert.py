@@ -10,7 +10,7 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
-from pipeline.documents import KB, ROOT, searchable_documents
+from pipeline.documents import ROOT, relative, searchable_documents
 
 COLUMNS = ("Non-member", "Comfort Club", "Comfort Club Plus")
 OUT = ROOT / "data" / "kb_text"
@@ -51,7 +51,7 @@ def main(out: Path = OUT) -> None:
             old.unlink()
     out.mkdir(parents=True, exist_ok=True)
     for path in searchable_documents():
-        target = out / (str(path.relative_to(KB)).replace("/", "__").rsplit(".", 1)[0] + ".md")
+        target = out / (relative(path).replace("/", "__").rsplit(".", 1)[0] + ".md")
         if path.suffix == ".pdf":
             target.write_text(convert_pdf_table(path))
         elif path.suffix == ".csv":

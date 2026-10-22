@@ -107,6 +107,18 @@
     tickets.textContent = "";
     if (!data.tickets.length) tickets.appendChild(el("li", "staff-message", "No tickets in your conversations yet."));
     data.tickets.slice().reverse().forEach(function (ticket) { tickets.appendChild(ticketItem(ticket)); });
+    var done = document.getElementById("staff-actions");
+    done.textContent = "";
+    var actions = data.actions || [];
+    if (!actions.length) done.appendChild(el("li", "staff-message", "No payment links or membership changes."));
+    actions.forEach(function (action) {
+      var item = el("li");
+      item.appendChild(el("strong", null, action.kind + " "));
+      item.appendChild(document.createTextNode(action.customer_id + " · " + action.detail));
+      if (action.sent_to) field(item, "Sent to", action.sent_to);
+      if (action.expires_at) field(item, "Link valid until", action.expires_at);
+      done.appendChild(item);
+    });
     var replies = document.getElementById("staff-replies");
     replies.textContent = "";
     if (!data.replies.length) replies.appendChild(el("li", "staff-message", "No replies yet."));

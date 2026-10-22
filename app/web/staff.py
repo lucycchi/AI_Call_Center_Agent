@@ -154,6 +154,12 @@ def ticket_view(store, row: dict) -> dict:
             "conversation": store.ticket_conversation(row["ticket_id"])}
 
 
+def conversation_actions(store, conversation_id: str) -> list[dict]:
+    """The money and membership actions the agent took in this conversation (D54): what, for whom, where it was sent."""
+    return [{"kind": a["kind"], "customer_id": a["customer_id"], "detail": a["detail"], "sent_to": a["sent_to"],
+             "created_at": a["created_at"], "expires_at": a["expires_at"]} for a in store.account_actions(conversation_id)]
+
+
 def replies_view(store, conversation_id: str) -> list[dict]:
     """Each agent reply with its "How this reply was made" receipt: plain labels, the dated passages, documents
     excluded as stale, the database action and the handoff reason. Never a score, never prompt text."""
@@ -279,17 +285,18 @@ def staff_routes(store, cookie_secret: str, password_hash: str | None, clock, tr
         sid = session_id(request)
         visitor_id = request.state.visitor_id
         tickets = [ticket_view(store, row) for row in store.tickets_for_visitor(visitor_id)]
-        replies = []
+        replies, done = [], []
         if conversation_id:
             row = store.conversation(conversation_id)
             if row is None or (row["visitor_id"] != visitor_id and sid is None):
                 raise HTTPException(404, "conversation not found")
             replies = replies_view(store, conversation_id)
+            done = conversation_actions(store, conversation_id)
         return masked({"staff": sid is not None, "form_token": form_token(sid) if sid else None,
                        "tickets": tickets, "new_tickets": sum(1 for t in tickets if t["ticket_id"] > seen),
                        "latest_ticket_id": max((t["ticket_id"] for t in tickets), default=0),
                        "numbers": live_numbers(store, clock().astimezone(AUSTIN).date()),
-                       "conversation_id": conversation_id, "replies": replies})
+                       "conversation_id": conversation_id, "replies": replies, "actions": done})
 
     @router.get("/api/staff/queue")
     def queue(request: Request):

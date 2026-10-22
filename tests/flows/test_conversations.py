@@ -28,6 +28,8 @@ def clear(*requests):
 ROUTES = {
     "my balance": clear(request("what's my balance", "account", "balance")),
     "payment link": clear(request("send me a payment link", "account", "action")),
+    # A fee waiver stays with a person (actions decision (D54)), so tests that need an open action-gap ticket use it.
+    "waive the diagnostic fee": clear(request("please waive the diagnostic fee", "account", "action")),
     "book": clear(request("I want to book a repair", "scheduling", "book", "hvac_repair")),
     "same thing again": clear(request("you fixed my blower and it's doing the same thing again", "scheduling", "book",
                                       "hvac_repair")),
@@ -97,8 +99,11 @@ def test_omar_hears_his_balance_and_a_silent_billing_review_opens(chat):
     assert (review["reason_tag"], review["priority"], review["conversation_id"]) == ("billing review", 0, None)
 
 
-def test_a_payment_link_request_is_an_action_gap_handoff(chat):
-    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+def test_a_payment_link_request_is_read_back_not_handed_off(chat):
+    # Actions decision (D54): the agent sends payment links itself; a fee waiver is still the action gap.
+    reply, done = chat["say"]("I'm Omar Patel, MHC-10002. Send me a payment link")
+    assert done.outcome == "answered" and not chat["store"].tickets() and "INV-204411" in reply
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Please waive the diagnostic fee", conversation="c2")
     assert done.outcome == "handed_off" and chat["store"].tickets()[-1]["reason_tag"] == "action gap"
 
 
@@ -328,9 +333,9 @@ def test_another_visitor_cannot_continue_a_conversation(chat):
     assert events[-1].outcome == "forbidden" and count(chat["db"], "select count(*) from appointments where customer_id='MHC-10001'") == 1
 
 
-def test_an_action_request_misrouted_as_an_account_question_is_still_handed_off(chat):
-    _, done = chat["say"]("I'm Linda Foster, MHC-10001, set up autopay on my plan")
-    assert chat["store"].tickets()[-1]["reason_tag"] == "action gap"
+def test_an_action_request_misrouted_is_still_caught_and_read_back(chat):
+    reply, done = chat["say"]("I'm Linda Foster, MHC-10001, set up autopay on my plan")
+    assert "autopay" in reply.lower() and not chat["store"].tickets()
 
 
 def test_a_caller_wanting_earlier_than_the_earliest_slot_gets_an_earlier_slot_ticket(chat):
@@ -459,7 +464,7 @@ def test_billing_notes_stay_on_billing_tickets_and_one_earlier_slot_ticket_per_c
 def test_receipts_use_the_plain_labels(chat):
     chat["say"]("how much is a tune-up cost")
     chat["say"]("I'm Omar Patel, MHC-10002, what's my balance?", conversation="c2")
-    chat["say"]("I'm Omar Patel, MHC-10002. Send me a payment link", conversation="c3")
+    chat["say"]("I'm Omar Patel, MHC-10002. Please waive the diagnostic fee", conversation="c3")
     labels = [r["outcome_label"] for r in chat["store"]._rows("select outcome_label from receipts order by message_id")]
     assert labels == ["supported by documents", "supported by account records", "handoff required"]
 
@@ -474,8 +479,8 @@ def test_a_yes_or_no_before_a_new_scheduling_action_still_switches(chat, text):
 
 def test_the_action_backstop_covers_misrouted_knowledge_and_scheduling_requests(chat):
     chat["routes_add"]("autopay set", clear(request("set up autopay for my membership", "knowledge")))
-    _, done = chat["say"]("I'm Linda Foster, MHC-10001. autopay set up please")
-    assert chat["store"].tickets()[-1]["reason_tag"] == "action gap"
+    reply, done = chat["say"]("I'm Linda Foster, MHC-10001. autopay set up please")
+    assert "autopay" in reply.lower() and not chat["store"].tickets()
     chat["routes_add"]("pay by card", clear(request("can I pay by card over the phone", "knowledge")))
     _, done = chat["say"]("can I pay by card over the phone?", conversation="c2")
     assert done.outcome == "answered"
@@ -559,8 +564,7 @@ def test_a_receipt_that_cannot_be_saved_twice_gives_the_phone_the_office_message
 
 def test_membership_action_tickets_do_not_carry_invoice_notes(chat):
     chat["say"]("I'm Omar Patel, MHC-10002, what's my balance?")
-    chat["routes_add"]("cancel my membership", clear(request("cancel my membership", "account", "action")))
-    chat["say"]("please cancel my membership")
+    chat["say"]("Please waive the diagnostic fee")
     ticket = chat["store"].tickets()[-1]
     assert ticket["reason_tag"] == "action gap" and "fee differs" not in ticket["constraints"]
 
@@ -654,10 +658,10 @@ def test_a_message_with_almost_no_time_left_stops_before_a_model_call():
         deadline.DEADLINE.reset(token)
 
 
-def test_a_cancel_request_routed_as_a_redirect_is_still_an_action_gap(chat):
+def test_a_cancel_request_routed_as_a_redirect_is_still_caught_as_an_action(chat):
     chat["routes_add"]("cancel my membership now", clear(request("cancel my membership now", "redirect", "wrong number")))
-    _, done = chat["say"]("I'm Linda Foster, MHC-10001. cancel my membership now")
-    assert chat["store"].tickets()[-1]["reason_tag"] == "action gap"
+    reply, done = chat["say"]("I'm Linda Foster, MHC-10001. cancel my membership now")
+    assert "auto-renew" in reply.lower() and "wrong number" not in reply.lower() and not chat["store"].tickets()
 
 
 # Found by the first harness run.
@@ -952,13 +956,13 @@ def test_the_writer_states_member_benefits_as_member_benefits():
     assert "as member benefits" in RULES
 
 
-def test_add_it_after_a_membership_discussion_hands_off_the_enrolment(chat):
+def test_add_it_after_a_membership_discussion_reads_back_the_enrolment(chat):
     chat["routes_add"]("save me money", clear(request("I want someone out", "scheduling", "book", "hvac_repair"),
                                               request("would joining the maintenance plan save me money", "knowledge")))
     chat["routes_add"]("add it and book", clear(request("add it and book the visit", "scheduling", "book", "hvac_repair")))
-    chat["say"]("I'm Linda Foster, MHC-10001. My AC is blowing warm, I want someone out, and would joining the maintenance plan save me money on this?")
-    chat["say"]("Yeah, add it and book the visit.")
-    assert any(t["reason_tag"] == "action gap" for t in chat["store"].tickets())
+    chat["say"]("I'm Daniel Reyes, MHC-10004. My AC is blowing warm, I want someone out, and would joining the maintenance plan save me money on this?")
+    reply, _ = chat["say"]("Yeah, add it and book the visit.")
+    assert "Comfort Club Standard" in reply and not any(t["reason_tag"] == "action gap" for t in chat["store"].tickets())
 
 
 # Milestone 4 gate fixes.
@@ -997,7 +1001,7 @@ def test_an_unclear_request_for_a_person_is_handed_off(chat):
 
 def test_a_second_handoff_reason_adds_its_tag_and_invoice_notes_to_the_open_ticket(chat):
     chat["say"]("I'm Omar Patel, MHC-10002, what's my balance?")
-    chat["say"]("Send me a payment link")
+    chat["say"]("Please waive the diagnostic fee")
     [action] = [t for t in chat["store"].tickets() if t["reason_tag"] == "action gap"]
     chat["routes_add"]("after-hours fee", clear(request("I dispute the after-hours fee", "handoff", "dispute")))
     reply, done = chat["say"]("I dispute the after-hours fee")
@@ -1010,7 +1014,7 @@ def test_a_second_handoff_reason_adds_its_tag_and_invoice_notes_to_the_open_tick
 def test_an_action_request_after_a_handoff_adds_the_action_gap_tag(chat):
     chat["routes_add"]("talk to a manager", clear(request("I want to talk to a manager", "handoff", "complaint")))
     chat["say"]("I'm Linda Foster, MHC-10001. I want to talk to a manager.")
-    chat["say"]("Also send me a payment link")
+    chat["say"]("Also please waive the diagnostic fee")
     assert chat["store"].ticket_tags(1) == ["complaint", "action gap"] and len(chat["store"].tickets()) == 1
 
 
@@ -1309,7 +1313,7 @@ def test_a_slot_pick_with_a_ticket_open_goes_to_the_booking_not_the_ticket(chat,
     pick = "Let's go with the first one, 8:00 AM to 12:00 PM on Monday."
     if pick_route:
         chat["routes_add"]("go with the first one", clear(pick_route))
-    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Please waive the diagnostic fee")
     assert done.ticket
     reply, _ = chat["say"]("I want to book a repair Monday")
     assert "1) Monday 2026-10-19, 08:00-12:00" in reply
@@ -1329,13 +1333,14 @@ def test_another_day_at_a_booking_offer_stays_in_the_booking_without_another_act
     assert ConversationState.load(chat["store"], "c1", "v1").flow["kind"] == "book" and "late fee" not in reply
 
 
-def test_a_pick_with_a_separate_action_request_reads_back_and_hands_off_the_action(chat):
+def test_a_pick_with_a_separate_action_request_reads_back_both(chat):
     text = "Yeah, add the membership and book the visit. The Monday 8:00 to 12:00 slot works."
     chat["routes_add"]("add the membership", clear(request("add the membership", "account", "action"),
                                                    request("book the visit Monday 8:00 to 12:00", "scheduling", "book")))
     chat["say"]("I'm Linda Foster, MHC-10001, I want to book a repair Monday morning")
     reply, done = chat["say"](text)
-    assert "Read back" in reply and "Ticket #" in reply and chat["store"].tickets()[-1]["reason_tag"] == "action gap"
+    # Linda already has Standard, so the membership part is answered; the booking is read back; nothing is handed off.
+    assert "Read back" in reply and "already has Comfort Club Standard" in reply and not chat["store"].tickets()
 
 
 @pytest.mark.parametrize("text", ["Hi, I'm Linda Foster, MHC-10001", "Linda Foster, MHC-10001. I have a question",
@@ -1370,7 +1375,7 @@ def test_a_goodbye_at_an_open_offer_or_read_back_ends_the_chat(chat, text):
 
 def test_a_reply_restating_the_open_tickets_promise_is_released_not_blocked(chat):
     # Quick run: "...under Ticket #1, and someone will contact you within one business day." was blocked as a promise.
-    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Please waive the diagnostic fee")
     assert done.ticket == 1
     restated = "Your earlier request is already with our team under Ticket #1, and someone will contact you within one business day"
     chat["writer_says"](lambda facts: facts + [restated])
@@ -1401,7 +1406,7 @@ def test_a_follow_up_question_with_a_ticket_and_an_offer_open_is_answered_not_ad
               "handoff, clear": clear(request(question, "handoff", "other")),
               "handoff, unclear": {"clear": False, "requests": [request(question, "handoff", "other")]}}[label]
     chat["routes_add"]("pays for itself", routed)
-    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Please waive the diagnostic fee")
     assert done.ticket == 1
     reply, _ = chat["say"]("Would the maintenance plan save me money?")
     assert "15 percent" in reply
@@ -1414,7 +1419,7 @@ def test_a_follow_up_question_with_a_ticket_and_an_offer_open_is_answered_not_ad
 
 def test_an_unclear_message_with_a_ticket_open_is_still_added_to_it(chat):
     chat["engine"]._pipeline.searcher = PlanSearcher()
-    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+    _, done = chat["say"]("I'm Linda Foster, MHC-10001. Please waive the diagnostic fee")
     chat["say"]("I want to book a repair Monday")
     text = "Why is everything so complicated with you people?"  # nothing the documents answer, even with context
     chat["routes_add"]("so complicated", clear(request(text, "handoff", "other")))
@@ -1424,7 +1429,7 @@ def test_an_unclear_message_with_a_ticket_open_is_still_added_to_it(chat):
 
 def test_an_unclear_question_the_documents_do_not_answer_at_an_open_offer_still_goes_to_the_offer(chat):
     chat["engine"]._pipeline.searcher = PlanSearcher()
-    chat["say"]("I'm Linda Foster, MHC-10001. Send me a payment link")
+    chat["say"]("I'm Linda Foster, MHC-10001. Please waive the diagnostic fee")
     chat["say"]("I want to book a repair Monday")
     reply, _ = chat["say"]("Why is everything so complicated with you people?")  # unclear by default in the script
     assert "1) Monday 2026-10-19, 08:00-12:00" in reply and len(chat["store"].tickets()) == 1

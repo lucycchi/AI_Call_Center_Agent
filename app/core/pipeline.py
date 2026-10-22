@@ -20,11 +20,12 @@ from app.core.language import WORD, english_words, other_language
 from app.core.model_log import SINK
 from app.core.state import ConversationState, NotYourConversation
 from app.core.types import DoneEvent, Event, SentenceEvent, Turn
-from app.flows import scheduling
+from app.flows import actions, scheduling
 from app.flows.account import about_address, account_answer
 from app.flows.identify import ACCOUNT, ASK, PHONE, STREET, find_customer, has_identifier
 from app.flows.knowledge import SAVINGS, answer
 from app.flows.protocol import FlowResult
+from app.ops.masking import CARD as CARD_NUMBER
 from app.handoff.flow import add_to_open_ticket, hand_off, safe
 from app.replies.checks import CheckedStream, check_sentence
 from app.routing.router import Request, RouteResult
@@ -41,7 +42,7 @@ REDIRECTS = {"hiring": "We don't take job applications by phone; openings and ap
 OWN_WARRANTY = re.compile(r"\b(regist\w*|warrant\w*|covered|coverage)\b", re.I)
 INVOICE_COPY = re.compile(r"\b(?:e-?mail|send|mail|text)\b.{0,20}\b(?:copy|receipt|pdf)\b|\bcopy of (?:the |my |that |this )?"
                           r"(?:invoice|bill|receipt)\b|\bitemi[sz]ed (?:copy|invoice|bill|receipt)\b", re.I)
-HANDOFF_TAGS = {"invoice copy": "invoice copy", "dispute": "dispute", "complaint": "complaint", "late technician": "late technician",
+HANDOFF_TAGS = {"invoice copy": "action gap", "dispute": "dispute", "complaint": "complaint", "late technician": "late technician",
                 "commercial": "commercial", "person": "other", "other language": "other language", "other": "other"}
 SAFETY_TAGS = {"danger": "emergency", "burning": "burning smell", "urgent": "emergency"}
 # Post-measurement safety fix: after a safety reply, a booking request or a yes is never booked (SPEC anti-goal, R37).
@@ -77,6 +78,10 @@ MISTAKE = re.compile(r"\b(?:that|your|the) (?:last |previous )?(?:reply|answer|r
                      r"is)(?: like)? (?:a |an )?(?:mistake|wrong|an error|off)\b", re.I)
 PAUSE_WORDS = re.compile(FILLER_WORDS.pattern + r"|\b(i'?m|i am|and|no|that'?s|everything|all|for now|actually)\b", re.I)
 APOLOGY = "Sorry about that; my last reply was a mistake."
+
+NO_CARDS = ("For your security, please don't type card numbers in this chat; I never take them. The secure link is where "
+            "you enter payment details.")
+NOT_DONE = "Okay, I haven't changed anything. Is there anything else I can help you with?"
 # "What day is it?" alone is answered from the fixed "now", which the caller is told is the demo's date.
 DATE_QUESTION = re.compile(r"\bwhat(?:'?s| is)? (?:day(?: of the week)?|(?:today'?s |the )?date|(?:the )?time)(?: is it)?"
                            r"(?: (?:today|now|right now))?\b|\bis (?:it|today) (?:a )?(?:weekday|weekend|monday|tuesday|"
@@ -366,6 +371,27 @@ class AgentPipeline:
             yield finish("limit", "limit", {"limit": limit}, [])
             return
         at_offer = state.flow.get("step") in ("offer", "readback")
+        if CARD_NUMBER.search(turn.text):  # never taken, never repeated, never stored (it is masked when logged)
+            yield emit(NO_CARDS)
+            yield finish(state.active_flow or "none", "answered", {"safety": "clear"}, [])
+            return
+        if state.action.get("step") == "readback":
+            # A money or membership action waits for a plain yes (D54); a no drops it, anything else moves on.
+            if scheduling.YES.search(turn.text):
+                result = safe(lambda: self._perform(state, turn.conversation_id), error_event)
+                for sentence in self._written(result, turn.conversation_id, state):
+                    yield emit(sentence)
+                if result.handoff_reason:
+                    for sentence in ticket(result.handoff_reason, "", _caller_words(earlier, turn.text)):
+                        yield emit(sentence)
+                yield finish("account", "handed_off" if result.handoff_reason else "answered", {"safety": "clear"},
+                             result.db_actions)
+                return
+            state.action = {}
+            if scheduling.NO.search(turn.text):
+                yield emit(NOT_DONE)
+                yield finish("account", "answered", {"safety": "clear"}, [])
+                return
         pause = re.compile(f"{PAUSE.pattern}|{MISTAKE.pattern}|{FILLER.pattern}", re.I)
         if (PAUSE.search(turn.text) or MISTAKE.search(turn.text)) and _only(turn.text, pause, PAUSE_WORDS) \
                 and not has_identifier(turn.text):
@@ -504,7 +530,11 @@ class AgentPipeline:
         queued = fell_back = False
         context = " ".join(earlier[-3:])  # a short follow-up question is searched again with these (T9e29febc)
         for request in requests:
-            if request.route in ("account", "scheduling") and not self._action(request) or request.route == "continue":  # noqa: E501
+            doable = self._action(request) and actions.kind_of(request.text)  # an action the agent takes itself (D54)
+            if request.route in ("account", "scheduling") and not self._action(request) or request.route == "continue" \
+                    or doable:
+                if doable:
+                    request = Request(request.text, "account", "action")
                 waiting = {(p["route"], p["detail"]) for p in state.pending}
                 in_progress = request.route == "scheduling" and request.detail == state.flow.get("kind")
                 # The router can split one request into two identical ones; each is handled once.
@@ -698,6 +728,23 @@ class AgentPipeline:
         return routed.requests, False
 
     # -- flows ------------------------------------------------------------------------------------------
+    def _perform(self, state: ConversationState, conversation_id: str) -> FlowResult:
+        db = sqlite3.connect(self.scheduling_db)
+        try:
+            customer = self._customer(db, state)
+        finally:
+            db.close()
+        if customer is None:
+            state.action = {}
+            return FlowResult([], "handoff", handoff_reason="not identified")
+        return actions.perform(self.scheduling_db, self.store, customer, state, conversation_id, self.now)
+
+    def _written(self, result: FlowResult, conversation_id: str, state: ConversationState) -> Iterator[str]:
+        if not result.facts:
+            return
+        yield from CheckedStream(self.writer(result.reply_type, result.facts, self.store.history(conversation_id)),
+                                 money_check=self.money_check, ticket_id=state.ticket_id)
+
     @staticmethod
     def _action(request: Request) -> bool:
         """Money or membership actions are the action gap, whether the router or the code check spots them (R48).
@@ -778,6 +825,11 @@ class AgentPipeline:
             # Account questions are answered first, so a question asked mid-booking does not wait behind it.
             for request in [r for r in state.pending if r["route"] == "account"]:
                 state.pending.remove(request)
+                if request["detail"] == "action":
+                    kind = actions.kind_of(request.get("text") or "")
+                    results.append(actions.offer(db, customer, kind, state, self.now, request.get("text") or "")
+                                   if kind else FlowResult([], "handoff", handoff_reason="action gap"))
+                    continue
                 results.append(account_answer(read_only(self.scheduling_db), customer, request["detail"], state, self.store,
                                               request.get("text") or ""))
                 if request["detail"] == "system" and OWN_WARRANTY.search(request.get("text") or ""):

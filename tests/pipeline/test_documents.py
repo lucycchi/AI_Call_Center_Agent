@@ -8,8 +8,11 @@ ROOT = Path(__file__).resolve().parents[2]
 KB = ROOT / "call_data" / "knowledge_base"
 
 
+ADDED = ROOT / "data" / "kb_added"
+
+
 def rel(paths):
-    return {str(p.relative_to(KB)) for p in paths}
+    return {str(p.relative_to(KB)) if p.is_relative_to(KB) else "added/" + str(p.relative_to(ADDED)) for p in paths}
 
 
 def test_searchable_documents_exclude_stale_placeholder_and_internal_files():
@@ -94,3 +97,20 @@ def test_receipts_can_name_the_stale_documents_each_current_one_supersedes():
     from app.flows.knowledge import SUPERSEDED
     assert "faq/faq_old_copy.md" in SUPERSEDED["faq/customer_faq.md"]
     assert "archive/comfort_club_overview.md" in SUPERSEDED["membership/comfort_club_overview.md"]
+
+
+def test_the_author_supplied_autopay_policy_is_searchable_and_marked_as_added():
+    # Actions decision (D54): the author supplied an autopay policy on 2026-10-21; it is not one of the company's
+    # documents, so it sits apart from call_data/ and its own list says who supplied it and when.
+    assert "added/policies/autopay.md" in rel(searchable_documents())
+    [row] = list(csv.DictReader((ROOT / "data" / "documents_added.csv").open()))
+    assert row["path"] == "policies/autopay.md" and row["status"] == "current" and row["audience"] == "customers"
+    assert row["effective_date"] == "2026-10-21" and "author" in row["reason"].lower()
+    text = (ADDED / "policies" / "autopay.md").read_text()
+    assert "never take card or bank numbers" in text and "3 days before each charge" in text
+
+
+def test_the_added_policy_is_chunked_with_its_name_and_date():
+    from app.knowledge.index import chunk_document
+    chunks = chunk_document(ROOT / "data" / "kb_text" / "added__policies__autopay.md")
+    assert chunks and {(c.document, c.effective_date) for c in chunks} == {("added/policies/autopay.md", "2026-10-21")}

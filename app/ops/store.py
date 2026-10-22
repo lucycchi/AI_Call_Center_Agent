@@ -264,6 +264,17 @@ class OpsStore:
                                                      "using (message_id) where t.ticket_id = ? order by m.message_id",
                                                      (ticket_id,))]
 
+    def record_action(self, conversation_id: str | None, customer_id: str, kind: str, detail: str, sent_to: str | None,
+                      expires_at: str | None) -> int:
+        return self._write("insert into account_actions (conversation_id, customer_id, kind, detail, sent_to, created_at, "
+                           "expires_at) values (?, ?, ?, ?, ?, ?, ?)",
+                           (conversation_id, customer_id, kind, mask(detail), sent_to, self._now(), expires_at))
+
+    def account_actions(self, conversation_id: str | None = None) -> list[dict]:
+        if conversation_id is None:
+            return self._rows("select * from account_actions order by action_id")
+        return self._rows("select * from account_actions where conversation_id = ? order by action_id", (conversation_id,))
+
     def ticket_conversation(self, ticket_id: int) -> list[dict]:
         """The whole conversation behind a ticket, both sides, oldest first: what the caller said and was told before
         the handoff as well as after it, so staff never have to ask again."""

@@ -28,6 +28,7 @@ class ConversationState:
     after_safety: bool = False  # the previous agent reply was the safety reply
     tags_opened: list[str] = field(default_factory=list)  # ticket reasons already opened in this conversation
     ticket_notes: int = 0  # later messages added to the open ticket
+    action: dict = field(default_factory=dict)  # a money or membership action read back, waiting for a plain yes (D54)
     pending_tickets: list[dict] = field(default_factory=list)  # staff tickets whose save failed, retried each message  # constraints for any ticket, such as a disputed fee
 
     def flow_state(self) -> dict:

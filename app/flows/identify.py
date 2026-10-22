@@ -4,11 +4,11 @@ import re
 
 from app.accounts import normalise
 from app.accounts.identity import Customer, identify
-from app.ops.masking import PATTERNS
+from app.ops.masking import PHONE as MASKED_PHONE, STREET as MASKED_STREET
 
 ACCOUNT = re.compile(r"\bmhc[\s-]*\d{5}\b", re.I)
-PHONE = PATTERNS[1][0]
-STREET = PATTERNS[2][0]
+PHONE = MASKED_PHONE
+STREET = MASKED_STREET
 ASK = "Ask for the caller's full name and one of: their account number, service address or phone number."
 
 

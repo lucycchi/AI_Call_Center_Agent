@@ -7,11 +7,13 @@ STREET_TYPES = r"(?:st|street|ln|lane|dr|drive|rd|road|ct|court|ave|avenue|way|b
 # Words that follow a number but never name a street ("15 years old way past warranty", "2 systems at my place").
 NOT_STREET_NAMES = (r"(?:years?|months?|weeks?|days?|hours?|minutes?|times?|systems?|units?|people|kids|dogs|degrees?|"
                     r"percent|of|at|in|on|to|for|my|your|our|is|was|are|more|less)")
-PATTERNS = [
-    (re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"), "[email]"),
-    (re.compile(r"(?<![\w-])\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)"), "[phone]"),
-    (re.compile(rf"\b\d{{1,6}} (?!{NOT_STREET_NAMES}\b)[A-Za-z]+(?: [A-Za-z]+){{0,3}} {STREET_TYPES}\b\.?", re.I), "[street]"),
-]
+# A card number (13 to 19 digits, spaced or not) is masked first, so no run of it is mistaken for a phone number; card
+# numbers are never taken in chat, but one a caller types is never stored either (actions decision (D54)).
+CARD = re.compile(r"(?<![\w-])\d(?:[ -]?\d){12,18}(?![\w-])")
+EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+PHONE = re.compile(r"(?<![\w-])\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)")
+STREET = re.compile(rf"\b\d{{1,6}} (?!{NOT_STREET_NAMES}\b)[A-Za-z]+(?: [A-Za-z]+){{0,3}} {STREET_TYPES}\b\.?", re.I)
+PATTERNS = [(CARD, "[card number]"), (EMAIL, "[email]"), (PHONE, "[phone]"), (STREET, "[street]")]
 
 
 def mask(text: str) -> str:

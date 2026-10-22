@@ -208,6 +208,64 @@ def conversation_now() -> str:
     return SETTINGS.now.strftime("%A %d %B %Y, %H:%M") + " (America/Chicago)"
 
 
+# The actions the agent takes itself (actions decision (D54)), by the case's sub-reason or a request's kind.
+ACTION_SUBS = {"pay an invoice": {"payment link"}, "autopay": {"autopay link", "autopay off"}, "upgrade": {"upgrade", "enrol"},
+               "cancel": {"cancel auto-renew"}}
+ACTION_KINDS = {"payment link": {"payment link"}, "autopay": {"autopay link", "autopay off"}, "enrol": {"enrol"},
+                "upgrade": {"upgrade", "enrol"}, "cancel auto-renew": {"cancel auto-renew"}}
+
+
+def expected_actions(case: dict) -> set[str]:
+    """The action kinds this case allows: those of its sub-reason and its requests, when expected to be contained."""
+    from app.flows.actions import kind_of
+    allowed = set()
+    for r in case["requests"]:
+        if r["expected_outcome"] != "contained":
+            continue
+        if r["kind"] == "sub-reason" and case["reason"] in ("billing", "membership"):
+            allowed |= ACTION_SUBS.get(case["sub_reason"], set())
+        elif r["kind"].startswith("action:"):
+            allowed |= ACTION_KINDS.get(r["kind"].split(":", 1)[1], set())
+        elif r["kind"] == "action" and (found := kind_of(r["request"])):  # older cases name no kind
+            allowed |= {found}
+    return allowed
+
+
+def recorded_actions(attempt) -> list[dict]:
+    ops = _ops(attempt)
+    if not ops.exists():
+        return []
+    where, params = _this_conversation(attempt, "conversation_id")
+    with sqlite3.connect(ops) as db:
+        db.row_factory = sqlite3.Row
+        if not db.execute("select 1 from sqlite_master where name = 'account_actions'").fetchone():
+            return []
+        return [dict(r) for r in db.execute(f"select * from account_actions where 1 = 1{where} order by action_id", params)]
+
+
+def _action_checks(case: dict, attempt, db, start: dict, now: dict) -> tuple[list[str], bool]:
+    """Problems with the actions taken, and whether the caller's membership change is explained by one."""
+    customer = case["caller_card"]["customer_id"]
+    allowed, problems = expected_actions(case), []
+    done = recorded_actions(attempt)
+    for action in done:
+        if action["kind"] not in allowed:
+            problems.append(f"{action['kind']} was not asked for")
+        if action["customer_id"] != customer:
+            problems.append(f"{action['kind']} for {action['customer_id']}, not the caller")
+    kinds = {a["kind"] for a in done if a["customer_id"] == customer}
+    tier_now = (now["customers"].get(customer) or (None,) * 9)
+    tier_before = (start["customers"].get(customer) or (None,) * 9)
+    changed = tier_now != tier_before
+    if "cancel auto-renew" in kinds:
+        has = db.execute("select 1 from sqlite_master where name = 'membership_settings'").fetchone()
+        off = has and db.execute("select auto_renew from membership_settings where customer_id = ?", (customer,)).fetchone()
+        if not off or off[0] != 0:
+            problems.append("auto-renew was recorded as turned off but is still on")
+    explained = changed and bool(kinds & {"enrol", "upgrade"})
+    return problems, explained
+
+
 def database_checks(case: dict, attempt) -> dict:
     """What the database copy shows against what the case expected, measured from the copy as the call started (the
     seed with the case's fixtures), so planted rows are never taken for the agent's. Problems go in "booking_problems"."""
@@ -278,10 +336,17 @@ def database_checks(case: dict, attempt) -> dict:
             problems += own
             checks["booking_correct"] = not own
             checks["booking_fault"] = bool(own)
+    with sqlite3.connect(attempt.db_path) as db:
+        action_problems, membership_changed = _action_checks(case, attempt, db, start, now)
+    if expected_actions(case) or recorded_actions(attempt):
+        checks["actions_correct"] = not action_problems
+        if action_problems:
+            checks["action_problems"] = action_problems
     unexpected = [f"{table} {key} changed" for table in now for key in set(now[table]) | set(start[table])
                   if now[table].get(key) != start[table].get(key)
                   and not (table == "appointments" and key in allowed_appointments)
-                  and not (table == "appointment_slots" and key in allowed_slots)]
+                  and not (table == "appointment_slots" and key in allowed_slots)
+                  and not (table == "customers" and key == customer and membership_changed)]
     checks["no_unexpected_writes"] = not unexpected
     if unexpected and "booking_fault" in checks:  # an unexpected write is a fault too (D49)
         checks["booking_fault"] = True
@@ -396,7 +461,7 @@ def grade_attempts(attempts: list, cases: dict, runner, tickets=default_tickets,
         opened = tickets(attempt)
         checks = database_checks(case, attempt)
         attempt.grades.update(checks)
-        needed = [k for k in ("booking_correct", "no_unexpected_writes") if k in checks]
+        needed = [k for k in ("booking_correct", "no_unexpected_writes", "actions_correct") if k in checks]
         expected_reason = case.get("expected_handoff_reason")
         if case["expected_outcome"] == "handed_off":
             needed.append("handoff_reason_correct")

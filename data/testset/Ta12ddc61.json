@@ -35,14 +35,15 @@
   {
    "request": "cancel",
    "kind": "sub-reason",
-   "expected_outcome": "handed_off",
-   "handoff_reason": "action gap"
+   "expected_outcome": "contained",
+   "handoff_reason": null
   }
  ],
- "expected_outcome": "handed_off",
- "expected_handoff_reason": "action gap",
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
  "needs_documents": false,
  "reference_answer": null,
  "evidence_spans": [],
- "must_not": []
+ "must_not": [],
+ "relabelled": "2026-10-22, actions decision (D54): the agent now takes this action itself, so the call is contained; working set only, the held-out set is unchanged"
 }

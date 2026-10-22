@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS model_calls (
   settings TEXT, input_tokens INTEGER, output_tokens INTEGER, ms INTEGER, microdollars INTEGER);
 CREATE TABLE IF NOT EXISTS events (
   event_id INTEGER PRIMARY KEY, conversation_id TEXT, kind TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL);
+-- Money and membership actions the agent took (actions decision (D54)): links sent and membership changes, for staff.
+CREATE TABLE IF NOT EXISTS account_actions (
+  action_id INTEGER PRIMARY KEY, conversation_id TEXT, customer_id TEXT NOT NULL, kind TEXT NOT NULL, detail TEXT,
+  sent_to TEXT, created_at TEXT NOT NULL, expires_at TEXT);
 CREATE INDEX IF NOT EXISTS messages_by_conversation ON messages (conversation_id);
 CREATE INDEX IF NOT EXISTS sentences_by_message ON sentences (message_id);
 CREATE INDEX IF NOT EXISTS spend_by_day ON spend (day, pool);

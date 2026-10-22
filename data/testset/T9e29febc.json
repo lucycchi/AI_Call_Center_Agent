@@ -50,15 +50,15 @@
   },
   {
    "request": "join the Comfort Club",
-   "kind": "action",
-   "expected_outcome": "handed_off",
-   "handoff_reason": "action gap",
+   "kind": "action:enrol",
+   "expected_outcome": "contained",
+   "handoff_reason": null,
    "caller_words": "add it",
    "reference": null
   }
  ],
- "expected_outcome": "handed_off",
- "expected_handoff_reason": "action gap",
+ "expected_outcome": "contained",
+ "expected_handoff_reason": null,
  "needs_documents": true,
  "reference_answer": "Comfort Club Standard is $189 a year per system (or $16.99 a month). Members have the $89 diagnostic fee waived and get 15% off repairs (parts and labor), plus two seasonal tune-ups a year. The documents don't say whether those benefits apply to a visit booked on the day you join, so a team member confirms that when setting up the membership.",
  "evidence_spans": [
@@ -69,5 +69,6 @@
    "end_line": 15
   }
  ],
- "must_not": []
+ "must_not": [],
+ "relabelled": "2026-10-22, actions decision (D54): the agent now takes this action itself, so the call is contained; working set only, the held-out set is unchanged"
 }
