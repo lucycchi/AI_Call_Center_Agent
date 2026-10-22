@@ -727,7 +727,7 @@ can only propose a decision; only the author settles one.
 
 ## D54: Which money and membership actions does the agent take itself, and how are they done safely?
 
-- **Status:** proposed
+- **Status:** settled
 - **Replaces:** "Does the agent answer questions about the caller's own account, and which money and membership actions does it take itself?" (D53)
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-21
 - **Options:**
@@ -744,7 +744,7 @@ can only propose a decision; only the author settles one.
 
 ## D55: How is the improved agent measured, now that every call template has been used (with three runs per agent version)?
 
-- **Status:** proposed
+- **Status:** settled
 - **Replaces:** "How is the improved agent measured, now that every call template has been used?" (D52)
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-21
 - **Options:**
@@ -759,7 +759,7 @@ can only propose a decision; only the author settles one.
 
 ## D56: Does a handoff carry the whole interaction, to staff and between the agent's own flows?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-22
 - **Options:**
   - Yes: the ticket's 'wants' keeps the caller's own words from the whole conversation, every ticket shows the whole conversation (both sides), the Staff view shows it, and details carry between flows
@@ -773,7 +773,7 @@ can only propose a decision; only the author settles one.
 
 ## D57: Which needless handoffs found on the working set are fixed, and how?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-22
 - **Options:**
   - Five fixes from working-set run m7-working-1, each test-first: the earlier-slot ticket, thinking it over, a reply called a mistake, registration on the caller's own system, an emailed invoice copy
@@ -787,7 +787,7 @@ can only propose a decision; only the author settles one.
 
 ## D58: What did Milestone 7 achieve on the fresh test set, and what is left?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-22
 - **Options:**
   - Report the three-run average and range before and after, weighted and by case, next to the 29.5% first measurement and the 21.7% handed-off-by-design floor; name what is left
