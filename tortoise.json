@@ -1,6 +1,6 @@
 {
   "name": "AI Call Center Agent",
-  "stage": "final-checks",
+  "stage": "done",
   "test_command": "python -m pytest",
   "approvals": [
     {
@@ -58,6 +58,11 @@
       "date": "2026-10-21",
       "tag": "tortoise/milestone-6",
       "milestone": 6
+    },
+    {
+      "stage": "final-checks",
+      "date": "2026-10-21",
+      "tag": "tortoise/final-checks"
     }
   ],
   "milestone": 6,
