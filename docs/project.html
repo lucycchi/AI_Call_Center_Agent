@@ -68,11 +68,11 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </section>
 <h3>Key decisions</h3>
 <ul>
-<li>Which money and membership actions does the agent take itself, and how are they done safely? Keep the three read-only lookups. The agent also sends a payment link or an autopay link (a secure page, valid 24 hours, sent to the phone or email on file; autopay starts only when the customer completes it), enrols in or upgrades the Comfort Club at the published price, and turns off auto-renew (the membership stays active until its renewal date, and the refund terms are stated without a promise). Each needs the caller identified, a read-back and a plain yes; card and bank numbers are never asked for or repeated. Autopay follows a policy the author supplied on 2026-10-21, added as a marked document. Every action is recorded in the operations database (account_actions) and shown in the Staff view; auto-renew lives in a new live-copy table (membership_settings) cleared by the nightly reset. Refunds, disputes and fee waivers still hand off.</li>
 <li>How is the improved agent measured, now that every call template has been used (with three runs per agent version)? The thirty frozen cases (data/testset_fresh/) as before, written blind by Codex and weighted by each sub-reason&#x27;s calls. Each agent version runs on them at most three times (eval.run refuses a fourth), and its result is reported as the average and range over its three runs of: containment and the handoff rate weighted by calls, and the same two as plain shares of the 30 cases. The agent as it stood before Milestone 7 and the improved agent both get three runs. This reporting was fixed after the first before run and before any agent change.</li>
 <li>Does a handoff carry the whole interaction, to staff and between the agent&#x27;s own flows? A ticket&#x27;s &#x27;wants&#x27; is the caller&#x27;s own words from the whole conversation, skipping messages that only say who they are (app/core/pipeline.py _caller_words); every ticket returns its whole conversation, both sides (OpsStore.ticket_conversation), and the Staff view shows it under the ticket. Between flows, identity and the problem already carried over; both are now tested.</li>
 <li>Which needless handoffs found on the working set are fixed, and how? The five fixes above, found and tested on the working set only; the fresh cases were never opened one by one, only counted.</li>
 <li>What did Milestone 7 achieve on the fresh test set, and what is left? The weighted handoff rate fell from 77.5% to 48.3% and containment rose from 12.1% to 36.6%, with the run-to-run spread down from 25 points to 5. It is still 27 points above the 21.7% floor of calls that need a person by design, and short of the 60 to 75% containment target. Left: upgrades (none taken in any run), and needless &#x27;dispute&#x27;, &#x27;other&#x27; and &#x27;not enough evidence&#x27; handoffs; each would be found and fixed on the working set, then measured with three new fresh runs of the new agent version.</li>
+<li>Which findings of the Codex review of Milestone 7 are fixed, and what did the fixed version measure? All eleven findings fixed (Codex listed eleven; ten was a miscount when they were first summarized); the fixed version is live. By share of calls it is about level with the earlier version; weighted it is lower, with a wider spread, because the heaviest cases were missed more often. Upgrades are now completed, but in 5 calls over three runs an action the caller asked for was not carried out. The security audit&#x27;s identification finding (write actions need only a name and one identifier) is a known limit: real identity verification is a non-goal, chat is reviewer-only and the data is synthetic; a real deployment would send a one-time code to the phone on file.</li>
 </ul>
 <section id="progress">
 <h2>Progress</h2>
@@ -2144,7 +2144,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D59: Which findings of the Codex review of Milestone 7 are fixed, and what did the fixed version measure?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> settled</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-22</li>
 <li><strong>Options:</strong>
 <ul>

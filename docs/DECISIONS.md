@@ -801,7 +801,7 @@ can only propose a decision; only the author settles one.
 
 ## D59: Which findings of the Codex review of Milestone 7 are fixed, and what did the fixed version measure?
 
-- **Status:** proposed
+- **Status:** settled
 - **Proposed by:** Claude (claude-opus-5-5) on 2026-10-22
 - **Options:**
   - All eleven, test-first, then three fresh runs of the fixed version, reported as measured next to the earlier versions
