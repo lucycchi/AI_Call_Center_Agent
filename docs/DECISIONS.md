@@ -757,6 +757,48 @@ can only propose a decision; only the author settles one.
 - **Choice:** The thirty frozen cases (data/testset_fresh/) as before, written blind by Codex and weighted by each sub-reason's calls. Each agent version runs on them at most three times (eval.run refuses a fourth), and its result is reported as the average and range over its three runs of: containment and the handoff rate weighted by calls, and the same two as plain shares of the 30 cases. The agent as it stood before Milestone 7 and the improved agent both get three runs. This reporting was fixed after the first before run and before any agent change.
 - **Reason:** Chosen by the author on 2026-10-21: one case can swing the weighted number by up to 19 points, so three runs and the unweighted share show how much of a change is the agent and how much is chance, for about $4 more.
 
+## D56: Does a handoff carry the whole interaction, to staff and between the agent's own flows?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-22
+- **Options:**
+  - Yes: the ticket's 'wants' keeps the caller's own words from the whole conversation, every ticket shows the whole conversation (both sides), the Staff view shows it, and details carry between flows
+  - As before: 'wants' held only the message that triggered the handoff, and only later messages were linked to the ticket
+- **Research:**
+  - [data/results/final/verdicts.jsonl](data/results/final/verdicts.jsonl): What was wrong: 4 held-out tickets were graded not actionable, each because it dropped the caller's problem (the backed-up sink, the blower, the upgrade), which had been said before the message that triggered the handoff.
+  - [tests/handoff/test_full_interaction.py](tests/handoff/test_full_interaction.py): How it was fixed and tested: a north-zone sink booking reproduced the bug ('wants' read 'Linda Foster, MHC-10001'); the tests now check the ticket names the sink, holds the whole conversation both sides, adds later messages once, shows it in the Staff view, and that an identified caller is not asked again and a problem said in a question carries into the booking.
+  - [data/results/fresh_report.json](data/results/fresh_report.json): How we know it worked: on the 30 fresh cases (3 runs each), Codex graded 96.4% of handoff tickets actionable after the fix against 84.1% before.
+- **Choice:** A ticket's 'wants' is the caller's own words from the whole conversation, skipping messages that only say who they are (app/core/pipeline.py _caller_words); every ticket returns its whole conversation, both sides (OpsStore.ticket_conversation), and the Staff view shows it under the ticket. Between flows, identity and the problem already carried over; both are now tested.
+- **Reason:** Asked for by the author on 2026-10-21 (make sure the full customer issue carries over at a handoff, to an agent or a person): a ticket that drops the problem makes staff call back and ask again, which is the handoff failure the PRD names.
+
+## D57: Which needless handoffs found on the working set are fixed, and how?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-22
+- **Options:**
+  - Five fixes from working-set run m7-working-1, each test-first: the earlier-slot ticket, thinking it over, a reply called a mistake, registration on the caller's own system, an emailed invoice copy
+  - Leave them
+- **Research:**
+  - [data/results/m7-working-1/summary.json](data/results/m7-working-1/summary.json): What was wrong (working set, 54.0% containment): 3 booked calls also opened an 'earlier slot' ticket (T391b9f20, T70425efa, Tf0d9c2f5); 'let me think about it' was redirected as a wrong number and the correction opened a complaint ticket (Tbaf67f84); a registration question got only the install date (Tf7d382d9); an emailed invoice copy was silently dropped (Tb9afdda4).
+  - [tests/flows/test_needless_handoffs.py](tests/flows/test_needless_handoffs.py): How it was fixed and tested: told the earliest slots on the first ask, a ticket only on a second (R44 allows either); a pause or 'that reply was a mistake' gets a fixed reply, while a real complaint still goes to a person; a registration or warranty question about the caller's system is also answered from the documents; an invoice-copy request is handed off as an account action.
+  - [data/results/fresh_report.json](data/results/fresh_report.json): How we know it worked: earlier-slot tickets on the fresh cases fell from 1.3 a run to 0; 'other' and 'not enough evidence' handoffs did not fall (1.7 to 2.7 and 2.3 to 2.7 a run), so other needless handoffs remain.
+- **Choice:** The five fixes above, found and tested on the working set only; the fresh cases were never opened one by one, only counted.
+- **Reason:** Asked for by the author on 2026-10-21 (get more calls resolved without a person): each of these turned a call the agent had finished, or could finish, into a handoff.
+
+## D58: What did Milestone 7 achieve on the fresh test set, and what is left?
+
+- **Status:** proposed
+- **Proposed by:** Claude (claude-opus-5-5) on 2026-10-22
+- **Options:**
+  - Report the three-run average and range before and after, weighted and by case, next to the 29.5% first measurement and the 21.7% handed-off-by-design floor; name what is left
+  - Report only the best run
+- **Research:**
+  - [data/results/fresh_report.json](data/results/fresh_report.json): Before (agent 0f9cbc54, 3 runs): handoff rate 77.5% weighted (61.4 to 86.7), 74.4% of cases; containment 12.1% weighted (2.6 to 26.2), 14.4% of cases. After (agent 9713717e, 3 runs): handoff rate 48.3% weighted (46.0 to 51.2), 58.9% of cases (56.7 to 60.0); containment 36.6% weighted (35.5 to 38.8), 26.7% of cases (23.3 to 30.0).
+  - [data/fresh_split.json](data/fresh_split.json): The fresh cases were frozen (hash db976680) before any agent change, and each agent version ran exactly three times.
+  - [data/results/fresh-after-1/attempts.jsonl](data/results/fresh-after-1/attempts.jsonl): Per run after the work: 6 money or membership actions taken (payment links, auto-renew switched off, autopay links, enrolments) and 2.0 action-gap tickets against 7.0 before; no upgrade was taken in any run.
+- **Choice:** The weighted handoff rate fell from 77.5% to 48.3% and containment rose from 12.1% to 36.6%, with the run-to-run spread down from 25 points to 5. It is still 27 points above the 21.7% floor of calls that need a person by design, and short of the 60 to 75% containment target. Left: upgrades (none taken in any run), and needless 'dispute', 'other' and 'not enough evidence' handoffs; each would be found and fixed on the working set, then measured with three new fresh runs of the new agent version.
+- **Reason:** The author asked (2026-10-21) for the handoff rate to go down and for each fix to be documented with how we know it worked; three runs per version (measurement decision (D55)) show the change is the agent, not chance.
+
 ## Glossary
 
 - **Action gap:** calls the agent understands but deliberately hands off because they need an action it is not allowed to take

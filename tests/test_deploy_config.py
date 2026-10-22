@@ -140,14 +140,16 @@ def test_the_image_leaves_out(path):
     "app/web/main.py", "data/index/chunks.jsonl", "data/index/embeddings.npy", "data/document_list.csv",
     "data/kb_text/pricing__2026_fee_schedule.md", "call_data/knowledge_base/x.md", SEED, "docs/FINDINGS.md",
     "data/results/final/summary.json", "data/results/final/run_summary.json", "data/results/final/per_driver.json",
-    "data/results/final/consistency/summary.json", "requirements.txt", "scripts/entrypoint.sh",
+    "data/results/final/consistency/summary.json", "data/results/fresh_report.json", "requirements.txt",
+    "scripts/entrypoint.sh",
 ])
 def test_the_image_includes(path):
     assert in_context(path)
 
 
 RESULT_FILES = ["data/results/final/summary.json", "data/results/final/run_summary.json",
-                "data/results/final/per_driver.json", "data/results/final/consistency/summary.json"]
+                "data/results/final/per_driver.json", "data/results/final/consistency/summary.json",
+                "data/results/fresh_report.json"]  # the fresh test set's averages only, never its conversations
 
 
 def test_dockerfile_copies_only_the_final_runs_summaries():

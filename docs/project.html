@@ -53,8 +53,8 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <section id="summary">
 <h2>Summary</h2>
 <p><strong>The problem.</strong> Meridian Home Comfort, a fictional heating, cooling and plumbing company in the Austin area, cannot keep up with its calls. The challenge (<code>docs/PRD.md</code>) is to build, in four working days, a chat agent at a public web address that answers routine calls from the company's documents, reads callers' accounts, books and changes appointments in a provided SQLite database, hands everything else to a human with full context, and proves its performance with numbers measured on held-out data.</p>
-<p><strong>The approach.</strong> One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, read-only account lookups, booking changes in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.</p>
-<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestones 1 to 4 of 6 are built (foundations, search and test set, agent core, evaluation harness): configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results; then the agent core: identification and account lookups, slot eligibility and booking transactions, the safety check, the operations store, the knowledge, account, scheduling and handoff flows, the router and the engine pipeline, with a terminal chat (<code>python -m app.cli</code>); then the evaluation harness: the simulated-caller test run graded by Codex and database checks, the quick test run, the threshold curve, the adversarial runner, the grader check and the agent freeze. Milestone 5 (website and deployment) is built and deployed on Fly.io: the chat page, sentence stream and visitor cookie, the spending budgets and reviewer link, the Staff view with receipts and flagging, the Results tab, the nightly reset, log purge, alerts and health check, and the deployment with its rollback runbook. Milestone 6 (final measurement and deliverables) is built: the one held-out measurement was run on the frozen agent (freeze hash <code>5b8f6899</code>) and its numbers are published in <code>data/results/final/summary.json</code>, on the Results tab and in the README, with the optional consistency runs, the results by call reason and the README.</p>
+<p><strong>The approach.</strong> One Python web application on one always-on Fly.io machine. Every caller message passes through a fixed pipeline: a safety check written in code, a fast AI router (Claude Haiku 5.5) that picks a flow, and a flow whose rules are enforced in code (knowledge answers from document search, account lookups, booking changes and five money and membership actions in database transactions, and handoff tickets). Claude Sonnet 5.5 only writes the wording of replies, and every sentence is checked in code before it reaches the screen. A separate operations database records every conversation, ticket, cost and error, feeds the staff view and alerts, and is never touched by the nightly reset of the scheduling data. Offline tools, run on the author's laptop, sort the transcripts, build the search index, run the simulated-caller test set and grade answers through Codex.</p>
+<p><strong>Where the project stands.</strong> The intent (<code>docs/DESIGN.md</code>), the specification (<code>docs/SPEC.md</code>, 86 numbered requirements), this architecture and the plan (<code>docs/PLAN.md</code>) are approved, with the decisions recorded in <code>docs/DECISIONS.md</code>; the technology stack is its own decision (technology stack (D35)). Milestones 1 to 4 of 6 are built (foundations, search and test set, agent core, evaluation harness): configuration and the agent-core interface, transcript templates and labels, the findings document (<code>docs/FINDINGS.md</code>) and the prepared documents; then section-based keyword and meaning search, the frozen working and held-out test cases, and the standalone retrieval results; then the agent core: identification and account lookups, slot eligibility and booking transactions, the safety check, the operations store, the knowledge, account, scheduling and handoff flows, the router and the engine pipeline, with a terminal chat (<code>python -m app.cli</code>); then the evaluation harness: the simulated-caller test run graded by Codex and database checks, the quick test run, the threshold curve, the adversarial runner, the grader check and the agent freeze. Milestone 5 (website and deployment) is built and deployed on Fly.io: the chat page, sentence stream and visitor cookie, the spending budgets and reviewer link, the Staff view with receipts and flagging, the Results tab, the nightly reset, log purge, alerts and health check, and the deployment with its rollback runbook. Milestone 6 (final measurement and deliverables) is built: the one held-out measurement was run on the frozen agent (freeze hash <code>5b8f6899</code>) and its numbers are published in <code>data/results/final/summary.json</code>, on the Results tab and in the README, with the optional consistency runs, the results by call reason and the README. Milestone 7, added after the project was finished, makes a handoff carry the whole interaction, fixes needless handoffs found on the working set, and lets the agent take five money and membership actions (payment and autopay links, enrolment, upgrades, turning off auto-renew; actions decision (D54)); it is measured on 30 fresh test calls written blind, 3 runs per agent version (measurement decision (D55)), in <code>data/results/fresh_report.json</code>.</p>
 <p>The live build is not exactly the measured agent. After the measurement, the author allowed fixes to the live demo that the frozen agent did not have, with the held-out numbers left as measured (live fixes after the measurement (D51)); the agent-behaviour files therefore no longer match the freeze hash, so the final-run commands now refuse to run. The live fixes are:</p>
 <ul>
 <li>after any safety reply, the agent never books, reschedules or offers slots in that conversation, and points to the emergency ticket instead (a "yes" straight after the safety reply books nothing);</li>
@@ -122,13 +122,13 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 27: final held-out run, summary and optional consistency runs. Requirements: R23</span></li>
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 28: README, video outline and repository contents. Requirements: R78, R79, R80</span></li>
 </ul>
-<h3>Milestone 7: Complete handoffs, more calls resolved, and a fresh measurement (1 of 5 done)</h3>
+<h3>Milestone 7: Complete handoffs, more calls resolved, and a fresh measurement (5 of 5 done)</h3>
 <ul>
 <li class="task done"><span class="box" aria-label="done">✓</span><span>Task 29: fresh test set: 30 cases written blind by Codex, reviewed by the author and frozen (fresh test set decision (D52))</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 30: handoffs carry the whole interaction, to staff and between the agent's own flows</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 31: fewer needless handoffs, found and fixed on the working set only</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 32: payment and autopay links, membership enrolment and upgrades, and cancelling auto-renew (money and membership actions decision (D54))</span></li>
-<li class="task"><span class="box" aria-label="not done"></span><span>Task 33: the fresh measurement, before and after; DECISIONS.md entries with evidence; deploy and documents</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 30: handoffs carry the whole interaction, to staff and between the agent's own flows</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 31: fewer needless handoffs, found and fixed on the working set only</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 32: payment and autopay links, membership enrolment and upgrades, and cancelling auto-renew (money and membership actions decision (D54))</span></li>
+<li class="task done"><span class="box" aria-label="done">✓</span><span>Task 33: the fresh measurement, before and after; DECISIONS.md entries with evidence; deploy and documents</span></li>
 </ul>
 </section>
 <section id="requirements">
@@ -388,7 +388,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 <tr><td>Safety check</td><td>Matches emergency patterns in code before anything else and returns fixed replies</td><td>Safety classes (R34 to R37)</td></tr>
 <tr><td>Router</td><td>Haiku 5.5 returns a route and "clear" or "unclear"</td><td>Router (R38, R39), routing model (D25)</td></tr>
 <tr><td>Knowledge search</td><td>Combined keyword and meaning-based search over current documents: the top result of each list is always kept (keyword search's only when some word matches), then the top 10 of each list are merged by reciprocal-rank fusion; five results returned (combined search keeps each list's top result (D41))</td><td>Document search (R24 to R32)</td></tr>
-<tr><td>Scheduling and account store</td><td>Read-only lookups and booking transactions on the scheduling database</td><td>Booking rules (R45 to R56), data rules (D29)</td></tr>
+<tr><td>Scheduling and account store</td><td>Lookups, booking transactions and membership changes (an upgrade or enrolment on the customer record; auto-renew in the live-copy table <code>membership_settings</code>, cleared by the nightly reset) on the scheduling database</td><td>Booking rules (R45 to R56), data rules (D29), actions (D54)</td></tr>
 <tr><td>Reply writer</td><td>Sonnet 5.5 turns facts chosen by code into wording, as structured reply types</td><td>Pricing and internal-text rules (R42, R43)</td></tr>
 <tr><td>Reply checks</td><td>Checks every sentence before release: in code, firm totals, waitlist promises, breaker advice after a burning smell, internal text (eight words in a row from an internal document) and promises that a team member will follow up (an offer to pass it on is allowed, and so is a sentence naming the open ticket that only restates its own promise, "within one business day" or "as a priority"); then every sentence that mentions money goes to a Haiku 5.5 check against the published money terms and the sentence before it, failing closed (money promises checked by a model (D43)); blocks are logged and counted</td><td>Sentence release (R60)</td></tr>
 <tr><td>Spending and message limits</td><td>Per-visitor, site-wide and reviewer-reserve budgets, checked by the pipeline's guard after safety and again before each model call (<code>app/ops/spend.py</code>); message limits per visitor, per address and site-wide, counted in memory by the web layer (<code>app/web/limits.py</code>)</td><td>Guards (R61, R62), spending budgets with a reviewer reserve (D30), reviewer-only chat (D50)</td></tr>
@@ -495,6 +495,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
     MESSAGES ||--o| RECEIPTS : "is explained by"
     MESSAGES ||--o{ SENTENCES : "is released as"
     CONVERSATIONS ||--o{ TICKETS : "raises"
+    CONVERSATIONS ||--o{ ACCOUNT_ACTIONS : "takes"
     TICKETS ||--o{ TICKET_MESSAGES : "gathers"
     TICKETS ||--o{ TICKET_TAGS : "adds reasons"
     MESSAGES ||--o{ TICKET_MESSAGES : "is added to"
@@ -550,12 +551,22 @@ li.task.done .box { background: var(--accent); color: var(--background); }
         TEXT db_action "lookup or transaction done"
         TEXT outcome_label "plain label: supported by documents, supported by account records, answered, handoff required, not enough evidence, redirected, conversation ended"
     }
+    ACCOUNT_ACTIONS {
+        INTEGER action_id PK "one money or membership action (D54)"
+        TEXT conversation_id FK "conversation it was taken in"
+        TEXT customer_id "the identified caller"
+        TEXT kind "payment link, autopay link, autopay off, enrol, upgrade, cancel auto-renew"
+        TEXT detail "what was done, masked"
+        TEXT sent_to "phone ending in four digits, or the email on the account"
+        TEXT created_at "when"
+        TEXT expires_at "when a link stops working, 24 hours on"
+    }
     TICKETS {
         INTEGER ticket_id PK "ticket number shown to the caller"
         TEXT conversation_id FK "conversation, empty for silent reviews"
         INTEGER appointment_id "appointment it concerns, may be empty"
         TEXT who "caller identity, masked"
-        TEXT wants "what they asked"
+        TEXT wants "what they asked, in their own words from the whole conversation"
         TEXT tried "what the agent did"
         TEXT constraints "emergency, disputed fee, gap"
         TEXT mood "caller's mood"
@@ -1999,7 +2010,7 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul>
 <h3>D52: How is the improved agent measured, now that every call template has been used?</h3>
 <ul>
-<li><strong>Status:</strong> proposed</li>
+<li><strong>Status:</strong> replaced by "How is the improved agent measured, now that every call template has been used (with three runs per agent version)?" (D55)</li>
 <li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-21</li>
 <li><strong>Options:</strong>
 <ul>
@@ -2057,6 +2068,79 @@ li.task.done .box { background: var(--accent); color: var(--background); }
 </ul></li>
 <li><strong>Choice:</strong> Keep the three read-only lookups. The agent also sends a payment link or an autopay link (a secure page, valid 24 hours, sent to the phone or email on file; autopay starts only when the customer completes it), enrols in or upgrades the Comfort Club at the published price, and turns off auto-renew (the membership stays active until its renewal date, and the refund terms are stated without a promise). Each needs the caller identified, a read-back and a plain yes; card and bank numbers are never asked for or repeated. Autopay follows a policy the author supplied on 2026-10-21, added as a marked document. Every action is recorded in the operations database (account_actions) and shown in the Staff view; auto-renew lives in a new live-copy table (membership_settings) cleared by the nightly reset. Refunds, disputes and fee waivers still hand off.</li>
 <li><strong>Reason:</strong> Chosen and confirmed by the author on 2026-10-21 after the policy and the autopay research: these are actions the company's own staff take on the call, done the way the rules and card-network practice expect, and they move the whole 47-call action gap in the transcripts (paying an invoice, autopay, cancelling auto-renew, upgrades; 11% of calls) to the agent; the handed-off floor on the fresh cases falls to about 22%.</li>
+</ul>
+<h3>D55: How is the improved agent measured, now that every call template has been used (with three runs per agent version)?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Replaces:</strong> "How is the improved agent measured, now that every call template has been used?" (D52)</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-21</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Thirty new cases written blind by Codex, one per sub-reason and weighted by its calls; frozen after review; each agent version run three times; report the average and range of the call-weighted rates and of the plain share of cases</li>
+<li>The same cases, one run per agent version (the replaced decision)</li>
+<li>Working-set runs only</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="data/results/fresh-before/summary.json">data/results/fresh-before/summary.json</a>: The first before run: 7.4% containment and 86.7% of weighted calls handed off (16.7% and 76.7% of the 30 cases); all 30 conversations ended normally, with no errors.</li>
+<li><a href="data/testset_fresh/F01.json">data/testset_fresh/F01.json</a>: With one case per sub-reason, the HVAC repair case carries 79 of 420 calls (18.8%) and the three largest cases 29.8%, so one conversation can move the weighted result by up to 19 points.</li>
+</ul></li>
+<li><strong>Choice:</strong> The thirty frozen cases (data/testset_fresh/) as before, written blind by Codex and weighted by each sub-reason's calls. Each agent version runs on them at most three times (eval.run refuses a fourth), and its result is reported as the average and range over its three runs of: containment and the handoff rate weighted by calls, and the same two as plain shares of the 30 cases. The agent as it stood before Milestone 7 and the improved agent both get three runs. This reporting was fixed after the first before run and before any agent change.</li>
+<li><strong>Reason:</strong> Chosen by the author on 2026-10-21: one case can swing the weighted number by up to 19 points, so three runs and the unweighted share show how much of a change is the agent and how much is chance, for about $4 more.</li>
+</ul>
+<h3>D56: Does a handoff carry the whole interaction, to staff and between the agent's own flows?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-22</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Yes: the ticket's 'wants' keeps the caller's own words from the whole conversation, every ticket shows the whole conversation (both sides), the Staff view shows it, and details carry between flows</li>
+<li>As before: 'wants' held only the message that triggered the handoff, and only later messages were linked to the ticket</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="data/results/final/verdicts.jsonl">data/results/final/verdicts.jsonl</a>: What was wrong: 4 held-out tickets were graded not actionable, each because it dropped the caller's problem (the backed-up sink, the blower, the upgrade), which had been said before the message that triggered the handoff.</li>
+<li><a href="tests/handoff/test_full_interaction.py">tests/handoff/test_full_interaction.py</a>: How it was fixed and tested: a north-zone sink booking reproduced the bug ('wants' read 'Linda Foster, MHC-10001'); the tests now check the ticket names the sink, holds the whole conversation both sides, adds later messages once, shows it in the Staff view, and that an identified caller is not asked again and a problem said in a question carries into the booking.</li>
+<li><a href="data/results/fresh_report.json">data/results/fresh_report.json</a>: How we know it worked: on the 30 fresh cases (3 runs each), Codex graded 96.4% of handoff tickets actionable after the fix against 84.1% before.</li>
+</ul></li>
+<li><strong>Choice:</strong> A ticket's 'wants' is the caller's own words from the whole conversation, skipping messages that only say who they are (app/core/pipeline.py _caller_words); every ticket returns its whole conversation, both sides (OpsStore.ticket_conversation), and the Staff view shows it under the ticket. Between flows, identity and the problem already carried over; both are now tested.</li>
+<li><strong>Reason:</strong> Asked for by the author on 2026-10-21 (make sure the full customer issue carries over at a handoff, to an agent or a person): a ticket that drops the problem makes staff call back and ask again, which is the handoff failure the PRD names.</li>
+</ul>
+<h3>D57: Which needless handoffs found on the working set are fixed, and how?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-22</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Five fixes from working-set run m7-working-1, each test-first: the earlier-slot ticket, thinking it over, a reply called a mistake, registration on the caller's own system, an emailed invoice copy</li>
+<li>Leave them</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="data/results/m7-working-1/summary.json">data/results/m7-working-1/summary.json</a>: What was wrong (working set, 54.0% containment): 3 booked calls also opened an 'earlier slot' ticket (T391b9f20, T70425efa, Tf0d9c2f5); 'let me think about it' was redirected as a wrong number and the correction opened a complaint ticket (Tbaf67f84); a registration question got only the install date (Tf7d382d9); an emailed invoice copy was silently dropped (Tb9afdda4).</li>
+<li><a href="tests/flows/test_needless_handoffs.py">tests/flows/test_needless_handoffs.py</a>: How it was fixed and tested: told the earliest slots on the first ask, a ticket only on a second (R44 allows either); a pause or 'that reply was a mistake' gets a fixed reply, while a real complaint still goes to a person; a registration or warranty question about the caller's system is also answered from the documents; an invoice-copy request is handed off as an account action.</li>
+<li><a href="data/results/fresh_report.json">data/results/fresh_report.json</a>: How we know it worked: earlier-slot tickets on the fresh cases fell from 1.3 a run to 0; 'other' and 'not enough evidence' handoffs did not fall (1.7 to 2.7 and 2.3 to 2.7 a run), so other needless handoffs remain.</li>
+</ul></li>
+<li><strong>Choice:</strong> The five fixes above, found and tested on the working set only; the fresh cases were never opened one by one, only counted.</li>
+<li><strong>Reason:</strong> Asked for by the author on 2026-10-21 (get more calls resolved without a person): each of these turned a call the agent had finished, or could finish, into a handoff.</li>
+</ul>
+<h3>D58: What did Milestone 7 achieve on the fresh test set, and what is left?</h3>
+<ul>
+<li><strong>Status:</strong> proposed</li>
+<li><strong>Proposed by:</strong> Claude (claude-opus-5-5) on 2026-10-22</li>
+<li><strong>Options:</strong>
+<ul>
+<li>Report the three-run average and range before and after, weighted and by case, next to the 29.5% first measurement and the 21.7% handed-off-by-design floor; name what is left</li>
+<li>Report only the best run</li>
+</ul></li>
+<li><strong>Research:</strong>
+<ul>
+<li><a href="data/results/fresh_report.json">data/results/fresh_report.json</a>: Before (agent 0f9cbc54, 3 runs): handoff rate 77.5% weighted (61.4 to 86.7), 74.4% of cases; containment 12.1% weighted (2.6 to 26.2), 14.4% of cases. After (agent 9713717e, 3 runs): handoff rate 48.3% weighted (46.0 to 51.2), 58.9% of cases (56.7 to 60.0); containment 36.6% weighted (35.5 to 38.8), 26.7% of cases (23.3 to 30.0).</li>
+<li><a href="data/fresh_split.json">data/fresh_split.json</a>: The fresh cases were frozen (hash db976680) before any agent change, and each agent version ran exactly three times.</li>
+<li><a href="data/results/fresh-after-1/attempts.jsonl">data/results/fresh-after-1/attempts.jsonl</a>: Per run after the work: 6 money or membership actions taken (payment links, auto-renew switched off, autopay links, enrolments) and 2.0 action-gap tickets against 7.0 before; no upgrade was taken in any run.</li>
+</ul></li>
+<li><strong>Choice:</strong> The weighted handoff rate fell from 77.5% to 48.3% and containment rose from 12.1% to 36.6%, with the run-to-run spread down from 25 points to 5. It is still 27 points above the 21.7% floor of calls that need a person by design, and short of the 60 to 75% containment target. Left: upgrades (none taken in any run), and needless 'dispute', 'other' and 'not enough evidence' handoffs; each would be found and fixed on the working set, then measured with three new fresh runs of the new agent version.</li>
+<li><strong>Reason:</strong> The author asked (2026-10-21) for the handoff rate to go down and for each fix to be documented with how we know it worked; three runs per version (measurement decision (D55)) show the change is the agent, not chance.</li>
 </ul>
 <h3>Glossary</h3>
 <ul>

@@ -272,3 +272,30 @@ def test_exactly_three_executive_callouts_from_the_findings_document(store, tmp_
     found = executive_callouts()
     assert len(found) == 3 and all(text and len(text) < 300 for _, text in found)
     assert "108 of 420" in found[0][1] and "north zone" in found[1][1]
+
+
+# -- the fresh test set (Milestone 7; measurement decision (D55)) ---------------------------------------------------
+
+def _rates(average, low, high):
+    return {"average": average, "low": low, "high": high}
+
+
+FRESH = {"0f9cbc54aaaa": {"runs": ["fresh-before", "fresh-before-2", "fresh-before-3"],
+                          "containment_weighted": _rates(12.1, 2.6, 26.2), "handoff_weighted": _rates(77.5, 61.4, 86.7),
+                          "containment_cases": _rates(14.4, 6.7, 20.0), "handoff_cases": _rates(74.4, 70.0, 76.7)},
+         "9713717ebbbb": {"runs": ["fresh-after-1", "fresh-after-2", "fresh-after-3"],
+                          "containment_weighted": _rates(36.6, 35.5, 38.8), "handoff_weighted": _rates(48.3, 46.0, 51.2),
+                          "containment_cases": _rates(26.7, 23.3, 30.0), "handoff_cases": _rates(58.9, 56.7, 60.0)}}
+
+
+def test_the_fresh_test_set_shows_before_and_after_with_their_ranges(store, tmp_path):
+    (tmp_path / "fresh_report.json").write_text(json.dumps(FRESH))
+    fresh = section(results_page(store, tmp_path, summary_fixture()), "fresh-results")
+    assert "Before Milestone 7" in fresh and "After Milestone 7 (the live build)" in fresh
+    assert "48.3%" in fresh and "46.0% to 51.2%" in fresh and "77.5%" in fresh and "36.6%" in fresh
+    assert "30 new test calls" in fresh and "3 runs" in fresh
+
+
+def test_without_a_fresh_report_the_section_says_so(store, tmp_path):
+    fresh = section(results_page(store, tmp_path, summary_fixture()), "fresh-results")
+    assert "not yet run" in fresh

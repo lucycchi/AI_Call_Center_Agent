@@ -452,6 +452,40 @@ def load_summary(path: Path) -> dict | None:
     return summary
 
 
+FRESH_ROWS = [("handoff_weighted", "Handed to a person, weighted by calls"),
+              ("containment_weighted", "Resolved by the agent (containment), weighted by calls"),
+              ("handoff_cases", "Handed to a person, share of the 30 calls"),
+              ("containment_cases", "Resolved by the agent, share of the 30 calls")]
+
+
+def fresh_html(report: dict | None) -> str:
+    """The fresh test set's before and after (measurement decision (D55)): each agent version's average and range."""
+    if not report:
+        return '<p class="note">Fresh test runs not yet run.</p>'
+    versions = list(report.items())
+    names = ["Before Milestone 7", "After Milestone 7 (the live build)"]
+    head = "".join(f"<th>{e(names[i] if i < len(names) else f'Version {agent[:8]}')}</th>"
+                   for i, (agent, _) in enumerate(versions))
+    rows = []
+    for key, label in FRESH_ROWS:
+        cells = "".join(f"<td>{v[key]['average']:.1f}%<br><small>{v[key]['low']:.1f}% to {v[key]['high']:.1f}%</small></td>"
+                        for _, v in versions)
+        rows.append(f"<tr><th>{e(label)}</th>{cells}</tr>")
+    return (f'<table class="numbers"><thead><tr><th>Measure</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table>'
+            '<p class="note">About 22% of these calls need a person by design (disputes, refunds, complaints, emergencies, '
+            'late technicians, commercial work, or no slot in the zone). Source: data/results/fresh_report.json.</p>')
+
+
+def load_fresh(path: Path) -> dict | None:
+    try:
+        return json.loads(path.read_text())
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as error:
+        log.error("fresh report at %s could not be read: %s", path, error)
+        return None
+
+
 def results_routes(store, clock: Callable[[], datetime], summary_path: Path | None = None,
                    findings_path: Path | None = None) -> APIRouter:
     router = APIRouter()
@@ -464,6 +498,7 @@ def results_routes(store, clock: Callable[[], datetime], summary_path: Path | No
         summary = load_summary(summary_path)
         consistency = load_consistency(summary_path.parent / "consistency" / "summary.json") if summary else None
         page = template.replace("<!-- frozen results -->", frozen_html(summary, consistency))
+        page = page.replace("<!-- fresh results -->", fresh_html(load_fresh(summary_path.parent.parent / "fresh_report.json")))
         page = page.replace("<!-- live demo traffic -->", live_html(live_numbers(store, clock().astimezone(AUSTIN).date())))
         page = page.replace("<!-- try these -->", scenarios_html()).replace("<!-- executive callouts -->", callouts)
         return HTMLResponse(page)

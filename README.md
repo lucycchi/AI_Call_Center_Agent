@@ -14,6 +14,10 @@ everything else to a person with a ticket.
 - **Containment on held-out calls: 29.5%**, below the PRD's 60 to 75% target and the fair staff baseline of 73.3%.
   The most this agent could contain with its scope is 48.4%. See [Containment](#containment) and the honest reading
   under [Results](#results).
+- **After Milestone 7, on 30 new test calls** (written blind after the first measurement, 3 runs per version): the
+  share of calls handed to a person fell from 77.5% to **48.3%** and containment rose from 12.1% to **36.6%**,
+  weighted by real calls. About 22% of calls need a person by design. See
+  [The fresh test set](#the-fresh-test-set-milestone-7).
 - **When it does not know, it hands off.** On the held-out calls it gave no confident wrong answers, every call that
   should have gone to a person did, with the right reason, and document answers and account lookups were all correct.
   The misses are calls it should have finished itself: routing was 76.2% right and bookings 69.8%.
@@ -47,9 +51,14 @@ steps, and code, not the AI model, decides what is allowed:
 3. **The flow does the work**, with its rules in code:
    - **Knowledge answers** come only from the company's current documents, found by search, and name the source
      document. If search is not confident, the agent hands off instead of guessing.
-   - **Account lookups** are read-only: open invoices (read exactly as recorded), membership tier and renewal date,
-     and the customer's system brand and install date. The caller must first give their name plus an account number,
-     phone number or service address.
+   - **Account lookups** read open invoices (exactly as recorded), membership tier and renewal date, and the
+     customer's system brand and install date. The caller must first give their name plus an account number, phone
+     number or service address.
+   - **Money and membership actions** the company's own policy lets its staff take (actions decision (D54)): a
+     secure payment link or autopay link, Comfort Club enrolment or an upgrade, and turning off auto-renew. Each is
+     read back and needs a plain yes. Links are simulated: recorded as sent to the phone on file and shown in the
+     Staff view. The agent never asks for, repeats or stores a card number. Autopay follows a policy the author
+     supplied (`data/kb_added/policies/autopay.md`), since no company document covered it.
    - **Booking, rescheduling and cancelling** check the customer's zone, the service type, membership for
      members-only slots and technician overlaps. Before writing anything the agent reads back the date, window and
      service and waits for a plain yes; the change is one database transaction.
@@ -63,8 +72,8 @@ steps, and code, not the AI model, decides what is allowed:
 
 What it never does:
 
-- Take an action on money or membership: payments, payment links, autopay, refunds, fee waivers, cancelling or
-  upgrading a membership. These are handed off and tagged as the "action gap".
+- Take a payment, or a card or bank number, in the chat; grant a refund or a fee waiver; settle a dispute. These are
+  handed off and tagged as the "action gap" (refunds and disputes as "dispute").
 - Promise anything the business cannot take back: a refund, a waived fee, a firm price, a waitlist place, or that a
   team member will follow up (it may offer to pass a request on).
 - Read internal documents or notes aloud, or read back an appointment's stored issue text or the customer's street
@@ -109,17 +118,17 @@ under [Evaluation](#evaluation) and the full write-up in `docs/FINDINGS.md`. The
 | Rank | Call reason | Share of calls | What the agent does |
 | --- | --- | --- | --- |
 | 1 | New booking | 32% | Books it in the database; a burning smell is handed off for safety |
-| 2 | Billing | 18% | Answers balances, invoice lines and duplicate charges; hands off disputes, refunds and payments |
-| 3 | Membership | 17% | Answers plan details, prices and renewal dates; hands off autopay, cancelling and upgrades |
+| 2 | Billing | 18% | Answers balances, invoice lines and duplicate charges; sends payment links; hands off disputes and refunds |
+| 3 | Membership | 17% | Answers plan details, prices and renewal dates; enrols, upgrades, sets up autopay and turns off auto-renew |
 | 4 | Warranty | 11% | Answers coverage from the documents and the system's install date; books warranty visits |
 | 5 | Existing appointment | 9% | Confirms, reschedules and cancels; hands off late technicians |
 
 **Why this scope.** The agent handles more than the top three. Warranty needs only documents, the install-date
 lookup and booking, which the top three already use, so it adds 11% of calls at no new build cost; existing
 appointments reuse the booking rules. What is handed off is decided by what a call needs, not by its rank: a human's
-authority (disputes, refunds, complaints, late technicians), an action on money or membership (payments, autopay,
-cancelling, upgrading), or emergency handling (scope decision (D26)). Within the top three, 69% of calls are the
-agent's to finish and 31% are handed off by design. Of the remaining 13% of calls, replacement estimates are booked,
+authority (disputes, refunds, complaints, late technicians) or emergency handling (scope decision (D26)). Payments,
+autopay, enrolment, upgrades and cancelling auto-renew were handed off at first and are now done by the agent
+(actions decision (D54)), so the share handed off by design fell from about 31% to about 22% of calls. Of the remaining 13% of calls, replacement estimates are booked,
 hiring enquiries and wrong numbers are answered and redirected, and complaints, emergencies and commercial work are
 handed off.
 
@@ -152,6 +161,37 @@ Why the number is this low, and why it is reported as measured, is under
 [Being honest about these numbers](#the-frozen-held-out-measurement).
 
 ## Results
+
+### The fresh test set (Milestone 7)
+
+Every one of the 52 call templates had been used, for tuning or for the held-out measurement, so the work in
+Milestone 7 was measured on 30 new test calls: one per kind of call, written by Codex without seeing the agent,
+weighted by how many of the 420 real calls each stands for, and frozen before any change (`data/testset_fresh/`,
+hash in `data/fresh_split.json`). Each agent version ran on them 3 times, and the result is the average with the
+lowest and highest run (measurement decision (D55); `python -m eval.fresh_cases report` writes
+`data/results/fresh_report.json`). The fixes were found on the working set only; the fresh calls were only counted.
+
+| Measure (average, lowest to highest run) | Before Milestone 7 | After Milestone 7 (the live build) |
+| --- | --- | --- |
+| Handed to a person, weighted by calls | 77.5% (61.4 to 86.7) | 48.3% (46.0 to 51.2) |
+| Resolved by the agent, weighted by calls | 12.1% (2.6 to 26.2) | 36.6% (35.5 to 38.8) |
+| Handed to a person, share of the 30 calls | 74.4% (70.0 to 76.7) | 58.9% (56.7 to 60.0) |
+| Resolved by the agent, share of the 30 calls | 14.4% (6.7 to 20.0) | 26.7% (23.3 to 30.0) |
+
+What changed, each with its evidence in `docs/DECISIONS.md`:
+
+- **A handoff carries the whole interaction** (D56). A ticket keeps the caller's own words from the whole
+  conversation and shows the conversation itself; handoff tickets a staff member could act on rose from 84.1% to
+  96.4% of those graded.
+- **Needless handoffs found on the working set** (D57): an "earlier slot" ticket after a booked visit, a pause read as
+  a wrong number, a correction read as a complaint, a registration question answered without the policy, and a
+  dropped invoice-copy request. Earlier-slot tickets fell from 1.3 a run to none.
+- **Five money and membership actions** (D54): action-gap tickets fell from 7.0 a run to 2.0, with about 6 actions
+  taken a run.
+
+What is left (D58): the handoff rate is still about 27 points above the 22% that need a person by design, and
+containment is short of the 60 to 75% target. No upgrade was taken in any run, and "dispute", "other" and "not
+enough evidence" handoffs did not fall. The 29.5% below stays on record as the first, frozen measurement.
 
 ### The frozen held-out measurement
 

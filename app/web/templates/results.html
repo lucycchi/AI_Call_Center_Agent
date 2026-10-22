@@ -71,6 +71,13 @@
   <nav class="tabs" aria-label="Tabs"><a href="/">Chat</a><a href="/results" aria-current="page">Results</a></nav>
 </header>
 <main>
+  <section class="fresh-results" aria-label="Fresh test results">
+    <h2>Fresh test results: before and after Milestone 7</h2>
+    <p class="note">30 new test calls written blind by Codex after the first measurement, one per kind of call and weighted by how many real calls each stands for; frozen before any change, never used for tuning. Each agent version had 3 runs: the average, with the lowest and highest run below it.</p>
+    <div class="table-wrap">
+<!-- fresh results -->
+    </div>
+  </section>
   <section class="frozen-results" aria-label="Frozen test results">
     <h2>Frozen held-out test results</h2>
     <p class="note">Measured once on the frozen agent with simulated callers on held-out call templates, never on the live site. These numbers do not change with demo traffic.</p>

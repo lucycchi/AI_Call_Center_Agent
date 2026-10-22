@@ -24,6 +24,8 @@ COPY docs/FINDINGS.md docs/
 COPY data/results/final/summary.json data/results/final/run_summary.json data/results/final/per_driver.json \
      data/results/final/
 COPY data/results/final/consistency/summary.json data/results/final/consistency/
+# The fresh test set's before-and-after averages (Milestone 7); its conversations stay out.
+COPY data/results/fresh_report.json data/results/
 COPY scripts/entrypoint.sh scripts/
 
 ENV DATABASE_PATH=/data/scheduling.sqlite \
