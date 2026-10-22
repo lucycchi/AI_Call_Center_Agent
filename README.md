@@ -1,16 +1,37 @@
 # Meridian Home Comfort chat agent
 
 A chat agent for the customer calls of Meridian Home Comfort, a fictional heating, cooling and plumbing company in the
-Austin, Texas area. It was built in four days as a take-home challenge (`docs/PRD.md`). This README says what the agent
-does, how to install, run and test it, how it is evaluated, what the frozen held-out measurement found, and how the
-live site is monitored and rolled back.
+Austin, Texas area. It was built in four days as a take-home challenge (`docs/PRD.md`). It answers questions from the
+company's documents, looks up accounts, books and changes appointments in the scheduling database, and hands
+everything else to a person with a ticket.
 
-Live site: **https://ai-call-center-agent-bvgy9q.fly.dev**. Anyone can open it and look around; only reviewers can
-chat (see [Who can chat](#who-can-chat)).
+## At a glance
 
-Further reading: `docs/SPEC.md` (the numbered requirements), `docs/ARCHITECTURE.md` (how the parts fit, with
-diagrams), `docs/DECISIONS.md` (every design decision and why), `docs/FINDINGS.md` (why customers call) and
-`docs/DATA_REVIEW.md` (the first look at the data).
+- **Try it:** https://ai-call-center-agent-bvgy9q.fly.dev. Anyone can look around; chatting needs the reviewer link
+  supplied with the submission (see [Who can chat](#who-can-chat)). Talk as one of the four test customers listed on
+  the page, or press one of the "Try these" scenarios on the Results tab. Good things to try: an emergency ("I smell
+  gas"), a members-only slot for a non-member, a disputed fee, or asking it to ignore its instructions.
+- **Containment on held-out calls: 29.5%**, below the PRD's 60 to 75% target and the fair staff baseline of 73.3%.
+  The most this agent could contain with its scope is 48.4%. See [Containment](#containment) and the honest reading
+  under [Results](#results).
+- **When it does not know, it hands off.** On the held-out calls it gave no confident wrong answers, every call that
+  should have gone to a person did, with the right reason, and document answers and account lookups were all correct.
+  The misses are calls it should have finished itself: routing was 76.2% right and bookings 69.8%.
+- **Why customers call:** new bookings 32%, billing 18%, membership 17%, warranty 11%, existing appointments 9%
+  (420 transcripts; see [Call drivers and scope](#call-drivers-and-scope)).
+
+Where to read more:
+
+| Document | What it covers |
+| --- | --- |
+| `docs/FINDINGS.md` | Why customers call, how the reasons were found, the scope, and three findings for the executive team |
+| `docs/DATA_REVIEW.md` | The first look at the transcripts, documents and database, and the traps found in them |
+| `docs/ARCHITECTURE.md` (diagrams in `docs/ARCHITECTURE.html`) | How the parts fit together |
+| `docs/DECISIONS.md` | Every design decision, the options considered and why |
+| `docs/SPEC.md` | The numbered requirements |
+| `docs/FINAL_CHECKS.md` | The final browser QA, security audit and whole-project review, and what was fixed |
+
+Codes in parentheses, such as (D50) or (R10), point to an entry in `docs/DECISIONS.md` (D) or `docs/SPEC.md` (R).
 
 ## What it does
 
@@ -48,7 +69,8 @@ What it never does:
   team member will follow up (it may offer to pass a request on).
 - Read internal documents or notes aloud, or read back an appointment's stored issue text or the customer's street
   address.
-- Book an emergency (the code rule; see [Results](#results) for where the held-out run found this broken).
+- Book an emergency. The held-out run found this rule broken after a burning smell; the live build fixes it (see
+  [The live build after the measurement](#the-live-build-after-the-measurement)).
 
 The site also has a **Results tab** (the frozen held-out numbers, each with a one-line definition, and one-click
 "try these" scenarios) and a **Staff view** (the visitor's own tickets and live numbers; the full queue and flagging
@@ -57,14 +79,16 @@ behind a shared staff password).
 ### Who can chat
 
 The site is public to view: the chat page, the Results tab and the four seeded test customers (Linda Foster, Omar
-Patel, Grace Okafor, Daniel Reyes; synthetic people). Chatting is reviewer-only, the protection for the API spend
-chosen in the reviewer-only decision (D50). `fly.toml` sets the public budget to $0 (`PER_VISITOR_DAILY_USD = "0"`),
-so a public message gets a reply saying chat is open to reviewers with a reviewer link, before any model call; the
-safety advice for an emergency, and its priority ticket, still appear, since they are written in code. One reusable reviewer link, which the author provides with the submission (it is not in
-this repository), starts a 7-day reviewer session in any browser that opens it; all reviewer sessions share a
-$3-a-day reserve (about 300 typical conversations a day). The live key is a site-only key with a monthly limit in the
-Anthropic console, a hard stop behind the site's own caps (about $25 a month covers a week at the full reserve). To
-open chat to the public later, remove that line from `fly.toml` and redeploy.
+Patel, Grace Okafor, Daniel Reyes; synthetic people). Chatting is reviewer-only, to protect the API spend (the
+reviewer-only decision (D50)). `fly.toml` sets the public budget to $0 (`PER_VISITOR_DAILY_USD = "0"`), so a public
+message gets a reply saying chat is open to reviewers, before any model call. An emergency still gets its safety
+advice and a priority ticket, since those are written in code.
+
+One reusable reviewer link, which the author provides with the submission (it is not in this repository), starts a
+7-day reviewer session in any browser that opens it. All reviewer sessions share a $3-a-day reserve (about 300 typical
+conversations a day). The live key is a site-only key with a monthly limit in the Anthropic console, a hard stop
+behind the site's own caps (about $25 a month covers a week at the full reserve). To open chat to the public later,
+remove the `PER_VISITOR_DAILY_USD` line from `fly.toml` and redeploy.
 
 ### Costs
 
@@ -76,71 +100,221 @@ open chat to the public later, remove that line from `fly.toml` and redeploy.
   (`data/results/final/summary.json`, `extra.spent_usd`). Grading runs through Codex on the author's subscription, so
   it adds no API cost. Search embeddings use Voyage AI's free allowance.
 
-## Install
+## Call drivers and scope
 
-You need Python 3.12 and, for running evaluations, the Codex command line tool signed in to an OpenAI account.
+The 420 transcripts fall into 52 templates (the same request and staff response with names and numbers changed).
+Every call was labelled with a reason by Claude Haiku 5.5 and checked blind by Codex and Claude Fable 5.1; the method is
+under [Evaluation](#evaluation) and the full write-up in `docs/FINDINGS.md`. The top five reasons:
 
-```bash
-python3.12 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp .env.example .env        # then fill in the keys; .env is in .gitignore and must never be committed
-```
+| Rank | Call reason | Share of calls | What the agent does |
+| --- | --- | --- | --- |
+| 1 | New booking | 32% | Books it in the database; a burning smell is handed off for safety |
+| 2 | Billing | 18% | Answers balances, invoice lines and duplicate charges; hands off disputes, refunds and payments |
+| 3 | Membership | 17% | Answers plan details, prices and renewal dates; hands off autopay, cancelling and upgrades |
+| 4 | Warranty | 11% | Answers coverage from the documents and the system's install date; books warranty visits |
+| 5 | Existing appointment | 9% | Confirms, reschedules and cancels; hands off late technicians |
 
-The keys in `.env` (see `.env.example` for every setting and what it does):
+**Why this scope.** The agent handles more than the top three. Warranty needs only documents, the install-date
+lookup and booking, which the top three already use, so it adds 11% of calls at no new build cost; existing
+appointments reuse the booking rules. What is handed off is decided by what a call needs, not by its rank: a human's
+authority (disputes, refunds, complaints, late technicians), an action on money or membership (payments, autopay,
+cancelling, upgrading), or emergency handling (scope decision (D26)). Within the top three, 69% of calls are the
+agent's to finish and 31% are handed off by design. Of the remaining 13% of calls, replacement estimates are booked,
+hiring enquiries and wrong numbers are answered and redirected, and complaints, emergencies and commercial work are
+handed off.
 
-| Name | Needed for |
-| --- | --- |
-| `ANTHROPIC_API_KEY` | Running the agent locally (terminal chat or web app) |
-| `EVAL_ANTHROPIC_API_KEY` | Paid test runs; a separate key so a test run never spends the live key |
-| `VOYAGE_API_KEY` | Search embeddings (the agent embeds each question) |
-| `VISITOR_COOKIE_SECRET` | The web app: signs the visitor cookie (at least 16 random characters) |
-| `REVIEWER_TOKEN`, `STAFF_PASSWORD_HASH`, `ALERT_WEBHOOK_URL` | Optional locally: the reviewer link, the staff sign-in and alerts |
+## Containment
 
-The search index (`data/index/`) and the converted documents (`data/kb_text/`) are committed, so you do not need to
-build them. If the documents change, rebuild them with `.venv/bin/python -m pipeline.convert` and then
-`.venv/bin/python -m pipeline.build_index` (needs `VOYAGE_API_KEY`; a few cents).
+Containment is the share of calls the agent finishes correctly without a human. A test conversation counts as
+contained only if the agent never handed off and every request the caller made was graded correct. A clean decline
+("no slot is available", with a ticket) is correct behaviour but not containment. Every number below is weighted by
+how many real calls each held-out template stands for (`data/results/final/summary.json`).
 
-## Run
+| Measure | Value | Definition |
+| --- | --- | --- |
+| Containment | 29.5% | Weighted held-out calls the agent finished correctly with no handoff and no clean decline |
+| 95% interval for containment | 3.6% to 56.9% | From resampling the 15 held-out templates 2,000 times; wide because there are only 15 |
+| Containment without redirects | 29.5% | The same, leaving out calls that only need a redirect (wrong numbers, job enquiries) |
+| Scope ceiling | 74.6% | Calls inside the reasons the agent handles: the most it could contain |
+| Adjusted ceiling | 48.4% | The scope ceiling after removing calls the documents or database cannot answer and calls that need a money or membership action |
+| Action gap | 16.4% | Calls the agent understands but must hand off because they need an action on money or membership |
+| Human baseline | 84.5% | Share of all 420 transcript calls staff resolved on the call (355 of 420) |
+| Human baseline excluding account actions | 73.3% | Staff resolution leaving out calls resolved only by an account action the agent never takes (308 of 420) |
 
-**Terminal chat** (the quickest way to talk to the agent). It works on a fresh copy of the seeded scheduling database
-and a scratch operations database, so nothing real changes:
+**The fair comparison.** Staff can take payments, set up autopay and cancel memberships; the agent by design cannot.
+So the agent's containment should be compared with the staff figure that leaves those calls out, 73.3%, not 84.5%.
+Even then the gap is large: 29.5% against 73.3%. The adjusted ceiling, 48.4%, is the most this agent could contain on
+the held-out calls with its current scope, so about 19 points were lost to mistakes and unnecessary handoffs and the
+rest to scope. The staff figures also count some calls as resolved that staff handled wrongly (see the policy errors
+below), so they flatter staff slightly.
 
-```bash
-.venv/bin/python -m app.cli      # reads ANTHROPIC_API_KEY and VOYAGE_API_KEY from .env
-```
+Why the number is this low, and why it is reported as measured, is under
+[Being honest about these numbers](#the-frozen-held-out-measurement).
 
-**The web app.** It does not read `.env` itself, so export it first. Run exactly one worker: the nightly reset lock,
-the scheduler and the message limits live in that one process.
+## Results
 
-```bash
-set -a; . ./.env; set +a
-.venv/bin/uvicorn app.web.main:build_app --factory --workers 1 --port 8000
-```
+### The frozen held-out measurement
 
-Then open http://localhost:8000. On first start the app copies the seed scheduling database
-(`call_data/scheduling_db/meridian_scheduling.sqlite`, never written to) to `DATABASE_PATH` (default
-`data/scheduling.sqlite`) and creates the operations database at `OPS_DATABASE_PATH` (default
-`data/operations.sqlite`). Customer-facing "now" is fixed at Friday 2026-10-16 09:00 Austin time in `app/config.py`,
-so bookings and fee windows behave the same every day. To make the staff password hash, run
-`.venv/bin/python -m app.web.staff`; it asks for the password and prints the hash.
+This is the one measurement made on the held-out set: the frozen agent (freeze hash `5b8f6899…`), 15 scenarios
+standing for 122 weighted calls (each template counts as many calls as it has in the transcripts). Source:
+`data/results/final/summary.json`. Containment and its ceilings are in the [Containment](#containment) table above.
 
-## Tests
+| Measure | Result | What it means |
+| --- | --- | --- |
+| Scenarios / weighted calls | 15 / 122 | Held-out templates run once each, and the real calls they stand for |
+| Wrong confident answers | 0 | Conversations finished without a handoff but graded wrong |
+| Knowledge accuracy | 100% | Document questions answered correctly |
+| Routing accuracy | 76.2% | Calls whose first message went to the flow the reference label names (target 90%) |
+| Handoff correct, safety and booking | 100% | Safety and booking-rule calls that needed a handoff got one with the right reason |
+| Handoff correct, other | 100% | All other calls that needed a handoff got one with the right reason |
+| Booking correctness | 69.8% | Booking changes that passed every database check (target 100%) |
+| Lookup correctness | 100% | Account lookups that read back the right balance, invoice or renewal date |
+| Ticket actionable | 72.7% | Tickets a staff member could act on without asking the caller again (`extra.ticket_actionable`) |
+| Clean declines | 1 | Calls correctly declined (no slot) with a ticket |
+| Flaky cases | none | Cases that failed, then passed on the retry |
+| Cost | $0.39 | Anthropic spend for the run's 18 attempts (15 first runs, 3 retries) |
 
-```bash
-.venv/bin/python -m pytest -q
-```
+**Consistency** (`data/results/final/consistency/summary.json`): every held-out case was run three more times. 67% of
+the 15 cases were graded correct on all three runs (87%, 80% and 73% on each run); five cases were not always correct.
 
-About 1,350 tests run in a little over a minute. They use fakes for every paid service (Anthropic, Voyage, Codex,
-Fly.io and the live site), so they cost nothing and need no keys. Scheduling tests run on temporary copies of the
-seed database. `tests/test_repository.py` checks this README's sections and containment numbers against
-`data/results/final/summary.json`, that the evidence files are committed, and that no tracked file holds a key or a
-value from your local `.env` (it never prints the values).
+**What happened to the grading.** The final run crashed while grading, in the database check of a case that expected
+no booking; the conversations themselves were already saved. After the check was fixed, a resume command graded the
+saved first conversations without running them again, so the scored conversations are the original first attempts;
+the summary records this as `resumed: true`.
+
+**Being honest about these numbers.** Held-out containment, 29.5%, is far below what the same frozen agent scored on
+the working set: its two quick runs on 20 working-set scenarios gave 64.2% and 64.9%
+(`data/results/quick-20261021-064643-run1/summary.json` and `-run2/`), and quick runs during tuning were mostly
+between 40% and 60%. Routing (76% against 100% on those quick runs) and bookings (70% against 94% and 100%) also
+dropped. It is also below the 60 to 75% containment target in the PRD. The plain reading is that the many fixes made
+while tuning on working-set cases fit those cases more than they generalise to calls the agent had not seen. The
+held-out set is also small: 15 scenarios, so one case moves containment by up to 12 points, and the 95% interval runs
+from 3.6% to 56.9%. Under the held-out rule (R10) nothing was changed after seeing these results; they are reported
+as measured.
+
+Looking at the first attempts (`data/results/final/attempts.jsonl`):
+
+- Four cases (36 of 122 calls) were contained.
+- Three cases the agent should have finished itself ended in a handoff instead: a "charged twice" billing question, a
+  plumbing booking and a warranty repeat-repair visit (23 calls). The handoffs were correct behaviour, but not
+  containment.
+- Both burning-smell cases (16 calls) gave the fixed safety reply and a correct priority ticket, but when the
+  simulated caller went on asking for a visit, the agent booked an ordinary appointment after a clear yes. The
+  database check caught it as a booking fault. The rule is that an emergency is never booked, so this is a real bug
+  in the frozen agent, and it is why booking correctness is 70%.
+- The north-zone plumbing case should have been a clean decline (no plumbing slots in the north zone); the agent said
+  there was no capacity but its ticket left out the problem, so it was graded wrong.
+
+### The live build after the measurement
+
+The numbers above are the frozen agent's (agent hash `5b8f6899`, in `data/results/final/summary.json`). The live demo
+runs a later build with three changes made after the measurement and not re-measured, as the held-out rule (R10)
+requires (live fixes after the measurement (D51)):
+
+- After any safety reply, the agent never books, reschedules or offers slots in that conversation; it points to the
+  emergency ticket instead (the burning-smell bug described above).
+- A question about today's date or time is answered as the demo's fixed date (Friday 16 October 2026, 9:00 a.m. in
+  Austin), since the demo runs on a fixed "now".
+- A caller who gives their name and account number in the same message as an emergency is identified then, so the
+  priority ticket carries their details and they are not asked for them again.
+
+The final checks then changed the web and operations layers, not the agent: the Results tables, the reviewer-only
+reply, and two operations-store fixes for a failing database. `docs/FINAL_CHECKS.md` lists what each final check
+(browser QA, security audit, Codex whole-project review) found, what was fixed and what was left as a known limit.
+
+### By call reason
+
+Accuracy on the reasons the agent should handle itself, and the escalation rate on the rest, from the same frozen
+held-out run, scored like the summary (first attempts, weighted by the calls each case stands for). Produced by
+`python -m eval.per_driver` into `data/results/final/per_driver.json`; with 15 scenarios, each reason rests on one to
+six cases.
+
+| Call reason | Cases | Weighted calls | Handled by the agent: correct | Should be handed off: escalated, and with the right reason |
+|---|---|---|---|---|
+| New booking | 6 | 47 | 68% (3 cases) | 100%, 100% (2 cases) |
+| Billing | 2 | 26 | 58% (2 cases) | none expected |
+| Membership | 2 | 20 | none expected | 100%, 100% (2 cases) |
+| Warranty | 2 | 14 | 57% (2 cases) | none expected |
+| Existing appointment | 1 | 9 | none expected | 100%, 100% (1 case) |
+| Complaint or manager | 1 | 5 | none expected | 100%, 100% (1 case) |
+| Safety emergency | 1 | 1 | none expected | 100%, 100% (1 case) |
+
+Every call that should go to a person did, with the right reason; the misses are calls the agent should have finished
+itself. (The two burning-smell cases count under new booking: their handoff was right, but the booking that followed
+was the fault described above.)
+
+### Supporting measures
+
+These were measured on the working set or on separate sets, not on the held-out cases.
+
+- **Retrieval** (`data/results/retrieval/answer_scores.json` and the `retrieval` section of the final summary, 25
+  working-set questions): combined search had a correct passage in the top five for every question (hit rate 100%,
+  recall 93.2%), against 77.3% for keyword search alone, and found the current document on every stale-trap question.
+  Answers written from combined search were 92% correct, 96% faithful to the passages, 100% correctly cited, and
+  refused 100% of the unanswerable questions. Keyword-only answers were 68% correct; giving the model the whole
+  knowledge base gave 88%.
+- **Threshold** (`data/results/threshold.json`): at the chosen 0.25, 74% of the working-set question runs were
+  contained with 2 wrong confident answers out of 50.
+- **Adversarial set** (`data/results/adversarial/summary.json`): 32 of 32 passed, including every booking-rule and
+  instruction-extraction attack.
+- **Money check** (`data/results/money_check/summary.json`): on 137 labelled sentences it caught all 69 promises and
+  released 67 of the 68 fair or published sentences (one over-block: "Members get 15% off repairs, and I can check
+  today's openings for you."). This is the set it was tuned on, so it is not independent proof.
+- **Grader check** (`data/results/grader_check.json`): Claude Fable 5.1, grading blind, agreed with Codex on 25 of 30
+  answers (83.3%, against an 85% aim). In all five disagreements Fable said right where Codex said wrong, so Codex is
+  the stricter grader.
+- **Live reply times** (`data/results/latency/live-20261021.txt`): measured on 2026-10-21 against the deployed site
+  (release v4) with `scripts/measure_latency.py --reviewer`: 3 warm-up messages, then 50 measured, each a fresh
+  reviewer-link visitor, 31 seconds apart. All 50 replied, none failed. The median time to the first sentence was
+  2.55 seconds (target under 2.5) and to the full reply 4.60 seconds (target under 4.0), so both targets were narrowly
+  missed; the slowest replies were handoffs and long knowledge answers.
+
+## Executive findings
+
+Three findings for the executive team, from `docs/FINDINGS.md` (generated by `python -m pipeline.findings`). They are
+about the business, not the agent, and the Results tab shows them as three short callouts.
+
+1. **Staff policy errors.** 108 of 420 calls (26%) contain a staff statement or action that contradicts the current
+   documents: offering a waitlist that does not exist (34 calls), booking a burning smell as a normal visit (16),
+   promising a manager callback today (16), moving a next-day appointment without the $49 fee (15), explaining an
+   invoice as the diagnostic fee plus the repair (13), dropping a booking the caller asked for (11), and promising a
+   refund callback in two business days (8). Errors appear for every staff member, so they are a training and
+   documentation problem, not one person.
+2. **Capacity imbalance by zone.** The north zone has 70% of customers but 31% of bookable slots and no plumbing
+   slots; the central zone has 10% of customers but 40% of slots and no estimate slots. Rebalancing technicians would
+   cut wait times more than any agent.
+3. **Documentation gaps.** 14 calls ask about autopay and no document covers it; staff offered a waitlist in 34 calls
+   but only a stale 2024 guide mentions one and the scheduling database has none; and 45 of 81 invoices charge the $89
+   diagnostic fee on top of a repair although the FAQ says it is credited toward an approved repair (22 of them to
+   customers who are members today, for whom it is waived).
+
+## Knowledge base and retrieval
+
+**What is in the documents** (`docs/DATA_REVIEW.md`). The 17 files come in mixed formats: Markdown, plain text, a PDF
+fee schedule, a CSV price book and a PNG image of holiday hours. `pipeline.convert` turns each into text: the fee
+schedule keeps every price beside its label, the price book becomes one line per item, and the holiday-hours image
+was transcribed by hand. Not everything is current. Four files are stale: an archived membership overview with old
+prices, 2023 warranty terms, an undated copy of the FAQ with a $79 diagnostic fee, and a 2024 scheduling guide that
+offers a waitlist the business no longer has. One is a placeholder, and one is an internal staff procedure that grants
+fee waivers. `data/document_list.csv` marks every file, and only current customer-facing documents are searchable.
+Where documents disagree, `data/conflict_register.csv` records each of the 19 known conflicts and which source wins.
+
+**How search works.** Documents are split by section, keeping the document name, heading and effective date on
+every piece; the fee table stays intact so every price keeps its label. Search combines keyword search and
+meaning-based search (Voyage AI embeddings), keeping each list's top hit before merging by reciprocal-rank fusion
+(the combined-search decision (D41)). Only files the document list marks current and customer-facing are in the index.
+The retrieval threshold, below which the agent hands off instead of answering,
+was chosen on working-set questions only, from a curve of containment against wrong confident answers, pooled over
+every graded run (the pooled threshold decision (D48)): 0.25.
+
+How well it works is under [Supporting measures](#supporting-measures): combined search found a correct passage in the
+top five for every working-set question.
 
 ## Evaluation
 
 The numbers come from simulated conversations, not from people. Every paid run uses `EVAL_ANTHROPIC_API_KEY`, stops
 at $8 of recorded spend, caps each conversation at 12 caller turns and 60 seconds, and records the pinned model ids,
-SDK version and settings with every attempt. Tell the author before a run that uses Codex.
+SDK version and settings with every attempt. Grading runs through the Codex command line tool (see [Install](#install)).
 
 **Finding the call reasons.** The 420 transcripts fall into 52 templates (calls that are the same request and staff
 response once names, numbers and filler are removed). Claude Haiku 5.5 labelled every call; Codex labelled one call
@@ -197,186 +371,36 @@ caller from the caller card and script; the caller talks to the same agent core 
 | The threshold curve (working set only) | `python -m eval.threshold` | `data/results/threshold.json` |
 | The grader check | `python -m eval.grader_check sheet`, then `python -m eval.grader_check table` | `data/grader_check.csv`, `data/results/grader_check.json` |
 
-**Retrieval and the threshold.** Documents are split by section, keeping the document name, heading and effective
-date on every piece; the fee table stays intact so every price keeps its label. Search combines keyword search and
-meaning-based search (Voyage AI embeddings), keeping each list's top hit before merging by reciprocal-rank fusion
-(the combined-search decision (D41)). A document list (`data/document_list.csv`) decides which files are searchable
-(stale, placeholder and internal files never are) and a conflict register (`data/conflict_register.csv`) settles each
-known disagreement between documents. The retrieval threshold, below which the agent hands off instead of answering,
-was chosen on working-set questions only, from a curve of containment against wrong confident answers, pooled over
-every graded run (the pooled threshold decision (D48)): 0.25.
-
 **The grader check.** About 30 graded answers, chosen in advance across Codex's right and wrong verdicts, are graded
 blind and compared with Codex. Claude Fable 5.1 graded them in place of the author (the grader-check stand-in
 decision (D44)), so this is agreement between two models, not a human check.
 
-## Results
+## Monitoring
 
-### The frozen held-out measurement
+What the business can see once the agent is live:
 
-This is the one measurement made on the held-out set: the frozen agent (freeze hash `5b8f6899…`), 15 scenarios
-standing for 122 weighted calls (each template counts as many calls as it has in the transcripts). Source:
-`data/results/final/summary.json`.
+- **Today's numbers**, at the top of the Staff view: conversations, handoffs, errors, median reply time and live
+  containment (an upper bound, since a live chat has no grader to check the answers).
+- **Each reply's receipt** ("How this reply was made"): the route, the dated passages it used and the checks it
+  passed. A visitor sees their own; staff, signed in with the shared password, see every conversation, the full
+  ticket queue, and can flag a wrong reply (the first step of the [Feedback loop](#feedback-loop)).
+- **Costs:** every model call is logged in the operations database with its model, tokens, time and cost.
+- **Alerts**, posted to `ALERT_WEBHOOK_URL`: an error burst (3 or more errors in 10 minutes, or more than 20% of at
+  least 10 messages), a failed database write, a failed nightly reset, and daily spend passing $5.
+- **Uptime**, checked from outside (below).
 
-| Measure | Result | What it means |
-| --- | --- | --- |
-| Scenarios / weighted calls | 15 / 122 | Held-out templates run once each, and the real calls they stand for |
-| Containment | 29.5% | Weighted calls finished correctly with no handoff and no clean decline |
-| 95% interval for containment | 3.6% to 56.9% | From resampling the 15 templates 2,000 times; wide because there are only 15 |
-| Containment without redirects | 29.5% | Leaving out redirect-only calls (wrong numbers, job enquiries); none in this set |
-| Scope ceiling | 74.6% | Weighted calls inside what the agent is built to handle |
-| Adjusted ceiling | 48.4% | The scope ceiling minus calls that need a money or membership action or that the data cannot answer |
-| Action gap | 16.4% | Calls understood but handed off because they need a money or membership action |
-| Wrong confident answers | 0 | Conversations finished without a handoff but graded wrong |
-| Knowledge accuracy | 100% | Document questions answered correctly |
-| Routing accuracy | 76.2% | Calls whose first message went to the flow the reference label names (target 90%) |
-| Handoff correct, safety and booking | 100% | Safety and booking-rule calls that needed a handoff got one with the right reason |
-| Handoff correct, other | 100% | All other calls that needed a handoff got one with the right reason |
-| Booking correctness | 69.8% | Booking changes that passed every database check (target 100%) |
-| Lookup correctness | 100% | Account lookups that read back the right balance, invoice or renewal date |
-| Ticket actionable | 72.7% | Tickets a staff member could act on without asking the caller again (`extra.ticket_actionable`) |
-| Clean declines | 1 | Calls correctly declined (no slot) with a ticket |
-| Flaky cases | none | Cases that failed, then passed on the retry |
-| Human baseline | 84.5% | Share of the 420 transcript calls staff resolved on the call |
-| Human baseline excluding account actions | 73.3% | The fair comparison: leaving out calls staff resolved only by an action the agent never takes |
-| Cost | $0.39 | Anthropic spend for the run's 18 attempts (15 first runs, 3 retries) |
+The scheduling tables are reset to the seed every night at 03:00 Austin time, so the demo always has open slots; the
+operations database (conversations, tickets, costs, flags) is never reset.
 
-**Consistency** (`data/results/final/consistency/summary.json`): every held-out case was run three more times. 67% of
-the 15 cases were graded correct on all three runs (87%, 80% and 73% on each run); five cases were not always correct.
+### Uptime monitoring
 
-**What happened to the grading.** The final run crashed while grading, in the database check of a case that expected
-no booking; the conversations themselves were already saved. After the check was fixed, a resume command graded the
-saved first conversations without running them again, so the scored conversations are the original first attempts;
-the summary records this as `resumed: true`.
-
-**Being honest about these numbers.** Held-out containment, 29.5%, is far below what the same frozen agent scored on
-the working set: its two quick runs on 20 working-set scenarios gave 64.2% and 64.9%
-(`data/results/quick-20261021-064643-run1/summary.json` and `-run2/`), and quick runs during tuning were mostly
-between 40% and 60%. Routing (76% against 100% on those quick runs) and bookings (70% against 94% and 100%) also
-dropped. It is also below the 60 to 75% containment target in the PRD. The plain reading is that the many fixes made
-while tuning on working-set cases fit those cases more than they generalise to calls the agent had not seen. The
-held-out set is also small: 15 scenarios, so one case moves containment by up to 12 points, and the 95% interval runs
-from 3.6% to 56.9%. Under the held-out rule (R10) nothing was changed after seeing these results; they are reported
-as measured.
-
-Looking at the first attempts (`data/results/final/attempts.jsonl`):
-
-- Four cases (36 of 122 calls) were contained.
-- Three cases the agent should have finished itself ended in a handoff instead: a "charged twice" billing question, a
-  plumbing booking and a warranty repeat-repair visit (23 calls). The handoffs were correct behaviour, but not
-  containment.
-- Both burning-smell cases (16 calls) gave the fixed safety reply and a correct priority ticket, but when the
-  simulated caller went on asking for a visit, the agent booked an ordinary appointment after a clear yes. The
-  database check caught it as a booking fault. The rule is that an emergency is never booked, so this is a real bug
-  in the frozen agent, and it is why booking correctness is 70%.
-- The north-zone plumbing case should have been a clean decline (no plumbing slots in the north zone); the agent said
-  there was no capacity but its ticket left out the problem, so it was graded wrong.
-
-### The live build after the measurement
-
-The numbers above are the frozen agent's (agent hash `5b8f6899`, in `data/results/final/summary.json`). The live demo
-runs a later build with two changes made after the measurement and not re-measured, as the held-out rule (R10)
-requires (live fixes after the measurement (D51)):
-- after any safety reply, the agent never books, reschedules or offers slots in that conversation; it points to the
-  emergency ticket instead (the burning-smell bug described above);
-- a question about today's date or time is answered as the demo's fixed date (Friday 16 October 2026, 9:00 a.m. in
-  Austin), since the demo runs on a fixed "now".
-- a caller who gives their name and account number in the same message as an emergency is identified then, so the
-  priority ticket carries their details and they are not asked for them again.
-
-The final checks then changed the web and operations layers, not the agent: the Results tables, the reviewer-only
-reply, and two operations-store fixes for a failing database. `docs/FINAL_CHECKS.md` lists what each final check
-(browser QA, security audit, Codex whole-project review) found, what was fixed and what was left as a known limit.
-
-### By call reason
-
-Accuracy on the reasons the agent should handle itself, and the escalation rate on the rest, from the same frozen
-held-out run, scored like the summary (first attempts, weighted by the calls each case stands for). Produced by
-`python -m eval.per_driver` into `data/results/final/per_driver.json`; with 15 scenarios, each reason rests on one to
-six cases.
-
-| Call reason | Cases | Weighted calls | Handled by the agent: correct | Should be handed off: escalated, and with the right reason |
-|---|---|---|---|---|
-| New booking | 6 | 47 | 68% (3 cases) | 100%, 100% (2 cases) |
-| Billing | 2 | 26 | 58% (2 cases) | none expected |
-| Membership | 2 | 20 | none expected | 100%, 100% (2 cases) |
-| Warranty | 2 | 14 | 57% (2 cases) | none expected |
-| Existing appointment | 1 | 9 | none expected | 100%, 100% (1 case) |
-| Complaint or manager | 1 | 5 | none expected | 100%, 100% (1 case) |
-| Safety emergency | 1 | 1 | none expected | 100%, 100% (1 case) |
-
-Every call that should go to a person did, with the right reason; the misses are calls the agent should have finished
-itself. (The two burning-smell cases count under new booking: their handoff was right, but the booking that followed
-was the fault described above.)
-
-### Supporting measures
-
-These were measured on the working set or on separate sets, not on the held-out cases.
-
-- **Retrieval** (`data/results/retrieval/answer_scores.json` and the `retrieval` section of the final summary, 25
-  working-set questions): combined search had a correct passage in the top five for every question (hit rate 100%,
-  recall 93.2%), against 77.3% for keyword search alone, and found the current document on every stale-trap question.
-  Answers written from combined search were 92% correct, 96% faithful to the passages, 100% correctly cited, and
-  refused 100% of the unanswerable questions. Keyword-only answers were 68% correct; giving the model the whole
-  knowledge base gave 88%.
-- **Threshold** (`data/results/threshold.json`): at the chosen 0.25, 74% of the working-set question runs were
-  contained with 2 wrong confident answers out of 50.
-- **Adversarial set** (`data/results/adversarial/summary.json`): 32 of 32 passed, including every booking-rule and
-  instruction-extraction attack.
-- **Money check** (`data/results/money_check/summary.json`): on 137 labelled sentences it caught all 69 promises and
-  released 67 of the 68 fair or published sentences (one over-block: "Members get 15% off repairs, and I can check
-  today's openings for you."). This is the set it was tuned on, so it is not independent proof.
-- **Grader check** (`data/results/grader_check.json`): Claude Fable 5.1, grading blind, agreed with Codex on 25 of 30
-  answers (83.3%, against an 85% aim). In all five disagreements Fable said right where Codex said wrong, so Codex is
-  the stricter grader.
-- **Live reply times** (`data/results/latency/live-20261021.txt`): measured on 2026-10-21 against the deployed site
-  (release v4) with `scripts/measure_latency.py --reviewer`: 3 warm-up messages, then 50 measured, each a fresh
-  reviewer-link visitor, 31 seconds apart. All 50 replied, none failed. The median time to the first sentence was
-  2.55 seconds (target under 2.5) and to the full reply 4.60 seconds (target under 4.0), so both targets were narrowly
-  missed; the slowest replies were handoffs and long knowledge answers.
-
-## Containment
-
-Containment is the share of calls the agent finishes correctly without a human. A test conversation counts as
-contained only if the agent never handed off and every request the caller made was graded correct. A clean decline
-("no slot is available", with a ticket) is correct behaviour but not containment. Every number below is weighted by
-how many real calls each held-out template stands for (`data/results/final/summary.json`).
-
-| Measure | Value | Definition |
-| --- | --- | --- |
-| Containment | 29.5% | Weighted held-out calls the agent finished correctly with no handoff and no clean decline |
-| Containment without redirects | 29.5% | The same, leaving out calls that only need a redirect (wrong numbers, job enquiries) |
-| Scope ceiling | 74.6% | Calls inside the reasons the agent handles: the most it could contain |
-| Adjusted ceiling | 48.4% | The scope ceiling after removing calls the documents or database cannot answer and calls that need a money or membership action |
-| Action gap | 16.4% | Calls the agent understands but must hand off because they need an action on money or membership |
-| Human baseline | 84.5% | Share of all 420 transcript calls staff resolved on the call (355 of 420) |
-| Human baseline excluding account actions | 73.3% | Staff resolution leaving out calls resolved only by an account action the agent never takes (308 of 420) |
-
-**The fair comparison.** Staff can take payments, set up autopay and cancel memberships; the agent by design cannot.
-So the agent's containment should be compared with the staff figure that leaves those calls out, 73.3%, not 84.5%.
-Even then the gap is large: 29.5% against 73.3%. The adjusted ceiling, 48.4%, is the most this agent could contain on
-the held-out calls with its current scope, so about 19 points were lost to mistakes and unnecessary handoffs and the
-rest to scope. The staff figures also count some calls as resolved that staff handled wrongly (see the policy errors
-below), so they flatter staff slightly.
-
-## Executive findings
-
-Three findings for the executive team, from `docs/FINDINGS.md` (generated by `python -m pipeline.findings`). They are
-about the business, not the agent, and the Results tab shows them as three short callouts.
-
-1. **Staff policy errors.** 108 of 420 calls (26%) contain a staff statement or action that contradicts the current
-   documents: offering a waitlist that does not exist (34 calls), booking a burning smell as a normal visit (16),
-   promising a manager callback today (16), moving a next-day appointment without the $49 fee (15), explaining an
-   invoice as the diagnostic fee plus the repair (13), dropping a booking the caller asked for (11), and promising a
-   refund callback in two business days (8). Errors appear for every staff member, so they are a training and
-   documentation problem, not one person.
-2. **Capacity imbalance by zone.** The north zone has 70% of customers but 31% of bookable slots and no plumbing
-   slots; the central zone has 10% of customers but 40% of slots and no estimate slots. Rebalancing technicians would
-   cut wait times more than any agent.
-3. **Documentation gaps.** 14 calls ask about autopay and no document covers it; staff offered a waitlist in 34 calls
-   but only a stale 2024 guide mentions one and the scheduling database has none; and 45 of 81 invoices charge the $89
-   diagnostic fee on top of a repair although the FAQ says it is credited toward an approved repair (22 of them to
-   customers who are members today, for whom it is waived).
+Fly.io's own health check calls `/health` every 15 seconds and restarts the machine if it stops answering. An outside
+monitor (UptimeRobot, free plan) checks `https://ai-call-center-agent-bvgy9q.fly.dev/health` every 5 minutes and
+emails the author when it fails. It checks with HEAD, so `/health` answers HEAD as well as GET (a 405 at first showed
+the live site as down). Tested once on 2026-10-21: with the machine's auto-start turned off, the machine was stopped at
+16:10 UTC, the monitor reported the site down, and the machine was started again at 16:14 UTC (health 200 again,
+auto-start back on). Without turning auto-start off, Fly would start the stopped machine on the monitor's next
+request, so a stop alone does not test the alert.
 
 ## Feedback loop
 
@@ -395,19 +419,65 @@ How a wrong reply in production becomes a fix and a test:
 5. **Re-run** the working set and the quick run (`python -m eval.quick_run`), which must pass.
 6. **Deploy** with `scripts/deploy.sh`, which runs the quick run again first.
 
-## Uptime monitoring
+## Install
 
-Fly.io's own health check calls `/health` every 15 seconds and restarts the machine if it stops answering. An outside
-monitor (UptimeRobot, free plan) checks `https://ai-call-center-agent-bvgy9q.fly.dev/health` every 5 minutes and
-emails the author when it fails. It checks with HEAD, so `/health` answers HEAD as well as GET (a 405 at first showed
-the live site as down). Tested once on 2026-10-21: with the machine's auto-start turned off, the machine was stopped at
-16:10 UTC, the monitor reported the site down, and the machine was started again at 16:14 UTC (health 200 again,
-auto-start back on). Without turning auto-start off, Fly would start the stopped machine on the monitor's next
-request, so a stop alone does not test the alert.
+You need Python 3.12 and, for running evaluations, the Codex command line tool signed in to an OpenAI account.
 
-The app also posts alerts to `ALERT_WEBHOOK_URL` on an error burst (3 or more errors in 10 minutes, or more than 20% of
-at least 10 messages), a failed database write, a failed nightly reset, and daily spend passing $5. The scheduling
-tables are reset to the seed every night at 03:00 Austin time; the operations database is never reset.
+```bash
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cp .env.example .env        # then fill in the keys; .env is in .gitignore and must never be committed
+```
+
+The keys in `.env` (see `.env.example` for every setting and what it does):
+
+| Name | Needed for |
+| --- | --- |
+| `ANTHROPIC_API_KEY` | Running the agent locally (terminal chat or web app) |
+| `EVAL_ANTHROPIC_API_KEY` | Paid test runs; a separate key so a test run never spends the live key |
+| `VOYAGE_API_KEY` | Search embeddings (the agent embeds each question) |
+| `VISITOR_COOKIE_SECRET` | The web app: signs the visitor cookie (at least 16 random characters) |
+| `REVIEWER_TOKEN`, `STAFF_PASSWORD_HASH`, `ALERT_WEBHOOK_URL` | Optional locally: the reviewer link, the staff sign-in and alerts |
+
+The search index (`data/index/`) and the converted documents (`data/kb_text/`) are committed, so you do not need to
+build them. If the documents change, rebuild them with `.venv/bin/python -m pipeline.convert` and then
+`.venv/bin/python -m pipeline.build_index` (needs `VOYAGE_API_KEY`; a few cents).
+
+## Run
+
+**Terminal chat** (the quickest way to talk to the agent). It works on a fresh copy of the seeded scheduling database
+and a scratch operations database, so nothing real changes:
+
+```bash
+.venv/bin/python -m app.cli      # reads ANTHROPIC_API_KEY and VOYAGE_API_KEY from .env
+```
+
+**The web app.** It does not read `.env` itself, so export it first. Run exactly one worker: the nightly reset lock,
+the scheduler and the message limits live in that one process.
+
+```bash
+set -a; . ./.env; set +a
+.venv/bin/uvicorn app.web.main:build_app --factory --workers 1 --port 8000
+```
+
+Then open http://localhost:8000. On first start the app copies the seed scheduling database
+(`call_data/scheduling_db/meridian_scheduling.sqlite`, never written to) to `DATABASE_PATH` (default
+`data/scheduling.sqlite`) and creates the operations database at `OPS_DATABASE_PATH` (default
+`data/operations.sqlite`). Customer-facing "now" is fixed at Friday 2026-10-16 09:00 Austin time in `app/config.py`,
+so bookings and fee windows behave the same every day. To make the staff password hash, run
+`.venv/bin/python -m app.web.staff`; it asks for the password and prints the hash.
+
+## Tests
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+About 1,440 tests run in a little over a minute. They use fakes for every paid service (Anthropic, Voyage, Codex,
+Fly.io and the live site), so they cost nothing and need no keys. Scheduling tests run on temporary copies of the
+seed database. `tests/test_repository.py` checks this README's sections and containment numbers against
+`data/results/final/summary.json`, that the evidence files are committed, and that no tracked file holds a key or a
+value from your local `.env` (it never prints the values).
 
 ## Rollback
 
