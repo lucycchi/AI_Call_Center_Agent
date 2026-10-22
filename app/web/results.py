@@ -471,7 +471,7 @@ def fresh_html(report: dict | None) -> str:
         cells = "".join(f"<td>{v[key]['average']:.1f}%<br><small>{v[key]['low']:.1f}% to {v[key]['high']:.1f}%</small></td>"
                         for _, v in versions)
         rows.append(f"<tr><th>{e(label)}</th>{cells}</tr>")
-    return (f'<table class="numbers"><thead><tr><th>Measure</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table>'
+    return (f'<table class="numbers fresh"><thead><tr><th>Measure</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table>'
             '<p class="note">About 22% of these calls need a person by design (disputes, refunds, complaints, emergencies, '
             'late technicians, commercial work, or no slot in the zone). Source: data/results/fresh_report.json.</p>')
 

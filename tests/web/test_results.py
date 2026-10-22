@@ -296,6 +296,14 @@ def test_the_fresh_test_set_shows_before_and_after_with_their_ranges(store, tmp_
     assert "30 new test calls" in fresh and "3 runs" in fresh
 
 
+def test_before_and_after_are_drawn_alike(store, tmp_path):
+    # The held-out table's styles made the second column bold and the third grey, so "after" looked like a footnote.
+    (tmp_path / "fresh_report.json").write_text(json.dumps(FRESH))
+    page = results_page(store, tmp_path, summary_fixture())
+    assert '<table class="numbers fresh">' in section(page, "fresh-results")
+    assert re.search(r"table\.numbers\.fresh > tbody > tr > td\s*\{[^}]*color:\s*var\(--ink\);[^}]*font-weight:\s*600", page)
+
+
 def test_without_a_fresh_report_the_section_says_so(store, tmp_path):
     fresh = section(results_page(store, tmp_path, summary_fixture()), "fresh-results")
     assert "not yet run" in fresh
